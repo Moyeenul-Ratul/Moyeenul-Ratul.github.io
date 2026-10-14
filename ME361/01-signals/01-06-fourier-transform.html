@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>01.06 Fourier transform: series to amplitude spectrum · ME 361</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="../deck.css">
+<script>window.DECK = {"mode": "panel", "num": "01.06", "title": "Fourier transform: series to amplitude spectrum", "home": "index.html", "homeLabel": "Signals", "course": "ME 361 · Instrumentation and Measurement"};</script>
+<script src="../deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+<style>
+  .presets{display:flex;gap:8px;flex-wrap:wrap}
+  svg .fill-soft{fill:var(--acc-soft)}
+  svg .t-small{font-size:11.5px}
+  svg .fill-red{fill:var(--red)}
+  svg .t-red{fill:var(--red)}
+</style>
+</head>
+<body>
+<main class="deck">
+<section class="slide" id="transform" data-title="The Fourier transform">
+  <p class="eyebrow">From series to transform</p>
+  <h2>Signals that never repeat: let the period grow without limit</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simPT">
+      <div class="simhead"><span>Pulse train: stretch the period</span><span class="legend"><span><i style="background:var(--blu)"></i>spectrum lines</span><span><i style="background:var(--muted)"></i>|Y(f)| of one pulse</span></span></div>
+      <canvas id="cvPTt" data-h="110" aria-label="Train of rectangular pulses, width 0.1 s, repeating every T seconds"></canvas>
+      <canvas id="cvPTf" data-h="200" aria-label="Line spectrum of the pulse train with the continuous transform of a single pulse as a dashed envelope"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="ptT">Period T <output data-for="T"></output></label>
+          <input type="range" id="ptT" data-key="T" min="0.2" max="4" step="0.05" value="0.4" data-fmt="2" data-unit=" s"></div>
+        <div class="ctl"><label for="ptS">Vertical axis</label>
+          <select id="ptS" data-key="sc"><option value="raw">line amplitude Cₙ</option><option value="scaled" selected>scaled: (T/2)·Cₙ</option></select></div>
+      </div>
+      <div class="readout" id="roPT"></div>
+    </div>
+    <div>
+      <p>A hammer blow, a valve slamming shut, a start-up transient: these never repeat, so they have no Fourier series. Trick: treat such a signal as periodic with an enormous period, \(T \to \infty\). The lines sit at \(n/T\), so their spacing \(1/T\) shrinks to zero and they merge into a continuous curve. Each \(C_n\) also shrinks like \(1/T\), but \((T/2)C_n\) settles on a fixed curve: the <dfn>Fourier transform</dfn>.</p>
+      <div class="eq"><span class="label">Fourier transform and amplitude spectrum</span>
+        $$Y(f) = \int_{-\infty}^{\infty} y(t)\,e^{-i2\pi f t}\,dt = A(f) - iB(f)$$
+        $$A = \int y\cos 2\pi f t\,dt,\quad B = \int y\sin 2\pi f t\,dt$$
+        $$|Y(f)| = \sqrt{A^2 + B^2},\qquad \phi(f) = \tan^{-1}\frac{B}{A}$$
+      </div>
+      <p class="small">Euler’s identity \(e^{-i\theta} = \cos\theta - i\sin\theta\) (with \(i = \sqrt{-1}\)) packs the cosine and sine integrals into one complex number. \(Y\) has units of \(y\) × seconds: an amplitude per hertz. The <dfn>inverse transform</dfn> \(y(t) = \int Y(f)\,e^{i2\pi f t}\,df\) rebuilds the signal from its spectrum.</p>
+      <div class="try"><p>Pulses are 0.1 s wide, height 1. At T = 0.40 s the lines are 2.5 Hz apart and land on the dashed curve. Drag T to 4 s: lines every 0.25 Hz fill the curve, which is the transform of a single pulse. Switch to raw \(C_n\) and watch the lines shrink as T grows. Notice the zeros at 10, 20, 30 Hz = \(1/\tau\), \(2/\tau\), …: a shorter pulse spreads wider in frequency.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 13 · DFT -->
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const out = (id, parts) => { $(id).innerHTML = parts.map(p => '<span>' + p + '</span>').join(''); };
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const TAU = 2 * Math.PI, PI = Math.PI;
+  function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+  function gauss(r) { let u = 0; while (u === 0) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * r()); }
+  const sgn = v => Math.abs(v) < 1e-12 ? 0 : Math.sign(v);
+
+  /* ---- functions for the inline SVG figures ---- */
+  const FN = {
+    c1: x => Math.sin(TAU * 2 * x), c3: x => Math.sin(TAU * 6 * x) / 3, c5: x => Math.sin(TAU * 10 * x) / 5,
+    csum: x => Math.sin(TAU * 2 * x) + Math.sin(TAU * 6 * x) / 3 + Math.sin(TAU * 10 * x) / 5,
+    tri: x => 1 - Math.abs(2 * x - 1),
+    m1: x => Math.sin(PI * x), m3: x => Math.sin(3 * PI * x), m5: x => Math.sin(5 * PI * x), m7: x => Math.sin(7 * PI * x),
+    evn: x => Math.exp(-Math.pow((x - Math.round(x)) / 0.15, 2)),
+    odd: x => sgn(Math.sin(TAU * x)),
+    sq5: x => 5 * sgn(Math.sin(TAU * x)),
+    ps1: x => 20 / PI * Math.sin(TAU * x),
+    ps3: x => 20 / PI * (Math.sin(TAU * x) + Math.sin(3 * TAU * x) / 3 + Math.sin(5 * TAU * x) / 5),
+    sinIn: x => 120 * Math.sin(TAU * x), rect: x => Math.abs(120 * Math.sin(TAU * x)),
+    sq1: x => sgn(Math.sin(TAU * x)),
+    rec: x => 0.6 * Math.sin(TAU * 2 * x) + 0.35 * Math.sin(TAU * 5 * x + 1)
+  };
+  // data-map = a,b,X0,X1,Ybase,scale,n : x in [a,b] -> [X0,X1], y -> Ybase - scale*y
+  document.querySelectorAll('path[data-fn]').forEach(p => {
+    const f = FN[p.dataset.fn], [a, b, X0, X1, Yb, S, n] = p.dataset.map.split(',').map(Number);
+    let d = '';
+    for (let i = 0; i <= n; i++) { const x = a + (b - a) * i / n; d += (i ? 'L' : 'M') + (X0 + (X1 - X0) * i / n).toFixed(1) + ' ' + (Yb - S * f(x)).toFixed(1); }
+    p.setAttribute('d', d);
+  });
+  // data-samp = fn,a,b,dx,X0,X1,Ybase,scale,mode (dot) ; x range of the figure is [0,1]
+  const NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); Object.keys(attrs).forEach(k => e.setAttribute(k, attrs[k])); if (parent) parent.appendChild(e); return e; }
+  document.querySelectorAll('[data-samp]').forEach(g => {
+    const s = g.dataset.samp.split(','), f = FN[s[0]], [a, b, dx, X0, X1, Yb, S] = s.slice(1, 8).map(Number);
+    for (let x = a; x <= b + 1e-9; x += dx) el('circle', { cx: (X0 + (X1 - X0) * x).toFixed(1), cy: (Yb - S * f(x)).toFixed(1), r: 3.2 }, g);
+  });
+
+  /* ---- pluck-at-one-fifth bar spectrum (dB) ---- */
+  (function () {
+    const g = $('pluckBars'), x0 = 52, yTop = 18, yBot = 138, dBmin = -50;
+    const Y = d => yTop + (0 - d) / (0 - dBmin) * (yBot - yTop), X = n => x0 + n * 22.5;
+    el('path', { d: 'M' + x0 + ' ' + yBot + ' H410 M' + x0 + ' ' + yTop + ' V' + yBot, class: 'ln-thin' }, g);
+    [0, -10, -20, -30, -40, -50].forEach(d => { const t = el('text', { x: x0 - 6, y: (Y(d) + 4).toFixed(1), 'text-anchor': 'end', class: 't-mono t-small t-muted' }, g); t.textContent = d; });
+    const b1 = Math.sin(PI / 5);
+    for (let n = 1; n <= 15; n++) {
+      const a = Math.abs(Math.sin(n * PI / 5)) / (n * n);
+      if (a < 1e-9) { const t = el('text', { x: X(n), y: yBot - 4, 'text-anchor': 'middle', class: 't-red t-small' }, g); t.textContent = '×'; }
+      else { const d = 20 * Math.log10(a / b1); el('rect', { x: (X(n) - 6).toFixed(1), y: Y(d).toFixed(1), width: 12, height: (yBot - Y(d)).toFixed(1), class: 'fill-blu' }, g); }
+      if (n === 1 || n % 5 === 0) { const t = el('text', { x: X(n), y: yBot + 15, 'text-anchor': 'middle', class: 't-mono t-small' }, g); t.textContent = n === 1 ? 'f₀' : n + 'f₀'; }
+    }
+    const t1 = el('text', { x: 14, y: 82, class: 't-small t-muted', transform: 'rotate(-90 14 82)', 'text-anchor': 'middle' }, g); t1.textContent = 'level (dB)';
+        const t3 = el('text', { x: 300, y: 30, class: 't-small t-red' }, g); t3.textContent = '× = absent (5, 10, 15)';
+  })();
+
+  /* ---- waveform library for builder and cover ---- */
+  function wave(w, nTerms) {
+    const terms = [];
+    if (w === 'sq') { for (let i = 0; i < nTerms; i++) { const n = 2 * i + 1; terms.push({ k: n, a: 4 / (PI * n), cos: false }); } }
+    else if (w === 'tri') { for (let i = 0; i < nTerms; i++) { const n = 2 * i + 1; terms.push({ k: n, a: (i % 2 ? -1 : 1) * 8 / (PI * PI * n * n), cos: false }); } }
+    else if (w === 'saw') { for (let n = 1; n <= nTerms; n++) terms.push({ k: n, a: (n % 2 ? 1 : -1) * 2 / (PI * n), cos: false }); }
+    else { terms.push({ k: 0, a: 2 / PI, cos: true }); for (let m = 1; m <= nTerms; m++) terms.push({ k: 2 * m, a: -4 / (PI * (4 * m * m - 1)), cos: true }); }
+    const exact = x => {
+      const th = TAU * x;
+      if (w === 'sq') return sgn(Math.sin(th));
+      if (w === 'tri') return 2 / PI * Math.asin(Math.sin(th));
+      if (w === 'saw') return 2 * (x - Math.floor(x + 0.5));
+      return Math.abs(Math.sin(th));
+    };
+    const sum = x => { let y = 0; terms.forEach(t => { y += t.a * (t.cos ? Math.cos(TAU * t.k * x) : Math.sin(TAU * t.k * x)); }); return y; };
+    return { terms, exact, sum };
+  }
+
+  /* ---- cover: square wave assembled harmonic by harmonic ---- */
+  let coverT = 0;
+  function drawCover() {
+    const k = Math.min(9, 1 + Math.floor(coverT / 0.7)), W = wave('sq', k);
+    Deck.plot($('coverTrace'), { x: [0, 3], y: [-1.45, 1.45], pad: { l: 8, r: 8, t: 6, b: 6 }, xticks: [], yticks: [],
+      series: [{ f: W.exact, color: 'muted', width: 1.4, n: 900 }, { f: W.sum, color: 'acc', width: 2.4, n: 900 }] });
+  }
+  Deck.onShow('cover', () => { if (reduce) coverT = 99; return drawCover; });
+  Deck.loop('cover', dt => { if (coverT < 7) { const k0 = Math.floor(coverT / 0.7); coverT += dt; if (Math.floor(coverT / 0.7) !== k0) drawCover(); } });
+
+  /* ---- orthogonality explorer ---- */
+  Deck.onShow('orth', () => {
+    const get = Deck.controls('simOrth', draw);
+    function draw() {
+      const v = get(), n = Math.round(v.n), m = Math.round(v.m);
+      const f1 = v.ty === 'cc' ? t => Math.cos(TAU * n * t) : t => Math.sin(TAU * n * t);
+      const f2 = v.ty === 'ss' ? t => Math.sin(TAU * m * t) : t => Math.cos(TAU * m * t);
+      const l1 = (v.ty === 'cc' ? 'cos ' : 'sin ') + n + 'ωt', l2 = (v.ty === 'ss' ? 'sin ' : 'cos ') + m + 'ωt';
+      Deck.plot($('cvOrA'), { x: [0, 1], y: [-1.2, 1.2], yticks: [-1, 0, 1], ylabel: 'value', title: l1 + '  and  ' + l2,
+        series: [{ f: f1, color: 'acc', width: 2.2 }, { f: f2, color: 'blu', width: 2.2, dash: [6, 4] }] });
+      const pr = t => f1(t) * f2(t);
+      const P = Deck.plot($('cvOrB'), { x: [0, 1], y: [-1.1, 1.1], yticks: [-1, 0, 1], xlabel: 'time t (s), one period T = 1 s', ylabel: 'product',
+        hlines: [{ y: 0, color: 'muted', dash: [] }], series: [{ f: pr, color: 'ink', width: 2 }] });
+      const { ctx, X, Y } = P, N = 600;
+      [[1, 'grn'], [-1, 'red']].forEach(([s, c]) => {
+        ctx.beginPath(); ctx.moveTo(X(0), Y(0));
+        for (let i = 0; i <= N; i++) { const t = i / N, p = pr(t); ctx.lineTo(X(t), Y(s > 0 ? Math.max(0, p) : Math.min(0, p))); }
+        ctx.lineTo(X(1), Y(0)); ctx.closePath(); ctx.fillStyle = Deck.alpha(c, 0.28); ctx.fill();
+      });
+      let I = 0; const M = 4000; for (let i = 0; i < M; i++) I += pr((i + 0.5) / M) / M;
+      const expect = (v.ty !== 'sc' && n === m) ? 'T/2 = 0.5 s' : '0';
+      out('roOrth', ['∫₀ᵀ product dt = <b>' + (Math.abs(I) < 5e-4 ? '0.000' : I.toFixed(3)) + ' s</b>', 'theory: <b>' + expect + '</b>', n === m ? '<b>same harmonic</b>' : 'different harmonics']);
+    }
+    return draw;
+  });
+
+  /* ---- Fourier builder ---- */
+  Deck.onShow('builder', () => {
+    const get = Deck.controls('simFB', draw);
+    function draw() {
+      const v = get(), n = Math.round(v.n), W = wave(v.w, n), rect = v.w === 'rect';
+      const lo = rect ? -0.3 : -1.45, hi = rect ? 1.3 : 1.45;
+      Deck.plot($('cvFBt'), { x: [0, 2], y: [lo, hi], xlabel: rect ? 'time (periods of the input sine)' : 'time (periods of the fundamental)', ylabel: 'y',
+        hlines: [{ y: 1, color: 'rule', dash: [3, 4] }, { y: rect ? 0 : -1, color: 'rule', dash: [3, 4] }],
+        series: [{ f: W.exact, color: 'muted', width: 1.5, n: 1200 }, { f: W.sum, color: 'acc', width: 2.2, n: 1600 }] });
+      const kmax = Math.max(...W.terms.map(t => t.k)), xmax = Math.max(10, kmax + 1);
+      Deck.plot($('cvFBs'), { x: [-0.5, xmax], y: [0, 1.4], yticks: [0, 0.5, 1], yfmt: q => q.toFixed(1), ylabel: '|Cₙ|', xlabel: rect ? 'frequency ÷ input frequency' : 'harmonic number n (frequency ÷ f₀)',
+        series: [{ pts: W.terms.map(t => [t.k, Math.abs(t.a)]), color: 'blu', stem: true }] });
+      let mx = -9, e2 = 0; const M = 4000;
+      for (let i = 0; i < M; i++) { const x = i / M, s = W.sum(x), ex = W.exact(x); if (s > mx) mx = s; e2 += (s - ex) * (s - ex); }
+      const parts = ['highest term <b>' + kmax + (rect ? ' × input' : ' f₀') + '</b>', 'RMS error <b>' + Math.sqrt(e2 / M).toFixed(4) + '</b>'];
+      if (v.w === 'sq' || v.w === 'saw') parts.push('peak <b>' + mx.toFixed(3) + '</b>, overshoot <b>' + ((mx - 1) / 2 * 100).toFixed(1) + ' %</b> of the jump');
+      else parts.push('peak <b>' + mx.toFixed(3) + '</b> (no jump, no Gibbs overshoot)');
+      if (rect) parts.push('DC term A₀ = 2/π = <b>0.637</b>');
+      out('roFB', parts);
+    }
+    return draw;
+  });
+
+  /* ---- rectified sine spectrum ---- */
+  Deck.onShow('ex-rect', () => () => {
+    const pts = [[0, 240 / PI]]; for (let k = 1; k <= 6; k++) pts.push([120 * k, 480 / (PI * (4 * k * k - 1))]);
+    Deck.plot($('cvRect'), { x: [-110, 780], y: [0, 112], xticks: [0, 120, 240, 360, 480, 600, 720], xlabel: 'frequency (Hz)', ylabel: 'amplitude (V)',
+      vlines: [{ x: 60, color: 'red', dash: [3, 4], label: '60 Hz: zero' }],
+      series: [{ pts, color: 'acc', stem: true }],
+      points: pts.slice(0, 4).map((p, i) => ({ x: p[0], y: p[1], r: 0.1, color: 'ink', align: i ? 'left' : 'right', label: p[1].toFixed(p[1] < 10 ? 2 : 1) })) });
+  });
+
+  /* ---- pulse train -> transform ---- */
+  Deck.onShow('transform', () => {
+    const tau = 0.1, get = Deck.controls('simPT', draw);
+    function draw() {
+      const v = get(), T = v.T, sc = v.sc === 'scaled';
+      const pulse = t => { const u = t - T * Math.round(t / T); return Math.abs(u) <= tau / 2 ? 1 : 0; };
+      Deck.plot($('cvPTt'), { x: [-2, 2], y: [-0.15, 1.25], yticks: [0, 1], xlabel: 'time t (s)', ylabel: 'y',
+        series: [{ f: pulse, color: 'acc', width: 2, n: 1600 }] });
+      const fmax = 30, lines = [];
+      for (let n = 1; n / T <= fmax; n++) { const Cn = 2 / (n * PI) * Math.abs(Math.sin(n * PI * tau / T)); lines.push([n / T, sc ? Cn * T / 2 : Cn]); }
+      const env = f => Math.abs(Math.sin(PI * f * tau) / (PI * f));
+      const ymax = sc ? 0.115 : Math.max(0.05, ...lines.map(p => p[1])) * 1.15;
+      Deck.plot($('cvPTf'), { x: [0, fmax], y: [0, ymax], xlabel: 'frequency f (Hz)', ylabel: sc ? '(T/2)·Cₙ (V·s)' : 'Cₙ (V)',
+        series: (sc ? [{ f: env, color: 'muted', width: 1.6, dash: [5, 4], n: 600 }] : []).concat([{ pts: lines, color: 'blu', stem: true }]) });
+      out('roPT', ['line spacing 1/T = <b>' + (1 / T).toFixed(2) + ' Hz</b>', 'lines below 30 Hz <b>' + lines.length + '</b>', 'DC line A₀ = τ/T = <b>' + (tau / T).toFixed(3) + ' V</b> (not drawn)', 'C₁ = <b>' + (2 / PI * Math.abs(Math.sin(PI * tau / T))).toFixed(3) + ' V</b>']);
+    }
+    return draw;
+  });
+
+  /* ---- DFT hand example plots ---- */
+  Deck.onShow('ex-dft', () => () => {
+    const s = []; for (let r = 0; r < 8; r++) s.push([r * 0.125, 10 * Math.sin(TAU * r * 0.125)]);
+    Deck.plot($('cvDftEx1'), { x: [0, 1], y: [-12, 12], yticks: [-10, 0, 10], xlabel: 't (s)', ylabel: 'y (V)', pad: { b: 40 },
+      series: [{ f: t => 10 * Math.sin(TAU * t), color: 'muted', width: 1.4 }, { pts: s, color: 'blu', stem: true }] });
+    Deck.plot($('cvDftEx2'), { x: [-0.5, 3.5], y: [0, 12], xticks: [0, 1, 2, 3], yticks: [0, 5, 10], xlabel: 'frequency fₖ (Hz)', ylabel: '|Y| (V)', pad: { b: 40 },
+      series: [{ pts: [[0, 0], [1, 10], [2, 0], [3, 0]], color: 'acc', stem: true }] });
+  });
+
+  /* ---- DFT simulator ---- */
+  function dft(samp, N, kmax) {
+    const spec = [];
+    for (let k = 0; k <= kmax; k++) {
+      let re = 0, im = 0;
+      for (let r = 0; r < N; r++) { const a = -TAU * r * k / N; re += samp[r] * Math.cos(a); im += samp[r] * Math.sin(a); }
+      spec.push((k === 0 ? 1 : 2) / N * Math.hypot(re, im));
+    }
+    return spec;
+  }
+  Deck.onShow('dftsim', () => {
+    const get = Deck.controls('simDFT', draw);
+    function setVals(o) { Object.keys(o).forEach(id => { $(id).value = o[id]; }); $('dC1').dispatchEvent(new Event('input')); }
+    $('preTwo').addEventListener('click', () => setVals({ dC1: 5, dF1: 4.997, dC2: 2, dF2: 7.003, dN: '128', dDt: '0.0078125' }));
+    $('preOne').addEventListener('click', () => setVals({ dC1: 10, dF1: 1, dC2: 0, dF2: 7.003, dN: '8', dDt: '0.125' }));
+    function draw() {
+      const v = get(), N = +v.N, dt = +v.dt, Tr = N * dt, df = 1 / Tr, fn = 1 / (2 * dt);
+      const e = t => v.C1 * Math.sin(TAU * v.f1 * t) + v.C2 * Math.sin(TAU * v.f2 * t);
+      const samp = [], sp = []; for (let r = 0; r < N; r++) { samp.push(e(r * dt)); sp.push([r * dt, samp[r]]); }
+      const lim = Math.max(1, v.C1 + v.C2) * 1.15;
+      Deck.plot($('cvDFTt'), { x: [0, Tr], y: [-lim, lim], xlabel: 'time (s); record length Nδt = ' + +Tr.toFixed(4) + ' s', ylabel: 'e (V)',
+        series: [{ f: e, color: 'muted', width: 1.2, n: Math.min(4000, Math.max(600, Math.round(Tr * Math.max(v.f1, v.f2) * 40))) }, { pts: sp, color: 'blu', dotsOnly: true, r: N > 128 ? 1.8 : 2.8 }] });
+      const mag = dft(samp, N, N / 2 - 1), spec = mag.map((c, k) => [k * df, c]);
+      let i1 = 0, i2 = -1; spec.forEach((s, i) => { if (s[1] > spec[i1][1]) i1 = i; });
+      spec.forEach((s, i) => { if (Math.abs(i - i1) > 1 && (i2 < 0 || s[1] > spec[i2][1])) i2 = i; });
+      const fmax = (N / 2 - 1) * df, fview = Math.min(fmax, Math.max(10, 1.6 * Math.max(v.f1, v.f2)));
+      Deck.plot($('cvDFTf'), { x: [-df * 0.6, fview + df * 0.6], y: [0, Math.max(10, v.C1, v.C2) * 1.1], xlabel: 'frequency fₖ = k·δf (Hz)', ylabel: '|Y| (V)',
+        series: [{ pts: spec.filter(q => q[0] <= fview + df), color: 'acc', stem: true }],
+        vlines: [{ x: v.f1, color: v.f1 > fn ? 'red' : 'blu', dash: [3, 4], label: 'f₁' }, { x: v.f2, color: v.f2 > fn ? 'red' : 'grn', dash: [3, 4], label: 'f₂' }].filter((l, i) => l.x <= fview + df && (i ? v.C2 : v.C1) > 0) });
+      const parts = ['δf = 1/(Nδt) = <b>' + +df.toFixed(4) + ' Hz</b>', 'top bin <b>' + +fmax.toFixed(3) + ' Hz</b>', '1/(2δt) = <b>' + +fn.toFixed(2) + ' Hz</b>',
+        'largest peak <b>' + spec[i1][1].toFixed(2) + ' V at ' + +spec[i1][0].toFixed(3) + ' Hz</b>'];
+      if (i2 >= 0 && spec[i2][1] > 0.05) parts.push('next <b>' + spec[i2][1].toFixed(2) + ' V at ' + +spec[i2][0].toFixed(3) + ' Hz</b>');
+      if ((v.C1 > 0 && v.f1 > fn) || (v.C2 > 0 && v.f2 > fn)) parts.push('<b style="color:var(--red)">a frequency is above 1/(2δt): aliased</b>');
+      out('roDFT', parts);
+    }
+    return draw;
+  });
+
+  /* ---- fan vibration spectrum ---- */
+  Deck.onShow('vib', () => {
+    const fs = 1024, nr = rng(29), noise = []; for (let i = 0; i < 2048; i++) noise.push(0.15 * gauss(nr));
+    const sig = t => 2 * Math.sin(TAU * 24.5 * t) + 0.8 * Math.sin(TAU * 49 * t + 1) + 0.5 * Math.sin(TAU * 50 * t + 0.3) + 1.2 * Math.sin(TAU * 147 * t + 2);
+    const cache = {};
+    const get = Deck.controls('simVib', draw);
+    function draw() {
+      const N = +get().N, df = fs / N;
+      if (!cache[N]) { const s = []; for (let r = 0; r < N; r++) s.push(sig(r / fs) + noise[r]); cache[N] = dft(s, N, Math.round(165 / df)).map((c, k) => [k * df, c]); }
+      const spec = cache[N];
+      Deck.plot($('cvVib1'), { x: [0, 160], y: [0, 2.3], xticks: [0, 24.5, 49, 100, 147], xfmt: q => String(q), xlabel: 'frequency (Hz)', ylabel: 'm/s²',
+        bands: [{ x0: 40, x1: 60, color: 'ylw', alpha: 0.15 }], series: [{ pts: spec, color: 'acc', width: 1.6 }] });
+      Deck.plot($('cvVib2'), { x: [40, 60], y: [0, 1.1], yticks: [0, 0.5, 1], yfmt: q => q.toFixed(1), xlabel: 'zoom 40–60 Hz · blue: 2× = 49 Hz · red: mains 50 Hz', ylabel: 'm/s²',
+        vlines: [{ x: 49, color: 'blu', dash: [3, 4] }, { x: 50, color: 'red', dash: [3, 4] }],
+        series: [{ pts: spec.filter(p => p[0] >= 39.9 && p[0] <= 60.1), color: 'acc', stem: true }] });
+      const pk = f => { let b = spec[0]; spec.forEach(p => { if (Math.abs(p[0] - f) <= df && p[1] > b[1]) b = p; }); return b[1].toFixed(2); };
+      out('roVib', ['δf = <b>' + df + ' Hz</b>', 'record <b>' + (N / fs) + ' s</b>', 'peak near 24.5 Hz <b>' + pk(24.5) + '</b>', 'near 147 Hz <b>' + pk(147) + '</b>']);
+    }
+    return draw;
+  });
+})();
+</script>
+</body>
+</html>

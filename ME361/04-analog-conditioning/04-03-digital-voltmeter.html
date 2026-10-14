@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>04.03 Digital voltmeter: counting clock pulses · ME 361</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="../deck.css">
+<style>
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:640px){.duo{grid-template-columns:1fr}}
+  .tbl.compact th,.tbl.compact td{padding:6px 10px;font-size:.88rem}
+</style>
+<script>window.DECK = {"mode": "panel", "num": "04.03", "title": "Digital voltmeter: counting clock pulses", "home": "index.html", "homeLabel": "Analog Signal Conditioning", "course": "ME 361 · Instrumentation and Measurement"};</script>
+<script src="../deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+<section class="slide" id="dvm" data-title="Digital meters: counting clock pulses">
+  <p class="eyebrow">Digital meters</p>
+  <h2>A digital voltmeter turns voltage into time, and time into a count</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simDVM">
+      <div class="simhead"><span>Ramp-type digital voltmeter</span><span class="legend"><span><i style="background:var(--acc)"></i>reference ramp</span><span><i style="background:var(--blu)"></i>unknown Eₓ</span><span><i style="background:var(--grn)"></i>counting window</span></span></div>
+      <canvas id="cvDVM" data-h="250" aria-label="Reference ramp falling from 10 V to 0, the unknown voltage level, and the clock pulses counted between equality and zero"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="dvx">Unknown voltage Eₓ <output data-for="ex"></output></label>
+          <input type="range" id="dvx" data-key="ex" min="0.2" max="9.8" step="0.001" value="2.337" data-fmt="3" data-unit=" V"></div>
+        <div class="ctl"><label for="dvc">Clock rate</label>
+          <select id="dvc" data-key="fc"><option value="1">1 pulse/s</option><option value="10">10 pulses/s</option><option value="100">100 pulses/s</option></select></div>
+      </div>
+      <div class="readout" id="roDVM"></div>
+    </div>
+    <div>
+      <p>The heart of a digital meter is a <b>clock</b>, usually a quartz crystal oscillator, shaped into one pulse per cycle. In the simplest voltmeter an internal reference falls linearly from 10 V to 0 at a known rate, here 0.1 V/s. A comparator starts a counter when the reference equals the unknown, and a second comparator stops it when the reference reaches zero. The time elapsed is \(E_x/(0.1\ \text{V/s})\), so with one pulse per second a count of 23 means 2.3 V.</p>
+      <div class="try"><p>With 1 pulse/s the display steps in 0.1 V and Eₓ = 2.337 V shows 2.3. Switch to 100 pulses/s: the same ramp now gives 233 counts and 2.33 V. Resolution is the ramp rate divided by the clock rate. Real meters run the clock at megahertz, and most bench meters integrate the input over a fixed time instead (dual-slope), which also averages out mains hum.</p></div>
+      <p class="small">An ammeter is a voltmeter across a precision internal resistor; an ohmmeter passes a known current through the unknown. A <b>3½-digit</b> display counts to ±1999, so on a 2 V range it resolves 1 mV. Analog meters respond to current; digital meters respond to voltage and draw very little.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 10 · evm -->
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---- cover: measurand and small sensor signal ---- */
+  let coverT = 0;
+  function drawCover() {
+    const tEnd = 14, tt = Math.min(coverT, tEnd), a = [], b = [];
+    for (let i = 0; i <= 600; i++) {
+      const t = tEnd * i / 600; if (t > tt) break;
+      const m = Math.sin(0.7 * t) + 0.4 * Math.sin(1.9 * t + 1);
+      a.push([t, m]); b.push([t, 0.35 * m - 1.1 + 0.05 * Math.sin(41 * t) + 0.04 * Math.sin(67 * t + 1)]);
+    }
+    Deck.plot($('coverTrace'), { x: [0, tEnd], y: [-1.8, 1.6], pad: { l: 8, r: 8, t: 6, b: 6 }, xticks: [], yticks: [],
+      series: [{ pts: a, color: 'blu', width: 2.2 }, { pts: b, color: 'acc', width: 2 }] });
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (coverT < 15) { coverT += RM ? 15 : dt * 3; drawCover(); } });
+
+  /* ---- galvanometer ---- */
+  let gTh = 0, gOm = 0, drawG = null, getG = null;
+  Deck.onShow('galv', () => {
+    getG = Deck.controls('simGalv', () => {});
+    function draw() {
+      const v = getG(), cv = $('cvGalv'); const { ctx, W, H } = Deck.sizeCanvas(cv);
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const cx = W / 2, cy = H - 30, R = Math.min(W * 0.42, H - 54), a0 = -Math.PI / 2;
+      ctx.strokeStyle = Deck.color('muted'); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(cx, cy, R, a0 - 0.95, a0 + 0.95); ctx.stroke();
+      ctx.font = Deck.font(11, true); ctx.fillStyle = Deck.color('muted'); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      for (let k = -5; k <= 5; k++) {
+        const an = a0 + k * 0.17, r2 = R - (k % 5 === 0 ? 14 : 8);
+        ctx.beginPath(); ctx.moveTo(cx + R * Math.cos(an), cy + R * Math.sin(an)); ctx.lineTo(cx + r2 * Math.cos(an), cy + r2 * Math.sin(an)); ctx.stroke();
+        if (k % 5 === 0) ctx.fillText((k * 10) + ' µA', cx + (R + 14) * Math.cos(an), cy + (R + 14) * Math.sin(an) + 6);
+      }
+      ctx.fillStyle = Deck.alpha('red', .25); ctx.fillRect(cx - R * 0.55 - 20, cy - 24, 20, 32);
+      ctx.fillStyle = Deck.alpha('blu', .25); ctx.fillRect(cx + R * 0.55, cy - 24, 20, 32);
+      ctx.fillStyle = Deck.color('ink'); ctx.font = Deck.font(12); ctx.textBaseline = 'middle';
+      ctx.fillText('N', cx - R * 0.55 - 10, cy - 8); ctx.fillText('S', cx + R * 0.55 + 10, cy - 8);
+      const an = a0 + gTh;
+      ctx.strokeStyle = Deck.color('acc'); ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + (R - 6) * Math.cos(an), cy + (R - 6) * Math.sin(an)); ctx.stroke(); ctx.lineCap = 'butt';
+      ctx.fillStyle = Deck.color('ink'); ctx.beginPath(); ctx.arc(cx, cy, 6, 0, 7); ctx.fill();
+      const target = v.I / 50 * 0.85;
+      $('roGalv').innerHTML = 'steady θ = NAB·I/k → <b>' + (target * 180 / Math.PI).toFixed(1) + '°</b> &nbsp; now <b>' + (gTh * 180 / Math.PI).toFixed(1) + '°</b> &nbsp; ' + (v.z < 1 ? 'underdamped: overshoots' : 'no overshoot');
+    }
+    drawG = draw; return draw;
+  });
+  Deck.loop('galv', dt => {
+    if (!drawG) return;
+    const v = getG(), target = v.I / 50 * 0.85, wn = 2 * Math.PI * 0.9;
+    if (RM) { gTh = target; gOm = 0; drawG(); return; }
+    const n = 4, h = dt / n;
+    for (let i = 0; i < n; i++) { const acc = wn * wn * (target - gTh) - 2 * v.z * wn * gOm; gOm += acc * h; gTh += gOm * h; }
+    gTh = Math.max(-1.1, Math.min(1.1, gTh));
+    drawG();
+  });
+
+  /* ---- harmonics ---- */
+  Deck.onShow('scope-bw', () => {
+    const get = Deck.controls('simHarm', draw);
+    function draw() {
+      const n = get().n, f = 12, T = 1000 / f; // ns
+      const sq = [], ps = [];
+      for (let i = 0; i <= 900; i++) {
+        const t = 2 * T * i / 900; let s = 0;
+        for (let k = 1; k <= n; k += 2) s += 4 / Math.PI / k * Math.sin(2 * Math.PI * k * t / T);
+        ps.push([t, s]); sq.push([t, (t % T) < T / 2 ? 1 : -1]);
+      }
+      Deck.plot($('cvHarm'), { x: [0, 2 * T], y: [-1.5, 1.5], xlabel: 'time (ns)', ylabel: 'voltage (relative)',
+        series: [{ pts: sq, color: 'muted', width: 1.5, steps: false }, { pts: ps, color: 'acc', width: 2.4 }] });
+      const fmax = n * f;
+      $('roHarm').innerHTML = 'harmonics kept: <b>' + ((n + 1) / 2) + '</b> (1st to ' + n + 'th) &nbsp; highest frequency <b>' + fmax + ' MHz</b> &nbsp; sampling ≥ <b>' + (2 * fmax) + ' MS/s</b> &nbsp; 1 ms record = <b>' + (2 * fmax * 1000).toLocaleString('en-US') + ' samples</b>';
+    }
+    return draw;
+  });
+
+  /* ---- deflection vs null ---- */
+  Deck.onShow('potentiometer', () => {
+    const get = Deck.controls('simNull', draw);
+    const Em = 1.0, Ei = 2.0, RT = 100, Rg = 100;
+    function dial(ctx, cx, cy, R, ang, labels, col) {
+      const a0 = -Math.PI / 2;
+      ctx.strokeStyle = Deck.color('muted'); ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.arc(cx, cy, R, a0 - 1.0, a0 + 1.0); ctx.stroke();
+      ctx.font = Deck.font(11, true); ctx.fillStyle = Deck.color('muted'); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      labels.forEach(([fr, txt]) => { const an = a0 - 1.0 + 2.0 * fr; ctx.beginPath(); ctx.moveTo(cx + R * Math.cos(an), cy + R * Math.sin(an)); ctx.lineTo(cx + (R - 10) * Math.cos(an), cy + (R - 10) * Math.sin(an)); ctx.stroke(); ctx.fillText(txt, cx + (R + 12) * Math.cos(an), cy + (R + 12) * Math.sin(an) + 6); });
+      const an = a0 + ang;
+      ctx.strokeStyle = Deck.color(col); ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + (R - 4) * Math.cos(an), cy + (R - 4) * Math.sin(an)); ctx.stroke(); ctx.lineCap = 'butt';
+      ctx.fillStyle = Deck.color('ink'); ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 7); ctx.fill();
+    }
+    function draw() {
+      const v = get(), null_ = v.mode === 'null';
+      document.getElementById('nrm').closest('.ctl').style.opacity = null_ ? .45 : 1;
+      document.getElementById('nx').closest('.ctl').style.opacity = null_ ? 1 : .45;
+      const { ctx, W, H } = Deck.sizeCanvas($('cvNull'));
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const dw = W * 0.56, R = Math.min(dw * 0.4, H - 70), cx = dw / 2, cy = H - 34;
+      let ind, Isrc, txt;
+      if (!null_) {
+        Isrc = Em / (v.rs + v.rm); ind = Isrc * v.rm;
+        dial(ctx, cx, cy, R, -1.0 + 2.0 * Math.min(1, ind / 2), [[0, '0'], [0.25, '0.5'], [0.5, '1.0'], [0.75, '1.5'], [1, '2 V']], 'acc');
+        ctx.fillStyle = Deck.color('ink'); ctx.font = Deck.font(12); ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText('voltmeter, 0–2 V', cx, cy + 10);
+        txt = 'reading <b>' + ind.toFixed(4) + ' V</b> &nbsp; current drawn from source <b>' + (Isrc * 1e6).toPrecision(3) + ' µA</b> &nbsp; loading error <b>' + ((ind - Em) / Em * 100).toFixed(2) + ' %</b>';
+      } else {
+        const Eab = v.x * Ei, Rth = v.x * (1 - v.x) * RT, Ig = (Eab - Em) / (v.rs + Rg + Rth);
+        ind = Eab; Isrc = Ig;
+        dial(ctx, cx, cy, R, 1.0 * Math.tanh(Ig / 5e-6), [[0, '−'], [0.5, '0'], [1, '+']], Math.abs(Ig) < 5e-8 ? 'grn' : 'acc');
+        ctx.fillStyle = Deck.color('ink'); ctx.font = Deck.font(12); ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText('galvanometer G', cx, cy + 10);
+        txt = 'dial reading x·Eᵢ = <b>' + Eab.toFixed(4) + ' V</b> &nbsp; galvanometer current <b>' + (Ig * 1e6).toFixed(3) + ' µA</b> &nbsp; ' + (Math.abs(Ig) < 5e-8 ? '<b>balanced: reading = true value</b>' : 'not balanced: move x toward ' + (Ig > 0 ? 'smaller' : 'larger') + ' values');
+      }
+      // bars
+      const bx = dw + 10, bw = W - bx - 12, ys = [H * 0.28, H * 0.58];
+      ctx.font = Deck.font(11, true); ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+      [['true Eₘ', Em, 'blu'], [null_ ? 'dial x·Eᵢ' : 'indicated', ind, 'acc']].forEach(([lab, val, col], k) => {
+        ctx.fillStyle = Deck.color('muted'); ctx.fillText(lab + '  ' + val.toFixed(3) + ' V', bx, ys[k] - 4);
+        ctx.fillStyle = Deck.alpha('muted', .2); ctx.fillRect(bx, ys[k], bw, 16);
+        ctx.fillStyle = Deck.color(col); ctx.fillRect(bx, ys[k], bw * Math.min(1, val / 2), 16);
+      });
+      ctx.fillStyle = Deck.color('muted'); ctx.textBaseline = 'top'; ctx.fillText('bar scale 0–2 V', bx, ys[1] + 24);
+      $('roNull').innerHTML = txt;
+    }
+    return draw;
+  });
+  /* ---- ramp DVM ---- */
+  let dvT = 0, dvDraw = null, dvGet = null, dvKey = '';
+  Deck.onShow('dvm', () => {
+    dvGet = Deck.controls('simDVM', () => { dvT = 0; dvDraw && dvDraw(); });
+    function draw() {
+      const v = dvGet(), ex = v.ex, fc = +v.fc, rate = 0.1, t1 = (10 - ex) / rate, tNow = Math.min(dvT, 100);
+      const ramp = [[0, 10], [tNow, 10 - rate * tNow]];
+      const r = Deck.plot($('cvDVM'), { x: [0, 100], y: [0, 10.5], xlabel: 'time (s)', ylabel: 'voltage (V)',
+        bands: tNow > t1 ? [{ x0: t1, x1: tNow, color: 'grn', alpha: .15 }] : [],
+        hlines: [{ y: ex, color: 'blu', dash: [6, 4], label: 'Eₓ = ' + ex.toFixed(3) + ' V' }],
+        series: [{ pts: ramp, color: 'acc', width: 2.4 }] });
+      // clock pulses inside the counting window
+      const ctx = r.ctx, n = tNow > t1 ? Math.floor((tNow - t1) * fc + 1e-9) : 0;
+      if (fc <= 10) {
+        ctx.strokeStyle = Deck.color('grn'); ctx.lineWidth = 1.4;
+        for (let k = 1; k <= n; k++) { const x = r.X(t1 + k / fc); ctx.beginPath(); ctx.moveTo(x, r.box.y1); ctx.lineTo(x, r.box.y1 - 12); ctx.stroke(); }
+      }
+      const shown = n * rate / fc;
+      $('roDVM').innerHTML = 'count <b>' + n + '</b> &nbsp; display <b>' + shown.toFixed(fc === 1 ? 1 : fc === 10 ? 2 : 3) + ' V</b> &nbsp; ' + (tNow >= 100 ? 'final; quantization error <b>' + ((shown - ex) * 1000).toFixed(0) + ' mV</b>' : 'counting… t = ' + tNow.toFixed(0) + ' s');
+    }
+    dvDraw = draw; return draw;
+  });
+  Deck.loop('dvm', dt => { if (!dvDraw) return; if (dvT < 100) { dvT += RM ? 100 : dt * 16; dvDraw(); } });
+
+  /* ---- Lissajous ---- */
+  Deck.onShow('lissajous', () => {
+    const get = Deck.controls('simLiss', draw);
+    function draw() {
+      const v = get(), r = +v.r, ph = v.p * Math.PI / 180, cv = $('cvLiss');
+      const W = Math.max(240, cv.clientWidth || 400), H = (W < 520 ? Math.round(280 * Math.max(0.7, W / 620)) : 280);
+      const side = H - 14 - 30, padL = Math.max(40, (W - side) / 2), padR = Math.max(18, W - padL - side);
+      const pts = [], n = 2000;
+      for (let i = 0; i <= n; i++) { const t = 2 * Math.PI * 6 * i / n; pts.push([Math.sin(t), Math.sin(r * t + ph)]); }
+      const B = Math.abs(Math.sin(ph));
+      const o = { x: [-1.2, 1.2], y: [-1.2, 1.2], pad: { l: padL, r: padR, t: 14, b: 30 }, xticks: [-1, 0, 1], yticks: [-1, 0, 1],
+        hlines: [{ y: 0, color: 'muted', dash: [2, 3] }], vlines: [{ x: 0, color: 'muted', dash: [2, 3] }],
+        series: [{ pts: pts, color: 'acc', width: 2 }] };
+      if (r === 1) { o.points = [{ x: 0, y: B, color: 'blu', r: 5, label: 'B' }, { x: Math.cos(ph) >= 0 ? Math.cos(ph) : Math.cos(ph), y: 1, color: 'ink', r: 4, label: 'A' }]; }
+      Deck.plot(cv, o);
+      $('roLiss').innerHTML = r === 1 ? 'B/A = <b>' + B.toFixed(3) + '</b> &nbsp; sin⁻¹(B/A) = <b>' + (Math.asin(B) * 180 / Math.PI).toFixed(1) + '°</b> &nbsp; ' + (v.p > 90 ? 'ellipse leans left: φ = 180° − ' + (Math.asin(B) * 180 / Math.PI).toFixed(1) + '° = <b>' + v.p + '°</b>' : 'leans right: φ = <b>' + v.p + '°</b>')
+        : 'frequency ratio vertical/horizontal = <b>' + document.getElementById('lr').selectedOptions[0].text + '</b>: count maxima along the top edge and along the side edge';
+    }
+    return draw;
+  });
+})();
+</script>
+</body>
+</html>

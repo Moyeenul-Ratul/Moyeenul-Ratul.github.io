@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Signals · ME 361 panels</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:wght@400..700&display=swap">
+<style>
+:root{--paper:#F3F5F6;--panel:#FCFDFD;--ink:#16202B;--muted:#56636F;--rule:#D3DAE0;--grid:#E4E9ED;--acc:#C9481A;
+ --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;--f-body:"Public Sans","Segoe UI",Roboto,Arial,sans-serif;--f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root{--paper:#0E141A;--panel:#141C24;--ink:#E3E9EF;--muted:#94A2AF;--rule:#2B3743;--grid:#19222B;--acc:#FF7D4A;color-scheme:dark}}
+*{box-sizing:border-box} html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);line-height:1.5;padding-inline:16px;
+ background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px}
+.wrap{max-width:1040px;margin:0 auto;padding-block:36px 64px;display:flex;flex-direction:column;gap:22px}
+.eyebrow{font-family:var(--f-mono);font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--acc);margin:0}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(2.2rem,6vw,3.4rem);line-height:1.05;margin:0}
+h2{font-family:var(--f-display);font-weight:600;font-size:1.6rem;margin:0}
+p{margin:0;max-width:64ch} a{color:inherit}
+.back{font-family:var(--f-mono);font-size:.8rem;color:var(--muted);text-decoration:none}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.card{display:flex;flex-direction:column;gap:6px;text-decoration:none;background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:14px 16px}
+.card:hover{border-color:var(--acc)}
+.card .n{font-family:var(--f-mono);font-size:.75rem;color:var(--acc);font-weight:600}
+.card .t{font-weight:600}
+.card .d{color:var(--muted);font-size:.9rem}
+.topic{display:flex;flex-direction:column;gap:10px}
+.topic header{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid var(--rule);padding-bottom:6px}
+.topic header .n{font-family:var(--f-display);font-weight:700;font-size:1.8rem;color:var(--acc)}
+.topic header a{text-decoration:none}
+.muted{color:var(--muted);font-size:.9rem}
+</style></head><body><div class="wrap">
+<a class="back" href="../index.html">&larr; All topics</a>
+<header><p class="eyebrow">ME 361 · Instrumentation and Measurement · Topic 01</p><h1>Signals</h1><p class="muted">Signal types, sampling, mean and RMS, Fourier series and spectra. Open one panel at a time.</p></header>
+<div class="grid">
+<a class="card" href="01-01-sampling-quantization.html"><span class="n">01.01</span><span class="t">Sampling and quantization</span></a>
+<a class="card" href="01-02-mean-rms-averaging-window.html"><span class="n">01.02</span><span class="t">Mean and RMS: the averaging window</span></a>
+<a class="card" href="01-03-sine-plus-cosine-phase.html"><span class="n">01.03</span><span class="t">Sine + cosine = one sine (amplitude and phase)</span></a>
+<a class="card" href="01-04-orthogonality.html"><span class="n">01.04</span><span class="t">Orthogonality of sines and cosines</span></a>
+<a class="card" href="01-05-fourier-series-builder.html"><span class="n">01.05</span><span class="t">Fourier series builder</span></a>
+<a class="card" href="01-06-fourier-transform.html"><span class="n">01.06</span><span class="t">Fourier transform: series to amplitude spectrum</span></a>
+<a class="card" href="01-07-spectrum-two-sines.html"><span class="n">01.07</span><span class="t">Spectrum of two sines</span></a>
+<a class="card" href="01-08-fan-vibration-fft.html"><span class="n">01.08</span><span class="t">Fan vibration spectrum (FFT)</span></a>
+</div></div></body></html>

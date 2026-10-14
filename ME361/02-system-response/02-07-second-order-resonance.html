@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>02.07 Second-order resonance and frequency bands · ME 361</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="../deck.css">
+<script>window.DECK = {"mode": "panel", "num": "02.07", "title": "Second-order resonance and frequency bands", "home": "index.html", "homeLabel": "System Response", "course": "ME 361 · Instrumentation and Measurement"};</script>
+<script src="../deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+<section class="slide" id="bode" data-title="Resonance and the frequency bands">
+  <p class="eyebrow">Order 2 · resonance</p>
+  <h2>Below, at and above resonance: where an instrument is honest</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simBode">
+      <div class="simhead"><span>Frequency response</span><span class="legend"><span><i style="background:var(--acc)"></i>your ζ</span><span><i style="background:var(--blu)"></i>ζ = 0.7</span></span></div>
+      <canvas id="cvBodeM" data-h="190" aria-label="Magnitude ratio against frequency ratio on log axes, with the 5 percent band and resonance peak"></canvas>
+      <canvas id="cvBodeP" data-h="150" aria-label="Phase shift against frequency ratio from 0 to minus 180 degrees"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="zb">Damping ratio ζ <output data-for="z"></output></label>
+          <input type="range" id="zb" data-key="z" min="0.05" max="2" step="0.01" value="0.2" data-fmt="2"></div>
+        <div class="ctl"><label for="rb">Signal frequency ω/ωₙ <output data-for="r"></output></label>
+          <input type="range" id="rb" data-key="r" data-scale="log" data-min="0.05" data-max="10" min="0" max="1000" value="400" data-fmt="-1"></div>
+      </div>
+      <div class="readout" id="roBode"></div>
+      <div class="try"><p>Set ζ = 0.2 and slide the frequency to the peak: about 2.5 times too big. At r = 1 the phase is −90°. Raise ζ past 0.71 and the peak disappears. The dashed ζ = 0.7 curve stays inside the green ±5 % band up to r ≈ 0.6.</p></div>
+    </div>
+    <div>
+      <p>Where is \(M\) largest? Minimise the denominator: \(\frac{d}{dr}\big[(1-r^2)^2+4\zeta^2r^2\big]=-4r(1-r^2)+8\zeta^2r=0\) gives \(r^2=1-2\zeta^2\).</p>
+      <div class="eq"><span class="label">Resonance frequency and peak</span>
+        $$\omega_R=\omega_n\sqrt{1-2\zeta^2},\qquad M_{\max}=\frac{1}{2\zeta\sqrt{1-\zeta^2}}$$
+      </div>
+      <p>A peak exists only if \(1-2\zeta^2&gt;0\), i.e. \(\zeta&lt;0.707\). The <dfn>resonance frequency</dfn> \(\omega_R\) is where a steady sine is most amplified; it is lower than \(\omega_d\), which is free ringing.</p>
+      <div class="define"><p>The <dfn>transmission band</dfn> is the low-frequency range where \(M\approx1\): measure here. The <dfn>resonance band</dfn> is around \(\omega_R\), where \(M&gt;1\). The <dfn>filter band</dfn> is at high frequency, where \(M\) is below 0.707 (−3 dB) and the signal is attenuated.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 13 · Worked example: transducer frequency response -->
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  function step2(z, wt) { // unit step response, K=1, wt = ωn t, at rest initially
+    if (Math.abs(z - 1) < 1e-3) return 1 - (1 + wt) * Math.exp(-wt);
+    if (z < 1) { const s = Math.sqrt(1 - z * z); return 1 - Math.exp(-z * wt) * (Math.cos(s * wt) + z / s * Math.sin(s * wt)); }
+    const s = Math.sqrt(z * z - 1);
+    return 1 - ((z + s) * Math.exp((-z + s) * wt) - (z - s) * Math.exp((-z - s) * wt)) / (2 * s);
+  }
+  const M2 = (r, z) => 1 / Math.sqrt(Math.pow(1 - r * r, 2) + Math.pow(2 * z * r, 2));
+  const P2 = (r, z) => -Math.atan2(2 * z * r, 1 - r * r) * 180 / Math.PI;
+  const label = (p, txt, x, y, col, align) => { const c = p.ctx; c.fillStyle = Deck.color(col || 'ink'); c.font = Deck.font(11, true); c.textAlign = align || 'left'; c.textBaseline = 'middle'; c.fillText(txt, p.X(x), p.Y(y)); };
+
+  /* ---- cover ---- */
+  let coverT = 0;
+  function drawCover() {
+    const tEnd = 16, tt = Math.min(coverT, tEnd);
+    const zs = [0.15, 0.7, 1.6], cols = ['acc', 'blu', 'muted'];
+    const series = zs.map((z, k) => { const p = []; for (let i = 0; i <= 320; i++) { const t = tEnd * i / 320; if (t > tt) break; p.push([t, step2(z, t)]); } return { pts: p, color: cols[k], width: 2.3 }; });
+    series.unshift({ pts: [[0, 0], [0.001, 1], [tEnd, 1]], color: 'ink', width: 1.2, dash: [5, 4] });
+    Deck.plot($('coverTrace'), { x: [-0.3, tEnd], y: [-0.05, 1.7], pad: { l: 8, r: 8, t: 6, b: 6 }, xticks: [], yticks: [], series });
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (coverT < 17) { coverT += dt * 3; drawCover(); } });
+
+  /* ---- free motion ---- */
+  Deck.onShow('regimes', () => {
+    function draw() {
+      const z0 = 0.2, s = Math.sqrt(1 - z0 * z0);
+      Deck.plot($('cvFree'), { x: [0, 15], y: [-1, 1.1], xlabel: 'ωₙt', ylabel: 'displacement y',
+        hlines: [{ y: 0, color: 'muted', dash: [2, 3] }],
+        series: [
+          { f: w => Math.exp(-z0 * w) / s, color: 'muted', width: 1.2, dash: [4, 4] },
+          { f: w => -Math.exp(-z0 * w) / s, color: 'muted', width: 1.2, dash: [4, 4] },
+          { f: w => 1 - step2(2, w), color: 'grn' },
+          { f: w => 1 - step2(1, w), color: 'blu' },
+          { f: w => 1 - step2(z0, w), color: 'acc' }] });
+    }
+    return draw;
+  });
+
+  /* ---- step family ---- */
+  Deck.onShow('step-family', () => {
+    function draw() {
+      const zs = [[0, 'muted'], [0.25, 'red'], [0.5, 'ylw'], [0.7, 'acc'], [1, 'blu'], [2, 'grn']];
+      Deck.plot($('cvFamily'), { x: [0, 12], y: [0, 2.05], xlabel: 'dimensionless time ωₙt', ylabel: 'y(t) / KA',
+        bands: [{ y0: 0.9, y1: 1.1, color: 'grn', alpha: .10 }], hlines: [{ y: 1, color: 'muted', dash: [4, 4] }],
+        series: zs.map(d => ({ f: w => d[0] === 0 ? 1 - Math.cos(w) : step2(d[0], w), color: d[1], width: d[0] === 0 ? 1.4 : 2.2, n: 600 })) });
+    }
+    return draw;
+  });
+
+  /* ---- step sim with animated mass ---- */
+  let t2 = 0, drawS2 = null;
+  Deck.onShow('step-sim', () => {
+    const get = Deck.controls('simStep2', () => { t2 = 0; draw(); });
+    $('replay2').addEventListener('click', () => { t2 = 0; });
+    function metrics(z) {
+      let tr = null, ts = 0, peak = 0;
+      for (let i = 1; i <= 6000; i++) { const wt = i * 0.01, y = step2(z, wt); if (tr === null && y >= 0.9) tr = wt; if (Math.abs(y - 1) > 0.1) ts = wt; if (y > peak) peak = y; }
+      return { tr, ts, os: Math.max(0, peak - 1) };
+    }
+    function draw() {
+      const z = get().z, end = Math.min(t2, 20);
+      const pts = []; for (let i = 0; i <= 600; i++) { const wt = 20 * i / 600; if (wt > end) break; pts.push([wt, step2(z, wt)]); }
+      const ghost = []; for (let i = 0; i <= 400; i++) { const wt = 20 * i / 400; ghost.push([wt, step2(z, wt)]); }
+      const env = [];
+      if (z < 1) { const s = Math.sqrt(1 - z * z); env.push({ f: w => 1 + Math.exp(-z * w) / s, color: 'muted', width: 1.1, dash: [3, 4] }, { f: w => 1 - Math.exp(-z * w) / s, color: 'muted', width: 1.1, dash: [3, 4] }); }
+      const p = Deck.plot($('cvStep2'), { x: [0, 20], y: [0, 2], xlabel: 'dimensionless time ωₙt', ylabel: 'y(t) / KA',
+        bands: [{ y0: 0.9, y1: 1.1, color: 'grn', alpha: .14 }], hlines: [{ y: 1, color: 'muted' }],
+        series: env.concat([{ pts: ghost, color: 'rule', width: 1.5 }, { pts, color: 'acc', width: 2.6 }]) });
+      const yNow = step2(z, end);
+      if (pts.length) { p.ctx.fillStyle = Deck.color('ink'); p.ctx.beginPath(); p.ctx.arc(p.X(end), p.Y(yNow), 4.5, 0, 7); p.ctx.fill(); }
+      const cv = $('cvMass'); const { ctx, W, H } = Deck.sizeCanvas(cv);
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const base = H - 20, rest = H * 0.66, amp = H * 0.24;
+      const my = rest - Math.max(-0.2, Math.min(2, end > 0 ? yNow : 0)) * amp;
+      ctx.strokeStyle = Deck.color('muted'); ctx.lineWidth = 1.2; ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(4, rest - amp); ctx.lineTo(W - 4, rest - amp); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = Deck.color('muted'); ctx.font = Deck.font(10, true); ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.fillText('final', 4, rest - amp - 3);
+      ctx.strokeStyle = Deck.color('ink'); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(6, base); ctx.lineTo(W - 6, base); ctx.stroke();
+      const cx = W * 0.5, top = my + 16, n = 9; ctx.beginPath(); ctx.moveTo(cx, base);
+      for (let i = 1; i <= n; i++) { const yy = base - (base - top) * i / (n + 1); ctx.lineTo(cx + (i % 2 ? 11 : -11), yy); }
+      ctx.lineTo(cx, top); ctx.stroke();
+      ctx.fillStyle = Deck.color('acc-soft'); ctx.strokeStyle = Deck.color('acc'); ctx.lineWidth = 2;
+      ctx.fillRect(cx - 26, my - 16, 52, 32); ctx.strokeRect(cx - 26, my - 16, 52, 32);
+      ctx.fillStyle = Deck.color('ink'); ctx.font = Deck.font(13); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('m', cx, my);
+      const m = metrics(z), s = z < 1 ? Math.sqrt(1 - z * z) : 0;
+      $('roStep2').innerHTML = 'regime <b>' + (Math.abs(z - 1) < 0.02 ? 'critical' : z < 1 ? 'underdamped' : 'overdamped') + '</b> &nbsp; overshoot <b>' + (m.os * 100).toFixed(1) + ' %</b> &nbsp; 90 % rise <b>' + (m.tr === null ? '—' : m.tr.toFixed(2)) + '/ωₙ</b> &nbsp; ±10 % settle <b>' + m.ts.toFixed(2) + '/ωₙ</b>' + (z < 1 ? ' &nbsp; ωd = <b>' + s.toFixed(3) + ' ωₙ</b>' : '');
+    }
+    t2 = 0; drawS2 = draw;
+    return () => { t2 = 0; draw(); };
+  });
+  Deck.loop('step-sim', dt => { if (t2 < 20 && drawS2) { t2 += dt * 5; drawS2(); } });
+
+  /* ---- step-test trace (worked example) ---- */
+  Deck.onShow('ex-trace', () => {
+    function draw() {
+      const E = tms => tms <= 0 ? 1 : 1 + step2(0.25, 500 * tms / 1000);
+      const p = Deck.plot($('cvTrace'), { x: [-2, 50], y: [0, 3], xlabel: 'time t (ms)', ylabel: 'output E(t) (V)',
+        xticks: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50], yticks: [0, 0.5, 1, 1.5, 2, 2.5, 3], yfmt: v => v.toFixed(1),
+        bands: [{ y0: 1.9, y1: 2.1, color: 'grn', alpha: .14 }],
+        vlines: [{ x: 3.46, color: 'blu', dash: [3, 4] }, { x: 15.27, color: 'grn', dash: [3, 4] }],
+        series: [{ f: E, color: 'acc', n: 800 }],
+        points: [{ x: 6.49, y: 2.444, color: 'ink', r: 4, label: '2.444 V, 6.49 ms' }, { x: 19.47, y: 2.088, color: 'ink', r: 4, label: '2.088 V, 19.47 ms' }, { x: 12.98, y: 1.803, color: 'ink', r: 4 }] });
+      label(p, '1.803 V, 12.98 ms', 13.6, 1.66, 'ink');
+      label(p, 't_r = 3.46', 4.2, 0.5, 'blu');
+      label(p, 't_s = 15.27 ms', 16, 0.3, 'grn');
+      label(p, 'band 1.9–2.1 V', 49, 1.75, 'grn', 'right');
+    }
+    return draw;
+  });
+
+  /* ---- Bode ---- */
+  Deck.onShow('bode', () => {
+    const get = Deck.controls('simBode', draw);
+    function draw() {
+      const { z, r } = get();
+      const peak = z < 0.7071 ? Math.sqrt(1 - 2 * z * z) : null;
+      Deck.plot($('cvBodeM'), { x: [0.05, 10], y: [0.01, 12], logx: true, logy: true, ylabel: 'M(ω)',
+        bands: [{ y0: 0.95, y1: 1.05, color: 'grn', alpha: .2 }],
+        vlines: [{ x: 1, color: 'muted', label: 'ωₙ' }, { x: 0.3, color: 'muted', dash: [2, 4], label: '0.3ωₙ' }],
+        series: [{ f: x => M2(x, 0.7), color: 'blu', width: 1.6, dash: [6, 4] }, { f: x => M2(x, z), color: 'acc' }],
+        points: [{ x: r, y: M2(r, z), color: 'ink', r: 5 }].concat(peak ? [{ x: peak, y: M2(peak, z), color: 'acc', r: 4, label: 'ω_R' }] : []) });
+      Deck.plot($('cvBodeP'), { x: [0.05, 10], y: [-180, 0], logx: true, xlabel: 'frequency ratio r = ω/ωₙ (log scale)', ylabel: 'Φ (deg)', yticks: [-180, -135, -90, -45, 0],
+        vlines: [{ x: 1, color: 'muted' }], hlines: [{ y: -90, color: 'muted', dash: [2, 4] }],
+        series: [{ f: x => P2(x, 0.7), color: 'blu', width: 1.6, dash: [6, 4] }, { f: x => P2(x, z), color: 'acc' }],
+        points: [{ x: r, y: P2(r, z), color: 'ink', r: 5 }] });
+      const M = M2(r, z);
+      $('roBode').innerHTML = 'M = <b>' + M.toFixed(3) + '</b> (error <b>' + ((M - 1) * 100).toFixed(1) + ' %</b>) &nbsp; Φ = <b>' + P2(r, z).toFixed(1) + '°</b>' + (peak ? ' &nbsp; resonance at <b>' + peak.toFixed(3) + ' ωₙ</b>, M<sub>max</sub> = <b>' + M2(peak, z).toFixed(2) + '</b>' : ' &nbsp; <b>no resonance peak</b> (ζ ≥ 0.707)');
+    }
+    return draw;
+  });
+
+  /* ---- accelerometer selection ---- */
+  Deck.onShow('ex-accel', () => {
+    function draw() {
+      const p = Deck.plot($('cvAccel'), { x: [0, 1.2], y: [0.6, 1.1], xlabel: 'r = ω/ωₙ', ylabel: 'M(ω), ζ = 0.7',
+        yticks: [0.6, 0.7, 0.8, 0.9, 1, 1.1],
+        bands: [{ y0: 0.95, y1: 1.05, color: 'grn', alpha: .18 }],
+        vlines: [{ x: 0.591, color: 'blu', dash: [4, 4] }],
+        series: [{ f: r => M2(r, 0.7), color: 'acc' }],
+        points: [{ x: 0.591, y: 0.95, color: 'ink', r: 5 }], yfmt: v => v.toFixed(2) });
+      label(p, 'r = 0.591, M = 0.95', 0.62, 0.92, 'blu');
+      label(p, 'ω = 628 rad/s here ⇒ ωₙ = 628/0.591 = 1063', 0.04, 0.66, 'muted');
+    }
+    return draw;
+  });
+
+  /* ---- flatness comparison ---- */
+  Deck.onShow('zeta07', () => {
+    function draw() {
+      Deck.plot($('cvFlat'), { x: [0, 1.5], y: [0, 1.4], xlabel: 'r = ω/ωₙ', ylabel: 'magnitude ratio M',
+        bands: [{ y0: 0.95, y1: 1.05, color: 'grn', alpha: .2 }],
+        hlines: [{ y: 0.707, color: 'muted', dash: [3, 4], label: '0.707 (−3 dB)' }],
+        series: [[0.4, 'red'], [0.6, 'ylw'], [0.7, 'acc'], [1, 'blu']].map(d => ({ f: r => M2(r, d[0]), color: d[1], width: 2.2 })) });
+    }
+    return draw;
+  });
+})();
+</script>
+</body>
+</html>

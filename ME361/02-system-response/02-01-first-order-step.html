@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>02.01 First-order step: time constant and rise time · ME 361</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="../deck.css">
+<script>window.DECK = {"mode": "panel", "num": "02.01", "title": "First-order step: time constant and rise time", "home": "index.html", "homeLabel": "System Response", "course": "ME 361 · Instrumentation and Measurement"};</script>
+<script src="../deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+<section class="slide" id="first-step" data-title="Time constant, error fraction, rise time">
+  <p class="eyebrow">Order 1 · how long to wait</p>
+  <h2>The error fraction tells you what share of the change is still missing</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simStep1">
+      <div class="simhead"><span>Simulator</span><span class="muted small">thermometer, 20 → 37 °C</span></div>
+      <canvas id="cvStep1" data-h="230" aria-label="Thermometer reading against time for the chosen time constant"></canvas>
+      <canvas id="cvGamma" data-h="170" aria-label="Error fraction against t over tau with the current reading point"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="tau1">Time constant τ <output data-for="tau"></output></label>
+          <input type="range" id="tau1" data-key="tau" min="0.5" max="10" step="0.1" value="3" data-fmt="1" data-unit=" s"></div>
+        <div class="ctl"><label for="tq1">Read the thermometer at t <output data-for="tq"></output></label>
+          <input type="range" id="tq1" data-key="tq" min="0" max="30" step="0.1" value="3" data-fmt="1" data-unit=" s"></div>
+      </div>
+      <div class="readout" id="roStep1"></div>
+    </div>
+    <div>
+      <div class="eq"><span class="label">Error fraction</span>
+        $$\Gamma(t)=\frac{y(t)-y_\infty}{y_0-y_\infty}=e^{-t/\tau}$$
+      </div>
+      <p>\(\Gamma\) is the share of the step not yet covered: 1 just after the step, 0 at the end. The <i>percent response</i> is \((1-\Gamma)\times100\).</p>
+      <div class="tbl"><table>
+        <tr><th>\(t/\tau\)</th><th>% response</th><th>\(\Gamma\)</th></tr>
+        <tr><td>0</td><td>0.0</td><td>1.000</td></tr>
+        <tr><td>1</td><td>63.2</td><td>0.368</td></tr>
+        <tr><td>2</td><td>86.5</td><td>0.135</td></tr>
+        <tr><td>2.3</td><td>90.0</td><td>0.100</td></tr>
+        <tr><td>3</td><td>95.0</td><td>0.050</td></tr>
+        <tr><td>5</td><td>99.3</td><td>0.007</td></tr>
+      </table></div>
+      <div class="define"><p>The <dfn>rise time</dfn> is the time to reach 90 % of the step. Set \(\Gamma=0.10\): \(t=\tau\ln 10=2.30\,\tau\), for every first-order system. (Some datasheets quote a 10–90 % rise time instead, \(\tau\ln 9=2.20\,\tau\).)</p></div>
+      <div class="try"><p>Set τ = 3 s and slide t to 3 s, 6.9 s and 15 s. You should read 63 %, 90 % and 99 % of the way from 20 to 37 °C. Then double τ: every one of those times doubles.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 · Worked example: thermometer -->
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const M1 = x => 1 / Math.sqrt(1 + x * x);
+  const P1 = x => -Math.atan(x) * 180 / Math.PI;
+
+  /* ---- cover: three first-order sensors drawing in ---- */
+  let coverT = 0;
+  function drawCover() {
+    const tEnd = 12, tt = Math.min(coverT, tEnd);
+    const taus = [0.6, 1.6, 3.5], cols = ['acc', 'blu', 'muted'];
+    const series = taus.map((tau, k) => {
+      const p = []; for (let i = 0; i <= 300; i++) { const t = tEnd * i / 300; if (t > tt) break; p.push([t, 1 - Math.exp(-t / tau)]); }
+      return { pts: p, color: cols[k], width: 2.3 };
+    });
+    series.unshift({ pts: [[0, 0], [0.001, 1], [tEnd, 1]], color: 'ink', width: 1.4, dash: [5, 4] });
+    Deck.plot($('coverTrace'), { x: [-0.3, tEnd], y: [-0.05, 1.12], pad: { l: 8, r: 8, t: 6, b: 6 }, xticks: [], yticks: [], series });
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (coverT < 13) { coverT += dt * 2.5; drawCover(); } });
+
+  /* ---- intro: step and thermometer reading ---- */
+  Deck.onShow('static-dynamic', () => {
+    function draw() {
+      const tau = 5;
+      const p = Deck.plot($('cvIntro'), { x: [-5, 30], y: [18, 39], xlabel: 'time t (s)', ylabel: 'temperature (°C)',
+        series: [{ pts: [[-5, 20], [0, 20], [0, 37], [30, 37]], color: 'muted', dash: [6, 4], width: 2 },
+          { f: t => t < 0 ? 20 : 37 - 17 * Math.exp(-t / tau), color: 'acc', n: 400 }],
+        points: [{ x: 5, y: 37 - 17 * Math.exp(-1), color: 'ink', r: 4.5, label: 'after 5 s: 30.8 °C' }] });
+      p.ctx.fillStyle = Deck.color('muted'); p.ctx.font = Deck.font(11, true); p.ctx.textAlign = 'left';
+      p.ctx.fillText('true input 37 °C', p.X(14), p.Y(37) - 6);
+    }
+    return draw;
+  });
+
+  /* ---- universal step response (redrawn) ---- */
+  Deck.onShow('step-solution', () => {
+    function draw() {
+      const p = Deck.plot($('cvFig36'), { x: [0, 5], y: [0, 1.08], xlabel: 't / τ', ylabel: 'output y(t)',
+        yticks: [0, 0.632, 1], yfmt: v => v === 0 ? 'y₀' : v === 1 ? 'KA' : '0.632',
+        series: [{ f: x => 1 - Math.exp(-x), color: 'acc' }, { pts: [[0, 0], [1, 1]], color: 'blu', width: 1.4, dash: [4, 4] }],
+        hlines: [{ y: 0.632, color: 'muted', dash: [4, 4] }, { y: 1, color: 'muted', dash: [2, 4] }],
+        vlines: [{ x: 1, color: 'muted', dash: [4, 4] }],
+        points: [{ x: 1, y: 0.632, color: 'ink', r: 4.5, label: '0.632 (KA − y₀) at t = τ' }] });
+      p.ctx.fillStyle = Deck.color('blu'); p.ctx.font = Deck.font(11, true); p.ctx.textAlign = 'left';
+      p.ctx.fillText('initial slope', p.X(0.32), p.Y(0.5));
+    }
+    return draw;
+  });
+
+  /* ---- first-order step sim ---- */
+  Deck.onShow('first-step', () => {
+    const get = Deck.controls('simStep1', draw);
+    function draw() {
+      const v = get(), tau = v.tau, tq = v.tq;
+      const T = t => 37 - 17 * Math.exp(-t / tau);
+      const marks = [1, 2.3, 5].filter(k => k * tau <= 30);
+      Deck.plot($('cvStep1'), {
+        x: [0, 30], y: [18, 39], ylabel: 'reading T (°C)',
+        hlines: [{ y: 37, color: 'muted', label: 'T∞ = 37 °C' }, { y: 20 + 0.632 * 17, color: 'blu', dash: [3, 4], label: '63.2 %' }],
+        vlines: marks.map(k => ({ x: k * tau, color: k === 1 ? 'blu' : 'muted', dash: [3, 4], label: (k === 1 ? 'τ' : k + 'τ') })),
+        series: [{ f: T, color: 'acc' }],
+        points: [{ x: tq, y: T(tq), color: 'ink', r: 5, label: T(tq).toFixed(2) + ' °C', align: tq > 20 ? 'right' : 'left' }]
+      });
+      const G = Math.exp(-tq / tau);
+      Deck.plot($('cvGamma'), { x: [0, 5], y: [0, 1], xlabel: 't / τ', ylabel: 'Γ',
+        hlines: [{ y: 0.368, color: 'muted', dash: [3, 4], label: '0.368' }],
+        series: [{ f: x => Math.exp(-x), color: 'blu' }],
+        points: tq / tau <= 5 ? [{ x: tq / tau, y: G, color: 'ink', r: 5 }] : [] });
+      $('roStep1').innerHTML = 't/τ = <b>' + (tq / tau).toFixed(2) + '</b> &nbsp; Γ = <b>' + G.toFixed(3) + '</b> &nbsp; response = <b>' + ((1 - G) * 100).toFixed(1) + ' %</b> &nbsp; 90 % at <b>' + (2.303 * tau).toFixed(2) + ' s</b>';
+    }
+    return draw;
+  });
+
+  /* ---- semilog error fraction ---- */
+  Deck.onShow('semilog', () => {
+    function draw() {
+      Deck.plot($('cvSemilog'), { x: [0, 5], y: [0.001, 1], logy: true, xlabel: 't / τ', ylabel: 'error fraction Γ (log scale)',
+        yticks: [0.001, 0.01, 0.1, 0.368, 1],
+        series: [{ f: x => Math.exp(-x), color: 'acc', n: 2 }],
+        hlines: [{ y: 0.368, color: 'muted', dash: [4, 4] }, { y: 0.1, color: 'muted', dash: [2, 4] }],
+        vlines: [{ x: 1, color: 'muted', dash: [4, 4], label: 'τ' }, { x: 2.303, color: 'muted', dash: [2, 4], label: '2.3τ' }],
+        points: [{ x: 1, y: 0.368, color: 'ink', r: 4.5 }, { x: 2.303, y: 0.1, color: 'ink', r: 4.5 }, { x: 4, y: Math.exp(-4), color: 'blu', r: 0.1, label: 'slope = −1/τ' }] });
+    }
+    return draw;
+  });
+
+  /* ---- worked example data plot ---- */
+  const exData = [[0, 22.0], [0.5, 23.3], [1.0, 25.8], [2.0, 34.1], [3.0, 43.9], [4.5, 51.2], [6.0, 56.6], [7.5, 60.2], [9.0, 63.4], [11.5, 66.6], [14.0, 68.8], [17.0, 70.2]];
+  Deck.onShow('ex-tau', () => {
+    function draw() {
+      const G = exData.map(p => [p[0], (p[1] - 72) / (22 - 72)]);
+      Deck.plot($('cvExTau'), { x: [0, 20], y: [0.01, 2], logy: true, xlabel: 'time t (s)', ylabel: 'Γ (log scale)',
+        yticks: [0.01, 0.1, 1],
+        series: [{ f: t => Math.exp(-0.196 * t + 0.011), color: 'acc', width: 2 },
+          { pts: G.filter(p => p[0] >= 3), color: 'blu', dotsOnly: true, r: 4 },
+          { pts: G.filter(p => p[0] < 3), color: 'muted', dotsOnly: true, r: 4 }],
+        points: [{ x: 8.5, y: 0.35, color: 'acc', r: 0.1, label: 'ln Γ = −0.196 t + 0.011' }, { x: 0.3, y: 1.25, color: 'muted', r: 0.1, label: 'early points (not used)' }] });
+    }
+    return draw;
+  });
+
+  /* ---- hidden tau game ---- */
+  Deck.onShow('find-tau', () => {
+    let tauTrue = 0, data = [];
+    function makeData() {
+      tauTrue = +(1.5 + Math.random() * 8).toFixed(2);
+      data = [];
+      for (let t = 0.5; t <= 3.2 * tauTrue; t += tauTrue / 6) {
+        const noise = (Math.random() - 0.5) * 0.5;
+        data.push([t, 37 - 17 * Math.exp(-t / tauTrue) + noise]);
+      }
+      $('tauTrue').innerHTML = 'True τ = <b>' + tauTrue.toFixed(2) + ' s</b>. A good guess puts the orange line through the early and middle points of the lower plot; the last points scatter because Γ is small there and noise dominates.';
+      const box = $('tauTrue').parentNode; box.classList.remove('open'); const b = box.querySelector('.reveal-btn'); if (b) b.textContent = 'Reveal the true τ';
+    }
+    const get = Deck.controls($('tauG').closest('.sim'), draw);
+    function draw() {
+      const g = get().g, tmax = Math.max(10, data[data.length - 1][0] * 1.05);
+      Deck.plot($('cvTauA'), { x: [0, tmax], y: [18, 39], ylabel: 'T (°C)', title: 'Test data and your model',
+        series: [{ f: t => 37 - 17 * Math.exp(-t / g), color: 'acc' }, { pts: data, color: 'blu', dotsOnly: true, r: 3.5 }] });
+      const lg = data.map(p => [p[0], Math.log(Math.max(1e-3, (p[1] - 37) / (20 - 37)))]);
+      Deck.plot($('cvTauB'), { x: [0, tmax], y: [-4.5, 0.5], xlabel: 'time t (s)', ylabel: 'ln Γ', title: 'ln Γ vs t: slope = −1/τ',
+        series: [{ f: t => -t / g, color: 'acc', n: 2 }, { pts: lg, color: 'blu', dotsOnly: true, r: 3.5 }] });
+      let ss = 0; data.forEach(p => { const e = p[1] - (37 - 17 * Math.exp(-p[0] / g)); ss += e * e; });
+      $('roTau').innerHTML = 'your slope = <b>' + (-1 / g).toFixed(3) + ' s⁻¹</b> &nbsp; RMS misfit = <b>' + Math.sqrt(ss / data.length).toFixed(2) + ' °C</b>';
+    }
+    makeData();
+    $('newTau').addEventListener('click', () => { makeData(); draw(); });
+    return draw;
+  });
+
+  /* ---- ramp ---- */
+  Deck.onShow('ramp', () => {
+    const get = Deck.controls('simRamp', draw);
+    function draw() {
+      const tau = Math.max(get().tau, 0.001), a = 2 / 60;
+      const y = t => a * (t - tau) + a * tau * Math.exp(-t / tau);
+      const p = Deck.plot($('cvRamp'), { x: [0, 240], y: [0, 8.5], xlabel: 'time t (s)', ylabel: 'temperature rise (°C)',
+        series: [{ f: t => a * t, color: 'muted', width: 2, dash: [6, 4] }, { f: y, color: 'acc' }] });
+      if (tau > 2) {
+        const c = p.ctx, t1 = 180, y1 = a * t1;
+        c.strokeStyle = Deck.color('ink'); c.lineWidth = 1.4;
+        c.beginPath(); c.moveTo(p.X(t1), p.Y(y1)); c.lineTo(p.X(t1 + tau), p.Y(y1)); c.stroke();
+        c.beginPath(); c.moveTo(p.X(t1), p.Y(y(t1))); c.lineTo(p.X(t1), p.Y(y1)); c.stroke();
+        c.fillStyle = Deck.color('ink'); c.font = Deck.font(11, true); c.textAlign = 'left';
+        c.fillText('lag τ', p.X(t1 + tau) + 4, p.Y(y1) + 4);
+        c.textAlign = 'right'; c.fillText('error aτ', p.X(t1) - 4, p.Y((y1 + y(t1)) / 2) + 4);
+      }
+      $('roRamp').innerHTML = 'rate a = <b>0.0333 °C/s</b> &nbsp; steady lag = <b>' + get().tau.toFixed(0) + ' s</b> &nbsp; steady error = <b>' + (a * get().tau).toFixed(2) + ' °C</b>';
+    }
+    return draw;
+  });
+
+  /* ---- first-order sine (animated recorder) ---- */
+  let penT = 0, drawSine = null;
+  Deck.onShow('first-freq', () => {
+    const get = Deck.controls($('wt1').closest('.sim'), () => { penT = 0; draw(); });
+    function draw() {
+      const wt = get().wt, M = M1(wt), Ph = -Math.atan(wt);
+      const periods = 4, w = 2 * Math.PI, tau = wt / w;
+      const C = wt / (1 + wt * wt);
+      const y = t => C * Math.exp(-t / tau) + M * Math.sin(w * t + Ph);
+      const end = Math.min(penT, periods);
+      const inp = [], out = [];
+      for (let i = 0; i <= 600; i++) { const t = periods * i / 600; if (t > end) break; inp.push([t, Math.sin(w * t)]); out.push([t, y(t)]); }
+      const p = Deck.plot($('cvSine1'), { x: [0, periods], y: [-1.25, 1.25], xlabel: 'time (input periods)', ylabel: 'signal ÷ KA',
+        hlines: [{ y: M, color: 'acc', dash: [3, 4], label: 'M = ' + M.toFixed(3) }, { y: -M, color: 'acc', dash: [3, 4] }],
+        series: [{ pts: inp, color: 'muted', width: 1.8 }, { pts: out, color: 'acc', width: 2.6 }] });
+      if (inp.length) { const c = p.ctx; c.fillStyle = Deck.color('ink'); c.beginPath(); c.arc(p.X(end), p.Y(y(end)), 4, 0, 7); c.fill(); }
+      $('roSine1').innerHTML = 'M = <b>' + M.toFixed(3) + '</b> &nbsp; δ = <b>' + ((M - 1) * 100).toFixed(1) + ' %</b> &nbsp; Φ = <b>' + (Ph * 180 / Math.PI).toFixed(1) + '°</b> &nbsp; delay = <b>' + (Math.abs(Ph) / w).toFixed(3) + ' periods</b>';
+    }
+    penT = 0; drawSine = draw;
+    return () => { penT = 0; draw(); };
+  });
+  Deck.loop('first-freq', dt => { if (penT < 4 && drawSine) { penT += dt * 0.9; drawSine(); } });
+
+  /* ---- universal M and phi curves ---- */
+  Deck.onShow('first-curves', () => {
+    const get = Deck.controls('simCurves1', draw);
+    function draw() {
+      const x = get().wt;
+      const p = Deck.plot($('cvM1'), { x: [0.01, 100], y: [0, 1.2], logx: true, ylabel: 'magnitude ratio M', pad: { r: 50 },
+        bands: [{ y0: 0.707, y1: 1.2, color: 'grn', alpha: .10 }],
+        hlines: [{ y: 0.707, color: 'muted', dash: [3, 4] }],
+        vlines: [{ x: 1, color: 'muted', dash: [3, 4], label: 'ωτ = 1' }],
+        series: [{ f: M1, color: 'acc' }],
+        points: [{ x, y: M1(x), color: 'ink', r: 5 }] });
+      const c = p.ctx; c.fillStyle = Deck.color('muted'); c.font = Deck.font(10.5, true); c.textAlign = 'left'; c.textBaseline = 'middle';
+      [[1, '0 dB'], [0.707, '−3 dB'], [0.5, '−6 dB'], [0.316, '−10'], [0.1, '−20']].forEach(d => c.fillText(d[1], p.box.x1 + 4, p.Y(d[0])));
+      c.fillStyle = Deck.color('grn'); c.textAlign = 'left'; c.fillText('bandwidth (M ≥ 0.707)', p.X(0.013), p.Y(0.78));
+      Deck.plot($('cvP1'), { x: [0.01, 100], y: [-90, 0], logx: true, xlabel: 'ωτ (log scale)', ylabel: 'Φ (deg)', pad: { r: 50 },
+        yticks: [-90, -60, -45, -30, 0], hlines: [{ y: -45, color: 'muted', dash: [3, 4] }], vlines: [{ x: 1, color: 'muted', dash: [3, 4] }],
+        series: [{ f: P1, color: 'blu' }], points: [{ x, y: P1(x), color: 'ink', r: 5 }] });
+      $('roCurves1').innerHTML = 'ωτ = <b>' + (+x.toPrecision(3)) + '</b> &nbsp; M = <b>' + M1(x).toFixed(3) + '</b> (' + (20 * Math.log10(M1(x))).toFixed(1) + ' dB) &nbsp; δ = <b>' + ((M1(x) - 1) * 100).toFixed(1) + ' %</b> &nbsp; Φ = <b>' + P1(x).toFixed(1) + '°</b>';
+    }
+    return draw;
+  });
+})();
+</script>
+</body>
+</html>

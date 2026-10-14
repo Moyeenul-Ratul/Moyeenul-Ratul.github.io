@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>04.07 Loading error: source and meter impedance · ME 361</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="../deck.css">
+<style>
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:640px){.duo{grid-template-columns:1fr}}
+  .tbl.compact th,.tbl.compact td{padding:6px 10px;font-size:.88rem}
+</style>
+<script>window.DECK = {"mode": "panel", "num": "04.07", "title": "Loading error: source and meter impedance", "home": "index.html", "homeLabel": "Analog Signal Conditioning", "course": "ME 361 · Instrumentation and Measurement"};</script>
+<script src="../deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+<section class="slide" id="loading-sim" data-title="Loading simulator">
+  <p class="eyebrow">Simulator · loading and impedance matching</p>
+  <h2>Choose the load impedance for the quantity you want to sense</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simLoad">
+      <div class="simhead"><span>Loading lab · E₁ = 10 V</span><span class="legend"><span><i style="background:var(--acc)"></i>voltage</span><span><i style="background:var(--blu)"></i>current</span><span><i style="background:var(--grn)"></i>power</span></span></div>
+      <div class="duo">
+        <canvas id="cvLoadA" data-h="220" aria-label="Source with output impedance Z1 connected to meter Zm, with bars comparing true and indicated values"></canvas>
+        <canvas id="cvLoadB" data-h="220" aria-label="Indicated over true value against Zm over Z1 on a logarithmic axis for voltage, current and power"></canvas>
+      </div>
+      <div class="controls">
+        <div class="ctl"><label for="lmode">Meter senses</label>
+          <select id="lmode" data-key="mode"><option value="v">Voltage (in parallel)</option><option value="i">Current (in series)</option><option value="p">Power delivered to load</option></select></div>
+        <div class="ctl"><label for="lZ1"><span>Source impedance Z₁</span> <output data-for="Z1"></output></label>
+          <input type="range" id="lZ1" data-key="Z1" data-scale="log" data-min="10" data-max="1000000" min="0" max="1000" value="400" data-fmt="-1" data-unit=" Ω"></div>
+        <div class="ctl"><label for="lZ"><span>Meter impedance Zₘ</span> <output data-for="Z"></output></label>
+          <input type="range" id="lZ" data-key="Z" data-scale="log" data-min="10" data-max="100000000" min="0" max="1000" value="430" data-fmt="-1" data-unit=" Ω"></div>
+      </div>
+      <div class="readout" id="roLoad"></div>
+    </div>
+    <div>
+      <p>The three curves on the right depend only on the ratio \(Z_m/Z_1\). The voltage curve rises toward 1 as the meter impedance grows; the current curve does the opposite; the power curve peaks at a ratio of exactly 1.</p>
+      <div class="try"><p>In voltage mode set Z₁ = 1 kΩ and find the smallest Zₘ that keeps the error under 1 % (about 99 kΩ). Raise Z₁ to 1 MΩ, like a pH electrode or a piezoelectric film: now even a 10 MΩ meter reads 9 % low. Switch to current mode and see that the same meter would be excellent if it were tiny. In power mode the bar is full only when Zₘ = Z₁.</p></div>
+      <div class="define"><p><dfn>Impedance matching</dfn> means choosing the input impedance of each stage relative to the output impedance of the one before it, for the quantity that carries the signal: \(Z_m\gg Z_1\) for voltage, \(Z_m\ll Z_1\) for current, \(Z_m=Z_1\) for maximum power (loudspeakers, radio-frequency lines, and filters designed for equal source and load resistances).</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 · Worked example: bridge read by a finite meter -->
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---- cover: sensor resistance change and bridge output ---- */
+  let coverT = 0;
+  function drawCover() {
+    const tEnd = 14, tt = Math.min(coverT, tEnd), a = [], b = [];
+    for (let i = 0; i <= 600; i++) {
+      const t = tEnd * i / 600; if (t > tt) break;
+      const x = 0.35 * Math.sin(0.6 * t) + 0.15 * Math.sin(1.7 * t + 0.5);       // δR/R
+      a.push([t, 1.0 + x]); b.push([t, -0.9 + 3.2 * x / (4 + 2 * x)]);
+    }
+    Deck.plot($('coverTrace'), { x: [0, tEnd], y: [-1.6, 1.6], pad: { l: 8, r: 8, t: 6, b: 6 }, xticks: [], yticks: [],
+      hlines: [{ y: -0.9, color: 'muted', dash: [2, 4] }],
+      series: [{ pts: a, color: 'blu', width: 2.2 }, { pts: b, color: 'acc', width: 2.2 }] });
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (coverT < 15) { coverT += RM ? 15 : dt * 3; drawCover(); } });
+
+  /* ---- bridge simulator ---- */
+  const ARMS = { quarter: x => [1 + x, 1, 1, 1], half: x => [1 + x, 1 - x, 1, 1], full: x => [1 + x, 1 - x, 1 - x, 1 + x], comp: x => [1 + x, 1 + x, 1, 1] };
+  const LIN = { quarter: .25, half: .5, full: 1, comp: 0 };
+  const R0 = 100;
+  const eoRel = (cfg, x) => { const r = ARMS[cfg](x); return r[0] / (r[0] + r[1]) - r[2] / (r[2] + r[3]); };
+  const reRel = (cfg, x) => { const r = ARMS[cfg](x); return r[0] * r[1] / (r[0] + r[1]) + r[2] * r[3] / (r[2] + r[3]); };
+  let bPh = [0, 0], bFn = null, getB = null;
+  Deck.onShow('bridge-sim', () => {
+    getB = Deck.controls('simBridge', () => draw());
+    function drawBridge() {
+      const v = getB(), x = v.x / 100, r = ARMS[v.cfg](x), E = v.E;
+      const cv = $('cvBridge'); const { ctx, W, H } = Deck.sizeCanvas(cv);
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const A = [W * 0.1, H * 0.45], D = [W * 0.9, H * 0.45], B = [W * 0.5, H * 0.1], C = [W * 0.5, H * 0.8], yb = H - 12;
+      ctx.strokeStyle = Deck.color('ink'); ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); ctx.lineTo(D[0], D[1]); ctx.lineTo(C[0], C[1]); ctx.closePath(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(A[0], yb); ctx.lineTo(W / 2 - 8, yb); ctx.moveTo(W / 2 + 8, yb); ctx.lineTo(D[0], yb); ctx.lineTo(D[0], D[1]); ctx.stroke();
+      ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(W / 2 + 6, yb - 11); ctx.lineTo(W / 2 + 6, yb + 11); ctx.moveTo(W / 2 - 6, yb - 6); ctx.lineTo(W / 2 - 6, yb + 6); ctx.stroke();
+      ctx.font = Deck.font(11, true); ctx.fillStyle = Deck.color('muted'); ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+      ctx.fillText('Eᵢ = ' + E.toFixed(1) + ' V', W / 2 + 14, yb - 2);
+      const segs = [[A, B, r[0], 'R₁'], [B, D, r[1], 'R₂'], [A, C, r[2], 'R₃'], [C, D, r[3], 'R₄']];
+      segs.forEach(s => {
+        const [p, q, rv, lab] = s, mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2, an = Math.atan2(q[1] - p[1], q[0] - p[0]);
+        const col = rv > 1.0001 ? 'acc' : rv < 0.9999 ? 'blu' : 'ink';
+        ctx.save(); ctx.translate(mx, my); ctx.rotate(an);
+        ctx.fillStyle = rv > 1.0001 ? Deck.color('acc-soft') : rv < 0.9999 ? Deck.color('blu-soft') : Deck.color('panel');
+        ctx.strokeStyle = Deck.color(col); ctx.lineWidth = 1.8;
+        const wR = Math.min(46, W * 0.11) * (0.7 + 0.3 * rv);
+        ctx.fillRect(-wR / 2, -7, wR, 14); ctx.strokeRect(-wR / 2, -7, wR, 14); ctx.restore();
+        ctx.fillStyle = Deck.color(col); ctx.font = Deck.font(W < 480 ? 10 : 11.5, true);
+        const cxm = W / 2, cym = (B[1] + C[1]) / 2, dx = mx - cxm, dy = my - cym, dl = Math.hypot(dx, dy) || 1;
+        ctx.textAlign = dx > 0 ? 'left' : 'right'; ctx.textBaseline = dy < 0 ? 'bottom' : 'top';
+        ctx.fillText(lab + ' ' + (rv * R0).toFixed(1) + ' Ω', mx + dx / dl * 10, my + dy / dl * 14);
+      });
+      if (!RM) {
+        ctx.fillStyle = Deck.color('ylw');
+        [[D, B, A, bPh[0]], [D, C, A, bPh[1]]].forEach(path => {
+          const [p0, p1, p2, ph] = path;
+          for (let k = 0; k < 6; k++) {
+            const s = (ph + k / 6) % 1; let px, py;
+            if (s < 0.5) { const u = s / 0.5; px = p0[0] + (p1[0] - p0[0]) * u; py = p0[1] + (p1[1] - p0[1]) * u; }
+            else { const u = (s - 0.5) / 0.5; px = p1[0] + (p2[0] - p1[0]) * u; py = p1[1] + (p2[1] - p1[1]) * u; }
+            ctx.beginPath(); ctx.arc(px, py, 3, 0, 7); ctx.fill();
+          }
+        });
+      }
+      const mx = W / 2, my = (B[1] + C[1]) / 2, mr = Math.min(26, H * 0.11);
+      ctx.strokeStyle = Deck.color('muted'); ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(B[0], B[1]); ctx.lineTo(mx, my - mr); ctx.moveTo(mx, my + mr); ctx.lineTo(C[0], C[1]); ctx.stroke();
+      ctx.fillStyle = Deck.color('panel'); ctx.strokeStyle = Deck.color('blu'); ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.arc(mx, my, mr, 0, 7); ctx.fill(); ctx.stroke();
+      const rel = eoRel(v.cfg, x), ang = Math.max(-1, Math.min(1, rel / 0.15)) * 1.1;
+      ctx.strokeStyle = Deck.color(Math.abs(rel) < 1e-4 ? 'grn' : 'acc'); ctx.lineWidth = 2.4;
+      ctx.beginPath(); ctx.moveTo(mx, my + mr * 0.5); ctx.lineTo(mx + mr * 0.85 * Math.sin(ang), my + mr * 0.5 - mr * 0.85 * Math.cos(ang)); ctx.stroke();
+      ctx.fillStyle = Deck.color('ink'); ctx.font = Deck.font(11, true); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText('Eₒ', mx + mr + 4, my);
+      ctx.fillStyle = Deck.color('muted');
+      ctx.fillText('A 0 V', A[0] - 4, A[1] - 14); ctx.textAlign = 'right'; ctx.fillText('D +Eᵢ', D[0] + 4, D[1] - 14);
+      ctx.textAlign = 'center'; ctx.fillText('B', B[0], B[1] - 9 < 6 ? 6 : B[1] - 9); ctx.fillText('C', C[0] + 12, C[1] + 8);
+    }
+    function drawPlot() {
+      const v = getB(), x = v.x / 100, E = v.E, Rm = v.Rm;
+      const ymax = { quarter: .2, half: .3, full: .6, comp: .2 }[v.cfg];
+      const loaded = t => eoRel(v.cfg, t) * Rm / (Rm + reRel(v.cfg, t) * R0);
+      Deck.plot($('cvBridgeP'), { x: [-0.5, 0.5], y: [-ymax, ymax], xlabel: 'δR/R', ylabel: 'Eₒ / Eᵢ', xfmt: t => Math.round(t * 100) + '%',
+        hlines: [{ y: 0, color: 'muted', dash: [2, 3] }],
+        series: [{ f: t => LIN[v.cfg] * t, color: 'blu', dash: [6, 4], width: 1.8 }, { f: t => eoRel(v.cfg, t), color: 'acc' }, { f: loaded, color: 'grn', width: 2, dash: [3, 3] }],
+        points: [{ x: x, y: eoRel(v.cfg, x), color: 'ink', r: 5 }] });
+      const r = ARMS[v.cfg](x), ex = eoRel(v.cfg, x) * E, li = LIN[v.cfg] * x * E, lo = loaded(x) * E;
+      const I1 = E / ((r[0] + r[1]) * R0), P1 = I1 * I1 * r[0] * R0;
+      const err = Math.abs(ex) > 1e-9 ? (li - ex) / ex * 100 : 0;
+      const sp = t => '<span>' + t + '</span>';
+      $('roBridge').innerHTML = sp('Eₒ exact <b>' + (ex * 1000).toFixed(1) + ' mV</b>') + sp('linear <b>' + (li * 1000).toFixed(1) + ' mV</b> (' + (Math.abs(ex) > 1e-9 ? (err >= 0 ? '+' : '') + err.toFixed(1) + ' %' : 'balanced') + ')') + sp('meter reads <b>' + (lo * 1000).toFixed(1) + ' mV</b>') + sp('Rₑ <b>' + (reRel(v.cfg, x) * R0).toFixed(1) + ' Ω</b>') + sp('sensor R₁: I <b>' + (I1 * 1000).toFixed(1) + ' mA</b>, P <b>' + (P1 * 1000).toFixed(0) + ' mW</b>');
+    }
+    function draw() { drawBridge(); drawPlot(); }
+    bFn = () => { const v = getB(), r = ARMS[v.cfg](v.x / 100); return [2 / (r[0] + r[1]), 2 / (r[2] + r[3])]; };
+    window.__drawBridgeOnly = drawBridge;
+    return draw;
+  });
+  Deck.loop('bridge-sim', dt => {
+    if (RM || !bFn) return;
+    const v = getB(), [Iu, Il] = bFn();
+    bPh[0] = (bPh[0] + dt * 0.04 * v.E * Iu) % 1; bPh[1] = (bPh[1] + dt * 0.04 * v.E * Il) % 1;
+    window.__drawBridgeOnly();
+  });
+
+  /* ---- loading simulator ---- */
+  Deck.onShow('loading-sim', () => {
+    const get = Deck.controls('simLoad', () => draw());
+    const E1 = 10;
+    function draw() {
+      const v = get(), Zm = v.Z, Z1 = v.Z1, r = Zm / Z1;
+      const fv = 1 / (1 + 1 / r), fi = 1 / (1 + r), fp = 4 * r / Math.pow(1 + r, 2);
+      const fmtZ = z => z >= 1e6 ? (+(z / 1e6).toPrecision(3)) + ' MΩ' : z >= 1e3 ? (+(z / 1e3).toPrecision(3)) + ' kΩ' : (+z.toPrecision(3)) + ' Ω';
+      const cv = $('cvLoadA'); const { ctx, W, H } = Deck.sizeCanvas(cv);
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const x0 = W * 0.12, x1 = W * 0.82, y0 = H * 0.2, y1 = H * 0.58, ym = (y0 + y1) / 2;
+      ctx.strokeStyle = Deck.color('ink'); ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.moveTo(x0, ym - 16); ctx.lineTo(x0, y0); ctx.lineTo(x1, y0); ctx.lineTo(x1, y1); ctx.lineTo(x0, y1); ctx.lineTo(x0, ym + 16); ctx.stroke();
+      ctx.fillStyle = Deck.color('panel'); ctx.beginPath(); ctx.arc(x0, ym, 16, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = Deck.color('ink'); ctx.font = Deck.font(12); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('E₁', x0, ym);
+      const zx = x0 + (x1 - x0) * 0.33;
+      ctx.fillStyle = Deck.color('panel'); ctx.fillRect(zx - 22, y0 - 8, 44, 16); ctx.strokeRect(zx - 22, y0 - 8, 44, 16);
+      ctx.fillStyle = Deck.color('ink'); ctx.font = Deck.font(11, true); ctx.fillText('Z₁ ' + fmtZ(Z1), zx, y0 - 18);
+      const modeCol = v.mode === 'v' ? 'acc' : v.mode === 'i' ? 'blu' : 'grn';
+      ctx.strokeStyle = Deck.color(modeCol);
+      if (v.mode === 'i') { const mx2 = x0 + (x1 - x0) * 0.72; ctx.fillStyle = Deck.color('panel'); ctx.fillRect(mx2 - 22, y0 - 8, 44, 16); ctx.strokeRect(mx2 - 22, y0 - 8, 44, 16); ctx.fillStyle = Deck.color(modeCol); ctx.fillText('Zₘ', mx2, y0 - 18); }
+      else { ctx.fillStyle = Deck.color('panel'); ctx.fillRect(x1 - 8, ym - 20, 16, 40); ctx.strokeRect(x1 - 8, ym - 20, 16, 40); ctx.fillStyle = Deck.color(modeCol); ctx.textAlign = 'right'; ctx.fillText('Zₘ', x1 - 14, ym); }
+      const bx = W * 0.08, bw = W * 0.84, by = H * 0.68;
+      const ratio = v.mode === 'v' ? fv : v.mode === 'i' ? fi : fp;
+      const labT = v.mode === 'v' ? 'true E₁' : v.mode === 'i' ? 'true I′ = E₁/Z₁' : 'maximum power E₁²/4Z₁';
+      const labM = v.mode === 'v' ? 'indicated Eₘ' : v.mode === 'i' ? 'indicated Iₘ' : 'delivered to Zₘ';
+      ctx.fillStyle = Deck.alpha('muted', .3); ctx.fillRect(bx, by, bw, 12);
+      ctx.fillStyle = Deck.color(modeCol); ctx.fillRect(bx, by + 18, bw * ratio, 12);
+      ctx.fillStyle = Deck.color('muted'); ctx.font = Deck.font(11, true); ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+      ctx.fillText(labT, bx, by - 2); ctx.textBaseline = 'top'; ctx.fillText(labM + '  ' + (ratio * 100).toFixed(1) + ' %', bx, by + 34);
+      Deck.plot($('cvLoadB'), { x: [0.01, 1e5], y: [0, 1.08], logx: true, xlabel: 'Zₘ / Z₁', ylabel: 'indicated / true',
+        vlines: [{ x: 100, color: 'muted', dash: [2, 4], label: '100' }],
+        series: [
+          { f: t => 1 / (1 + 1 / t), color: 'acc', width: v.mode === 'v' ? 2.8 : 1.2 },
+          { f: t => 1 / (1 + t), color: 'blu', width: v.mode === 'i' ? 2.8 : 1.2 },
+          { f: t => 4 * t / Math.pow(1 + t, 2), color: 'grn', width: v.mode === 'p' ? 2.8 : 1.2, dash: [5, 3] }],
+        points: [{ x: Math.min(1e5, Math.max(0.01, r)), y: ratio, color: 'ink', r: 5 }] });
+      let txt;
+      if (v.mode === 'v') { const Em = E1 * fv; txt = 'Eₘ <b>' + Em.toPrecision(4) + ' V</b> &nbsp; e_I <b>' + (Em - E1).toPrecision(3) + ' V</b> &nbsp; error <b>' + ((fv - 1) * 100).toPrecision(3) + ' %</b>'; }
+      else if (v.mode === 'i') { const Im = E1 / (Z1 + Zm), Ip = E1 / Z1; txt = 'Iₘ <b>' + (Im * 1000).toPrecision(4) + ' mA</b> &nbsp; I′ <b>' + (Ip * 1000).toPrecision(4) + ' mA</b> &nbsp; error <b>' + ((fi - 1) * 100).toPrecision(3) + ' %</b>'; }
+      else { const P = E1 * E1 * Zm / Math.pow(Z1 + Zm, 2); txt = 'P to Zₘ <b>' + (P * 1000).toPrecision(3) + ' mW</b> &nbsp; max <b>' + (E1 * E1 / 4 / Z1 * 1000).toPrecision(3) + ' mW</b> at Zₘ = Z₁'; }
+      $('roLoad').innerHTML = 'Zₘ/Z₁ <b>' + (+r.toPrecision(3)) + '</b> &nbsp; ' + txt;
+    }
+    return draw;
+  });
+})();
+</script>
+</body>
+</html>

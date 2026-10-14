@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>05.14 Multiplexed DAQ: per-channel rate and skew · ME 361</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="../deck.css">
+<style>
+  .tbl.compact th,.tbl.compact td{padding:5px 10px;font-size:.88rem}
+  .readout{display:block;line-height:1.9}
+  .define{display:block}
+  .define::before{display:block;margin-bottom:4px}
+  svg .w{stroke:var(--ink);stroke-width:1.5;fill:none}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:640px){.duo{grid-template-columns:1fr}}
+  #cvImg{image-rendering:pixelated}
+</style>
+<script>window.DECK = {"mode": "panel", "num": "05.14", "title": "Multiplexed DAQ: per-channel rate and skew", "home": "index.html", "homeLabel": "Digital Devices & Data Acquisition", "course": "ME 361 · Instrumentation and Measurement"};</script>
+<script src="../deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+<section class="slide" id="mux" data-title="Multiplexer simulator: rate and skew">
+  <p class="eyebrow">Simulator · multiplexed scanning</p>
+  <h2>One converter, many channels: the rate is shared and the instants are staggered</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simMux">
+      <div class="simhead"><span>Same signal wired to every channel</span><span class="legend"><span><i style="background:var(--muted)"></i>true signal</span><span><i style="background:var(--acc)"></i>channel 1</span><span><i style="background:var(--blu)"></i>last channel</span></span></div>
+      <canvas id="cvMux" data-h="200" aria-label="Samples stored for channel 1 and for the last channel, plotted against scan time, showing an apparent phase shift"></canvas>
+      <canvas id="cvMuxT" data-h="150" aria-label="Timing diagram: the instant each channel is sampled during the first three scans"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="mfa">Board rate (all channels) <output data-for="fa"></output></label>
+          <input type="range" id="mfa" data-key="fa" data-scale="log" data-min="200" data-max="100000" min="0" max="1000" value="259" data-fmt="-1" data-unit=" S/s"></div>
+        <div class="ctl"><label for="mN">Channels scanned N <output data-for="N"></output></label>
+          <input type="range" id="mN" data-key="N" min="1" max="16" step="1" value="4" data-fmt="0"></div>
+        <div class="ctl"><label for="mf">Signal frequency <output data-for="f"></output></label>
+          <input type="range" id="mf" data-key="f" min="1" max="400" step="1" value="50" data-fmt="0" data-unit=" Hz"></div>
+      </div>
+      <div class="readout" id="roMux"></div>
+    </div>
+    <div>
+      <p>A board quoted at "1000 samples per second" shares that rate among the channels it scans. With \(N\) channels each channel is sampled at</p>
+      <div class="eq"><span class="label">Per-channel rate and channel skew</span>
+        $$f_{s,ch}=\frac{f_{board}}{N},\qquad \Delta t_{1\to N}=\frac{N-1}{f_{board}}$$
+      </div>
+      <p>and the Nyquist frequency of each channel is \(f_{s,ch}/2\). The second effect is subtler: channel \(N\) is read \((N-1)\) switching intervals after channel 1, but the stored scan treats them as simultaneous. For a sine of frequency \(f\) that looks like a phase shift of \(360°\,f\,\Delta t\).</p>
+      <div class="try"><p>Keep 1000 S/s, 4 channels and 50 Hz: each channel gets 250 S/s, and the last channel lags by 3 ms, which appears as a 54° phase shift between two identical signals. Raise the board rate to 100 kS/s: the skew shrinks to 0.03 ms (0.5°). Now return to 1000 S/s and scan 16 channels: each channel gets only 62.5 S/s and the 50 Hz signal aliases. Boards that must compare phases use a separate sample-and-hold on every channel, all triggered together (simultaneous sampling).</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 · Fitting the signal to the converter -->
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const TAU = 2 * Math.PI;
+
+  /* ---- cover: multiplexer scanning four channels ---- */
+  let cT = 0;
+  const CF = [0.55, 0.9, 0.35, 1.3], CA = [0.8, 0.6, 0.9, 0.7];
+  function drawCover() {
+    const cv = $('coverMux'), { ctx, W, H } = Deck.sizeCanvas(cv);
+    ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+    const rows = 4, rh = H / rows, x0 = 10, x1 = W - 10, span = 8, tNow = Math.min(cT, span);
+    const step = 0.125; // seconds between switch positions
+    for (let c = 0; c < rows; c++) {
+      const yc = rh * (c + 0.5), amp = rh * 0.36 * CA[c];
+      ctx.strokeStyle = Deck.color('rule'); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x0, yc); ctx.lineTo(x1, yc); ctx.stroke();
+      ctx.strokeStyle = Deck.color('muted'); ctx.lineWidth = 1.2; ctx.beginPath();
+      for (let i = 0; i <= 500; i++) { const t = span * i / 500; const x = x0 + (x1 - x0) * t / span, y = yc - amp * Math.sin(TAU * CF[c] * t + c); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+      ctx.stroke();
+      ctx.fillStyle = Deck.color(c === 0 ? 'acc' : c === 3 ? 'blu' : 'ink');
+      for (let k = 0; ; k++) {
+        const t = (k * rows + c) * step; if (t > tNow) break;
+        const x = x0 + (x1 - x0) * t / span, y = yc - amp * Math.sin(TAU * CF[c] * t + c);
+        ctx.beginPath(); ctx.arc(x, y, 3.2, 0, 7); ctx.fill();
+      }
+    }
+    const kk = Math.floor(tNow / step), ch = kk % rows, xs = x0 + (x1 - x0) * Math.min(tNow, span) / span;
+    ctx.strokeStyle = Deck.color('acc'); ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(xs, 2); ctx.lineTo(xs, H - 2); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = Deck.color('acc'); ctx.beginPath(); ctx.moveTo(1, rh * (ch + 0.5) - 6); ctx.lineTo(8, rh * (ch + 0.5)); ctx.lineTo(1, rh * (ch + 0.5) + 6); ctx.fill();
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (cT < 8.1) { cT += RM ? 9 : dt * 1.2; drawCover(); } });
+
+  /* ---- multiplexer skew ---- */
+  Deck.onShow('mux', () => {
+    const get = Deck.controls('simMux', draw);
+    function draw() {
+      const v = get(), fa = +v.fa.toPrecision(3), N = Math.round(v.N), f = v.f, dt = 1 / fa, fch = fa / N, skew = (N - 1) * dt;
+      const Tw = 2 / f, s1 = [], sN = [];
+      for (let k = 0; k * N * dt <= Tw + 1e-12 && k < 4000; k++) {
+        const ts = k * N * dt;
+        s1.push([ts * 1000, Math.sin(TAU * f * ts)]);
+        sN.push([ts * 1000, Math.sin(TAU * f * (ts + skew))]);
+      }
+      const ser = [{ f: t => Math.sin(TAU * f * t / 1000), color: 'muted', width: 1.2, n: 600 }];
+      ser.push({ pts: s1, color: 'acc', width: 1.8, dots: s1.length < 120, r: 3 });
+      if (N > 1) ser.push({ pts: sN, color: 'blu', width: 1.8, dots: sN.length < 120, r: 3, dash: [5, 3] });
+      Deck.plot($('cvMux'), { x: [0, Tw * 1000], y: [-1.3, 1.3], xlabel: 'scan time (ms)', ylabel: 'stored value', yticks: [-1, 0, 1], series: ser });
+      // timing diagram: first three scans
+      const tw = 3 * N * dt * 1000, pts = [];
+      for (let k = 0; k < 3; k++) for (let j = 0; j < N; j++) pts.push({ x: (k * N + j) * dt * 1000, y: j + 1, color: j === 0 ? 'acc' : (j === N - 1 ? 'blu' : 'muted'), r: 4 });
+      const yt = N <= 8 ? Array.from({ length: N }, (_, i) => i + 1) : [1, Math.round(N / 2), N];
+      Deck.plot($('cvMuxT'), { x: [-0.02 * tw, tw * 1.02], y: [0.3, N + 0.7], xlabel: 'time (ms): when each channel is read', ylabel: 'channel', yticks: yt, points: pts, noGrid: false });
+      const ph = (360 * f * skew) % 360, alias = f > fch / 2;
+      const fa2 = Math.abs(f - fch * Math.round(f / fch));
+      $('roMux').innerHTML = 'per-channel rate <b>' + (+fch.toPrecision(4)) + ' S/s</b> &nbsp; per-channel f<sub>N</sub> <b>' + (+(fch / 2).toPrecision(4)) + ' Hz</b> &nbsp; skew ch 1 → ch ' + N + ' <b>' + (skew * 1000).toPrecision(3) + ' ms</b> &nbsp; apparent phase shift <b>' + ph.toFixed(1) + '°</b>' + (alias ? ' &nbsp; <b>ALIASED: f &gt; f<sub>N</sub>, appears at ' + fa2.toFixed(1) + ' Hz</b>' : '');
+    }
+    return draw;
+  });
+
+  /* ---- gain and offset ---- */
+  Deck.onShow('gain', () => {
+    const get = Deck.controls('simGain', draw);
+    function draw() {
+      const v = get(), G = v.G, m = +v.m, M = +v.b, Q = 10 / Math.pow(2, M), top = Math.pow(2, M) - 1;
+      const inp = [], out = [], rec = [], tru = []; let sat = false;
+      for (let i = 0; i <= 800; i++) {
+        const t = 0.4 * i / 800, y = 2 + 0.1 * Math.sin(TAU * 5 * t), u = G * (y - m);
+        let c = Math.floor((u + 5) / Q + 0.5); if (c > top) { c = top; sat = true; } if (c < 0) { c = 0; sat = true; }
+        const o = -5 + c * Q;
+        inp.push([t, u]); out.push([t, o]); rec.push([t, (o / G + m - 2) * 1000]); tru.push([t, 100 * Math.sin(TAU * 5 * t)]);
+      }
+      Deck.plot($('cvGain'), { x: [0, 0.4], y: [-6.5, 6.5], ylabel: 'converter input (V)', yticks: [-5, 0, 5], xticks: [], pad: { b: 10 },
+        bands: [{ y0: 5, y1: 99, color: 'red', alpha: .12 }, { y0: -99, y1: -5, color: 'red', alpha: .12 }],
+        series: [{ pts: inp, color: 'muted', width: 1.4 }, { pts: out, color: 'acc', width: 2 }] });
+      const ymax = Math.max(160, Math.min(2000, Math.max(...rec.map(p => Math.abs(p[1]))) * 1.1));
+      Deck.plot($('cvGain2'), { x: [0, 0.4], y: [-ymax, ymax], xlabel: 'time (s)', ylabel: 'wiggle (mV)',
+        series: [{ pts: tru, color: 'muted', width: 1.4 }, { pts: rec, color: 'blu', width: 2 }] });
+      const qin = Q / G, fq = q => q >= 1e-3 ? (q * 1000).toPrecision(3) + ' mV' : (q * 1e6).toPrecision(3) + ' µV';
+      $('roGain').innerHTML = 'Q = <b>' + fq(Q) + '</b> &nbsp; Q<sub>in</sub> = Q/G = <b>' + fq(qin) + '</b> &nbsp; wiggle spans <b>±' + Math.round(0.1 / qin) + ' steps</b> &nbsp; peak input <b>' + (G * (2.1 - m)).toFixed(2) + ' V</b>' + (sat ? ' &nbsp; <b>SATURATED</b>' : '');
+    }
+    return draw;
+  });
+
+  /* ---- single-ended vs differential ---- */
+  Deck.onShow('sede-sim', () => {
+    const get = Deck.controls('simSE', draw);
+    function draw() {
+      const v = get(), g = v.g / 1000, L = v.L, k = 0.5e-3, w = TAU * 50;
+      const tru = [], rd = []; let se2 = 0, n = 0, ymx = 0.012;
+      for (let i = 0; i <= 1500; i++) {
+        const t = i / 1500, s = 0.01 * Math.sin(TAU * 2 * t), nh = k * L * Math.sin(w * t + 0.4), vg = g * Math.sin(w * t + 1.1);
+        let r;
+        if (v.w === 'se') r = s + nh + vg;
+        else { const nl = nh * (v.w === 'dt' ? 0.98 : 0.5); r = s + (nh - nl) + 1e-4 * (vg + (nh + nl) / 2); }
+        tru.push([t, s * 1000]); rd.push([t, r * 1000]); se2 += (r - s) * (r - s); n++; ymx = Math.max(ymx, Math.abs(r));
+      }
+      const ym = Math.ceil(ymx * 1100 / 5) * 5;
+      Deck.plot($('cvSE'), { x: [0, 1], y: [-ym, ym], xlabel: 'time (s)', ylabel: 'voltage (mV)',
+        series: [{ pts: rd, color: 'acc', width: 1.2 }, { pts: tru, color: 'muted', width: 2.4 }] });
+      const rms = Math.sqrt(se2 / n) * 1000;
+      $('roSE').innerHTML = 'rms error <b>' + rms.toPrecision(3) + ' mV</b> &nbsp; signal amplitude <b>10 mV</b> &nbsp; error / signal rms <b>' + (100 * rms / (10 / Math.SQRT2)).toPrecision(3) + ' %</b>';
+    }
+    return draw;
+  });
+
+  /* ---- digital image ---- */
+  Deck.onShow('images', () => {
+    const IW = 160, IH = 100, img = new Float32Array(IW * IH);
+    let seed = 12345; const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+    const coins = [[30, 35, 14], [70, 62, 17], [112, 30, 12], [128, 72, 15], [38, 79, 11]];
+    for (let y = 0; y < IH; y++) for (let x = 0; x < IW; x++) {
+      let v = 60 + 45 * x / IW + 10 * Math.sin(x * 0.35 + y * 0.12) + (rnd() - 0.5) * 14;
+      for (const [cx, cy, r] of coins) {
+        const dx = x - cx, dy = y - cy, d = Math.hypot(dx, dy);
+        if (d < r + 0.5) {
+          const a = Math.min(1, r + 0.5 - d);
+          let c = 185 + 15 * (-dx - dy) / (r * 1.41) + (rnd() - 0.5) * 14;
+          const u = d / r; if (u > 0.62 && u < 0.74) c -= 30;
+          if (u < 0.3 && ((x + y) % 5 === 0)) c -= 20;
+          v = v * (1 - a) + c * a;
+        }
+      }
+      img[y * IW + x] = Math.max(0, Math.min(255, v));
+    }
+    const off = document.createElement('canvas'); off.width = IW; off.height = IH;
+    const octx = off.getContext('2d'), id = octx.createImageData(IW, IH);
+    const get = Deck.controls('simImg', draw);
+    function sobel(a) {
+      const g = new Float32Array(IW * IH);
+      for (let y = 1; y < IH - 1; y++) for (let x = 1; x < IW - 1; x++) {
+        const p = (i, j) => a[(y + j) * IW + (x + i)];
+        const gx = p(1, -1) + 2 * p(1, 0) + p(1, 1) - p(-1, -1) - 2 * p(-1, 0) - p(-1, 1);
+        const gy = p(-1, 1) + 2 * p(0, 1) + p(1, 1) - p(-1, -1) - 2 * p(0, -1) - p(1, -1);
+        g[y * IW + x] = Math.hypot(gx, gy);
+      }
+      return g;
+    }
+    function count(b) {
+      const seen = new Uint8Array(IW * IH); let nObj = 0;
+      for (let i = 0; i < IW * IH; i++) {
+        if (!b[i] || seen[i]) continue;
+        let area = 0; const st = [i]; seen[i] = 1;
+        while (st.length) { const q = st.pop(); area++; const x = q % IW, y = (q - x) / IW;
+          [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([a, c]) => { const X = x + a, Y = y + c; if (X >= 0 && X < IW && Y >= 0 && Y < IH) { const k = Y * IW + X; if (b[k] && !seen[k]) { seen[k] = 1; st.push(k); } } }); }
+        if (area >= 40) nObj++;
+      }
+      return nObj;
+    }
+    function draw() {
+      const v = get(), th = v.th, eg = v.eg;
+      const bin = new Float32Array(IW * IH), bb = new Uint8Array(IW * IH); let above = 0;
+      for (let i = 0; i < IW * IH; i++) { const on = img[i] > th; bin[i] = on ? 255 : 0; bb[i] = on ? 1 : 0; above += on; }
+      let show, nEdge = 0;
+      if (v.v === 'g') show = img;
+      else if (v.v === 't') show = bin;
+      else {
+        const gm = sobel(v.v === 'e' ? img : bin); show = new Float32Array(IW * IH);
+        for (let i = 0; i < IW * IH; i++) { const e = gm[i] > eg; show[i] = e ? 255 : 0; nEdge += e; }
+      }
+      for (let i = 0; i < IW * IH; i++) { const c = show[i]; id.data[4 * i] = c; id.data[4 * i + 1] = c; id.data[4 * i + 2] = c; id.data[4 * i + 3] = 255; }
+      octx.putImageData(id, 0, 0);
+      const cv = $('cvImg'), { ctx, W, H } = Deck.sizeCanvas(cv);
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const sc = Math.min(W / IW, H / IH), dw = IW * sc, dh = IH * sc;
+      ctx.imageSmoothingEnabled = false; ctx.drawImage(off, (W - dw) / 2, (H - dh) / 2, dw, dh);
+      $('roImg').innerHTML = 'pixels above threshold <b>' + (100 * above / (IW * IH)).toFixed(1) + ' %</b> &nbsp; objects in thresholded image (≥ 40 px) <b>' + count(bb) + '</b>' + (v.v === 'e' || v.v === 'et' ? ' &nbsp; edge pixels <b>' + nEdge + '</b>' : '');
+    }
+    return draw;
+  });
+})();
+</script>
+</body>
+</html>

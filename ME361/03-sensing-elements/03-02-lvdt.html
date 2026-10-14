@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>03.02 LVDT: core displacement and null voltage · ME 361</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="../deck.css">
+<style>
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:640px){.duo{grid-template-columns:1fr}}
+  .tbl.compact th,.tbl.compact td{padding:6px 10px;font-size:.86rem}
+  .card p{max-width:none}
+</style>
+<script>window.DECK = {"mode": "panel", "num": "03.02", "title": "LVDT: core displacement and null voltage", "home": "index.html", "homeLabel": "Sensing Elements", "course": "ME 361 · Instrumentation and Measurement"};</script>
+<script src="../deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+<section class="slide" id="lvdtsim" data-title="LVDT simulator">
+  <p class="eyebrow">Inductive transducers · simulator</p>
+  <h2>See amplitude and phase follow the core</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simLVDT">
+      <div class="simhead"><span>LVDT simulator</span><span class="legend"><span><i style="background:var(--muted)"></i>excitation</span><span><i style="background:var(--acc)"></i>output e₁ − e₂</span><span><i style="background:var(--blu)"></i>demodulated DC</span></span></div>
+      <canvas id="cvLVDTa" data-h="140" aria-label="LVDT with primary between two secondaries and a movable core"></canvas>
+      <div class="duo">
+        <canvas id="cvLVDTb" data-h="210" aria-label="Output magnitude V-graph and demodulated signed output against core position"></canvas>
+        <canvas id="cvLVDTc" data-h="210" aria-label="Excitation and output waveforms against time"></canvas>
+      </div>
+      <div class="controls">
+        <div class="ctl"><label for="lvx">Core displacement x <output data-for="x"></output></label>
+          <input type="range" id="lvx" data-key="x" min="-6" max="6" step="0.05" value="1" data-fmt="2" data-unit=" mm"></div>
+        <div class="ctl"><label for="lvn">Coil mismatch (null voltage) <output data-for="n"></output></label>
+          <input type="range" id="lvn" data-key="n" min="0" max="0.1" step="0.005" value="0.02" data-fmt="3"></div>
+      </div>
+      <div class="readout" id="roLVDT"></div>
+    </div>
+    <div>
+      <p>The left plot is the LVDT’s characteristic. The black curve is the magnitude of the output, the <b>V-graph</b> a meter would show. The blue curve is what a phase-sensitive demodulator delivers: the same magnitude with a sign, a straight line through zero.</p>
+      <p>The right plot shows the two waveforms in time. The output has the excitation’s frequency; only its size and its phase carry the information.</p>
+      <div class="try"><p>Move x from −6 to +6 mm. Inside about ±2 mm the curves are straight (green band). Beyond, the core leaves the coils and the output peaks and falls. Watch the output trace flip from in phase to opposite phase as x crosses zero. Then raise the coil mismatch: the bottom of the V rounds off and never reaches zero. That residual is the null voltage, and it limits the smallest displacement you can resolve near the centre.</p></div>
+      <div class="quiz" data-correct="2">
+        <p class="q">An LVDT reads 0.30 V both at x = +0.5 mm and at x = −0.5 mm. How does the instrument tell them apart?</p>
+        <div class="opts">
+          <button class="opt" data-why="The output frequency is always the excitation frequency.">By the output frequency</button>
+          <button class="opt" data-why="By symmetry the magnitudes are equal; magnitude alone cannot give direction.">By a small difference in amplitude</button>
+          <button class="opt" data-why="Yes. One side is in phase with the excitation, the other 180° out; the demodulator turns this into a signed DC voltage.">By the phase relative to the excitation</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 · LVDT performance + worked example -->
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---- cover: displacement and transducer voltage ---- */
+  let coverT = 0;
+  function drawCover() {
+    const tEnd = 14, tt = Math.min(coverT, tEnd), a = [], b = [];
+    for (let i = 0; i <= 600; i++) {
+      const t = tEnd * i / 600; if (t > tt) break;
+      const m = 0.9 * Math.sin(0.6 * t) + 0.3 * Math.sin(1.7 * t + 1);
+      a.push([t, m]); b.push([t, 0.45 * m - 1.1 + 0.03 * Math.sin(37 * t)]);
+    }
+    Deck.plot($('coverTrace'), { x: [0, tEnd], y: [-1.8, 1.4], pad: { l: 8, r: 8, t: 6, b: 6 }, xticks: [], yticks: [],
+      series: [{ pts: a, color: 'blu', width: 2.2 }, { pts: b, color: 'acc', width: 2 }] });
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (coverT < 15) { coverT += RM ? 15 : dt * 3; drawCover(); } });
+
+  /* ---- potentiometer loading ---- */
+  Deck.onShow('potload', () => {
+    const get = Deck.controls('simPot', draw);
+    function draw() {
+      const v = get(), k = v.k, x = v.x;
+      const f = s => s / (1 + s * (1 - s) / k);
+      const e = s => (f(s) - s) * 100;
+      Deck.plot($('cvPotA'), { x: [0, 1], y: [0, 1], xlabel: 'wiper position x', ylabel: 'Eₒ / Eᵢ',
+        series: [{ f: s => s, color: 'muted', dash: [5, 4], width: 1.5 }, { f: f, color: 'acc' }],
+        points: [{ x: x, y: f(x), color: 'ink', r: 5 }] });
+      let emin = 0, xm = 0; for (let i = 0; i <= 600; i++) { const s = i / 600, ee = e(s); if (ee < emin) { emin = ee; xm = s; } }
+      const lo = Math.min(-0.01, emin * 1.15);
+      Deck.plot($('cvPotB'), { x: [0, 1], y: [lo, 0], xlabel: 'wiper position x', ylabel: 'error, % FS', pad: { l: 64 },
+        yfmt: t => (Math.abs(lo) < 0.1 ? t.toFixed(3) : Math.abs(lo) < 2 ? t.toFixed(2) : t.toFixed(0)),
+        series: [{ f: e, color: 'blu' }], vlines: [{ x: xm, color: 'muted', label: 'max at x = ' + xm.toFixed(2) }],
+        points: [{ x: x, y: e(x), color: 'ink', r: 4.5 }] });
+      const rel = x > 0 ? (f(x) / x - 1) * 100 : 0;
+      $('roPot').innerHTML = 'Eₒ/Eᵢ = <b>' + f(x).toFixed(4) + '</b> (ideal ' + x.toFixed(2) + ') &nbsp; error <b>' + e(x).toFixed(3) + ' % FS</b>, <b>' + rel.toFixed(3) + ' %</b> of reading &nbsp; worst <b>' + emin.toFixed(3) + ' % FS</b>';
+    }
+    return draw;
+  });
+
+  /* ---- LVDT ---- */
+  const lvG = u => u * Math.exp(-Math.pow(u / 2.4, 6));
+  const lvOut = x => lvG(x / 2);
+  let lvPh = 0, lvDraw = null;
+  Deck.onShow('lvdtsim', () => {
+    const get = Deck.controls('simLVDT', () => lvDraw && lvDraw());
+    function draw() {
+      const v = get(), x = v.x, e = lvOut(x), nul = v.n, amp = Math.sqrt(e * e + nul * nul), inPhase = e >= 0;
+      const { ctx, W, H } = Deck.sizeCanvas($('cvLVDTa'));
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const L = W * 0.72, x0 = (W - L) / 2, yc = H * 0.52, rh = H * 0.2;
+      const coil = (a, b, col, lab) => {
+        ctx.fillStyle = Deck.alpha(col, .18); ctx.strokeStyle = Deck.color(col); ctx.lineWidth = 1.4;
+        [[yc - rh - 16, 14], [yc + rh + 2, 14]].forEach(([y, h]) => {
+          ctx.fillRect(a, y, b - a, h); ctx.strokeRect(a, y, b - a, h);
+          ctx.beginPath(); for (let k = a + 5; k < b; k += 6) { ctx.moveTo(k, y); ctx.lineTo(k, y + h); } ctx.globalAlpha = .5; ctx.stroke(); ctx.globalAlpha = 1;
+        });
+        ctx.fillStyle = Deck.color(col); ctx.font = Deck.font(12, true); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(lab, (a + b) / 2, yc - rh - 19);
+      };
+      coil(x0, x0 + L / 3 - 3, 'blu', 'S₁'); coil(x0 + L / 3 + 3, x0 + 2 * L / 3 - 3, 'muted', 'P (AC)'); coil(x0 + 2 * L / 3 + 3, x0 + L, 'blu', 'S₂');
+      const cc = W / 2 + x * L / 16, cl = L * 0.45;
+      ctx.fillStyle = Deck.color('ink'); ctx.globalAlpha = .75; ctx.fillRect(cc - cl / 2, yc - rh * 0.6, cl, rh * 1.2); ctx.globalAlpha = 1;
+      ctx.strokeStyle = Deck.color('ink'); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cc + cl / 2, yc); ctx.lineTo(W - 4, yc); ctx.stroke();
+      ctx.fillStyle = Deck.color('paper'); ctx.font = Deck.font(11, true); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('core', cc, yc);
+      ctx.strokeStyle = Deck.color('acc'); ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(W / 2, yc - rh - 2); ctx.lineTo(W / 2, yc + rh + 20); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = Deck.color('acc'); ctx.textBaseline = 'top'; ctx.fillText('x = 0', W / 2, yc + rh + 18);
+      Deck.plot($('cvLVDTb'), { x: [-6, 6], y: [-1.7, 1.7], xlabel: 'core position x (mm)', ylabel: 'output (relative)',
+        bands: [{ x0: -2, x1: 2, color: 'grn', alpha: .12 }], hlines: [{ y: 0, color: 'muted', dash: [2, 3] }],
+        series: [{ f: t => Math.sqrt(lvOut(t) * lvOut(t) + nul * nul), color: 'ink', width: 2 }, { f: lvOut, color: 'blu', dash: [6, 4], width: 2 }],
+        points: [{ x: x, y: amp, color: 'acc', r: 5 }] });
+      const ex = [], out = [];
+      for (let i = 0; i <= 300; i++) { const t = 3 * i / 300, w = 2 * Math.PI * t + lvPh; ex.push([t, Math.sin(w)]); out.push([t, e * Math.sin(w) + nul * Math.cos(w)]); }
+      Deck.plot($('cvLVDTc'), { x: [0, 3], y: [-1.7, 1.7], xlabel: 'time (excitation cycles)', ylabel: 'voltage (relative)',
+        series: [{ pts: ex, color: 'muted', width: 1.4 }, { pts: out, color: 'acc', width: 2.4 }] });
+      $('roLVDT').innerHTML = 'magnitude <b>' + amp.toFixed(3) + '</b> &nbsp; demodulated <b>' + (e >= 0 ? '+' : '') + e.toFixed(3) + '</b> &nbsp; phase <b>' + (Math.abs(e) < nul ? 'near null' : inPhase ? '0° (core toward S₁)' : '180° (core toward S₂)') + '</b> &nbsp; ' + (Math.abs(x) <= 2 ? '<b>linear region</b>' : '<b>outside linear region</b>: ' + ((e - x / 2) / (x / 2) * 100).toFixed(0) + ' % from the line');
+    }
+    lvDraw = draw; return draw;
+  });
+  Deck.loop('lvdtsim', dt => { if (!lvDraw || RM) return; lvPh -= dt * 2.2; lvDraw(); });
+
+  /* ---- capacitive bench ---- */
+  Deck.onShow('capsim', () => {
+    const get = Deck.controls('simCap', draw);
+    function draw() {
+      const v = get(), u = v.u, mode = v.mode;
+      const f = mode === 'gap' ? (s => s / (1 - s)) : (s => s);
+      // drawing
+      const { ctx, W, H } = Deck.sizeCanvas($('cvCapA'));
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const cx = W / 2, pw = Math.min(W * 0.5, 260), d0 = H * 0.26;
+      const plate = (x, y, w, col) => { ctx.fillStyle = Deck.color(col); ctx.fillRect(x, y - 3, w, 6); };
+      ctx.font = Deck.font(11.5, true); ctx.textBaseline = 'middle';
+      if (mode === 'gap') {
+        const yTop = H * 0.2, yBot = yTop + d0 * 1.6 * (1 - u);
+        plate(cx - pw / 2, yTop, pw, 'ink'); plate(cx - pw / 2, yBot, pw, 'acc');
+        ctx.fillStyle = Deck.color('muted'); ctx.textAlign = 'left'; ctx.fillText('gap = d(1 − u)', cx + pw / 2 + 8, (yTop + yBot) / 2);
+      } else if (mode === 'area') {
+        const y1 = H * 0.3, y2 = y1 + d0 * 1.4, sh = u * pw * 0.6;
+        plate(cx - pw / 2, y1, pw, 'ink'); plate(cx - pw / 2 + sh - pw * 0.0, y2, pw, 'acc');
+        ctx.fillStyle = Deck.alpha('blu', .2); const a = Math.max(cx - pw / 2, cx - pw / 2 + sh), b = Math.min(cx + pw / 2, cx + pw / 2 + sh);
+        ctx.fillRect(a, y1 + 3, b - a, y2 - y1 - 6);
+        ctx.fillStyle = Deck.color('muted'); ctx.textAlign = 'left'; ctx.fillText('overlap shaded', 8, H - 12);
+      } else {
+        const yA = H * 0.15, yC = H * 0.85, yM = (yA + yC) / 2 - u * (yC - yA) / 2;
+        plate(cx - pw / 2, yA, pw, 'ink'); plate(cx - pw / 2, yC, pw, 'ink'); plate(cx - pw / 2, yM, pw, 'acc');
+        ctx.fillStyle = Deck.color('muted'); ctx.textAlign = 'left';
+        ctx.fillText('C₁, gap d(1 − u)', cx + pw / 2 + 8, (yA + yM) / 2); ctx.fillText('C₂, gap d(1 + u)', cx + pw / 2 + 8, (yM + yC) / 2);
+      }
+      const yr = mode === 'gap' ? [-0.6, 1.6] : [-0.7, 0.7];
+      const lbl = mode === 'gap' ? 'ΔC / C₀' : mode === 'area' ? 'ΔA / A₀ = ΔC / C₀' : 'Eₒ / (Eᵢ/2)';
+      Deck.plot($('cvCapB'), { x: [-0.6, 0.6], y: yr, xlabel: 'normalised displacement u', ylabel: lbl,
+        hlines: [{ y: 0, color: 'muted', dash: [2, 3] }],
+        series: [{ f: s => s, color: 'muted', dash: [5, 4], width: 1.5 }, { f: f, color: 'acc' }],
+        points: [{ x: u, y: f(u), color: 'ink', r: 5 }] });
+      const err = Math.abs(u) > 1e-6 ? (f(u) - u) / u * 100 : 0;
+      $('roCap').innerHTML = 'output <b>' + f(u).toFixed(3) + '</b> &nbsp; straight line <b>' + u.toFixed(3) + '</b> &nbsp; deviation <b>' + err.toFixed(1) + ' %</b> of the line' + (mode === 'diff' ? ' &nbsp; (C₁−C₂)/(C₁+C₂) = u exactly' : '');
+    }
+    return draw;
+  });
+})();
+</script>
+</body>
+</html>

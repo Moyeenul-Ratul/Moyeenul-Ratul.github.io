@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>05.03 Logic gate playground · ME 361</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="../deck.css">
+<style>
+  .tbl.compact th,.tbl.compact td{padding:5px 10px;font-size:.88rem}
+  .tbl.tt th,.tbl.tt td{padding:3px 9px;font-size:.86rem;font-family:var(--f-mono);text-align:center}
+  .readout{display:block;line-height:1.9}
+  svg .w{stroke:var(--ink);stroke-width:1.5;fill:none}
+  svg .gb{fill:var(--panel);stroke:var(--ink);stroke-width:1.6}
+  svg .band-h{fill:var(--acc-soft)} svg .band-l{fill:var(--blu-soft)} svg .band-x{fill:var(--red-soft)}
+  .ov{text-decoration:overline}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:640px){.duo{grid-template-columns:1fr}}
+  .bits{display:flex;gap:5px;flex-wrap:wrap}
+  .bits > button{min-width:2.2em;display:inline-flex;flex-direction:column;align-items:center;gap:1px;padding:.28em .3em;
+    border:1.5px solid var(--rule);border-radius:6px;background:var(--paper);color:var(--ink);font:600 .98rem var(--f-mono);cursor:pointer}
+  .bits small{font:400 .6rem var(--f-mono);color:var(--muted)}
+  .bits .on{border-color:var(--acc);background:var(--acc-soft);color:var(--acc)}
+  @media (max-width:480px){.bits{gap:3px}.bits > button{min-width:1.75em;padding:.2em .1em;font-size:.82rem}}
+  .btnrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .btnrow .btn{font-size:.82rem;padding:.45em .75em}
+  .convin{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:.9rem}
+  .convin input[type=text]{font:600 1rem var(--f-mono);color:var(--ink);background:var(--paper);border:1px solid var(--rule);border-radius:6px;padding:.3em .5em;width:11em}
+  .tt tr.cur td{background:var(--acc-soft);color:var(--acc);font-weight:700}
+  .gcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .gcards .card{padding:10px 12px;gap:4px}
+  .gcards svg{max-width:150px}
+  .warn{color:var(--red);font-weight:600}
+  .cover h1{max-width:24ch}
+</style>
+<script>window.DECK = {"mode": "panel", "num": "05.03", "title": "Logic gate playground", "home": "index.html", "homeLabel": "Digital Devices & Data Acquisition", "course": "ME 361 · Instrumentation and Measurement"};</script>
+<script src="../deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+<section class="slide" id="play" data-title="Logic gate playground">
+  <p class="eyebrow">Simulator · gates, truth tables and timing diagrams</p>
+  <h2>Feed any gate a pattern of inputs and watch its output</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simGate">
+      <div class="simhead"><span>Gate playground</span><span class="legend"><span><i style="background:var(--blu)"></i>inputs</span><span><i style="background:var(--acc)"></i>output X</span></span></div>
+      <div class="controls">
+        <div class="ctl"><label for="gKind">Gate</label><select id="gKind" data-key="g"><option>AND</option><option>OR</option><option selected>NAND</option><option>NOR</option><option>XOR</option><option>XNOR</option><option>NOT</option></select></div>
+        <div class="ctl"><label for="gN">Inputs <output data-for="n"></output></label><input type="range" id="gN" data-key="n" min="2" max="3" step="1" value="2" data-fmt="0"></div>
+      </div>
+      <canvas id="cvGate" data-h="250" aria-label="Timing diagram of the gate inputs and output over sixteen bit times; click an input slot to toggle it"></canvas>
+      <div class="btnrow"><button class="btn" type="button" id="gCount">Inputs count in binary</button><button class="btn" type="button" id="gRand">Random inputs</button><button class="btn" type="button" id="gPlay">Play cursor</button></div>
+      <div class="readout" id="roGate"></div>
+    </div>
+    <div>
+      <div class="row" style="align-items:flex-start;gap:14px">
+        <svg id="gSym" viewBox="0 0 150 50" style="width:150px" aria-label="Symbol of the selected gate"></svg>
+        <div class="tbl tt" style="flex:1;min-width:150px"><table id="gTab"></table></div>
+      </div>
+      <p>The canvas is a timing diagram of sixteen bit times. <b>Click any slot of an input row</b> to flip that bit; the output row is recomputed at once. The truth table highlights the row that applies at the cursor position, so you can see that a timing diagram is just a truth table read in the order the inputs arrive.</p>
+      <div class="try"><p>Press <b>Inputs count in binary</b>: A and B step through 00, 01, 10, 11 twice, and the output row spells out the truth-table column of the gate. Switch between AND and NAND, then OR and NOR, and see each output become the mirror image. Set 3 inputs and choose XOR: the output is HIGH whenever an odd number of inputs are HIGH. That is the even-parity bit of slide 12, computed by gates.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 16 · Logic families -->
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const binS = (x, M) => (x >>> 0).toString(2).padStart(M, '0').slice(-M);
+  const rnd = k => { const s = Math.sin(k * 12.9898 + 4.1) * 43758.5453; return s - Math.floor(s); };
+
+  /* ---------- shared: gate symbol as SVG markup (same geometry as the static figures) ---------- */
+  function gateSVG(kind, x, y, n, ins, out) {
+    const YS = { 1: [18], 2: [9, 27], 3: [6, 18, 30] };
+    const orl = /OR/.test(kind), xb = /XOR|XNOR/.test(kind) ? x + 6 : x; let s = '', o;
+    if (kind === 'AND' || kind === 'NAND') { s += `<path d="M${x} ${y} H${x + 26} A18 18 0 0 1 ${x + 26} ${y + 36} H${x} Z" class="gb"/>`; o = x + 44; }
+    else if (orl) {
+      s += `<path d="M${xb} ${y} Q${xb + 12} ${y + 18} ${xb} ${y + 36} Q${xb + 30} ${y + 36} ${xb + 46} ${y + 18} Q${xb + 30} ${y} ${xb} ${y} Z" class="gb"/>`;
+      if (/X/.test(kind)) s += `<path d="M${x} ${y} Q${x + 12} ${y + 18} ${x} ${y + 36}" class="w"/>`;
+      o = xb + 46;
+    } else { s += `<path d="M${x} ${y} L${x + 30} ${y + 18} L${x} ${y + 36} Z" class="gb"/>`; o = x + 30; n = 1; }
+    if (/^N|XNOR|NOT/.test(kind)) { s += `<circle cx="${o + 4}" cy="${y + 18}" r="4" class="gb"/>`; o += 8; }
+    YS[n].forEach((yy, i) => {
+      const t = yy / 36, end = orl ? x + 24 * t * (1 - t) : x;
+      s += `<path d="M${x - 18} ${y + yy} H${end}" class="w"/><text x="${x - 21}" y="${y + yy + 4}" text-anchor="end" font-size="12">${ins[i]}</text>`;
+    });
+    s += `<path d="M${o} ${y + 18} H${o + 18}" class="w"/><text x="${o + 21}" y="${y + 22}" font-size="12">${out}</text>`;
+    return s;
+  }
+
+  /* ---------- cover: scrolling timing diagram ---------- */
+  let ct = 0;
+  function drawCover() {
+    const cv = $('coverTrace'), { ctx, W, H } = Deck.sizeCanvas(cv);
+    ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+    const rows = [['CLK', 'muted'], ['A', 'blu'], ['B', 'blu'], ['A·B', 'acc']], rh = H / 4, lx = 40, bw = Math.max(30, W / 24);
+    const A = k => rnd(k) > 0.45 ? 1 : 0, B = k => rnd(k + 101) > 0.4 ? 1 : 0;
+    const s = ct * 1.4, k0 = Math.floor(s) - 1, k1 = k0 + Math.ceil((W - lx) / bw) + 3;
+    ctx.font = Deck.font(11, true); ctx.textBaseline = 'middle';
+    rows.forEach((r, ri) => {
+      const yH = ri * rh + rh * 0.22, yL = ri * rh + rh * 0.8;
+      ctx.fillStyle = Deck.color(r[1]); ctx.textAlign = 'left'; ctx.fillText(r[0], 4, (yH + yL) / 2);
+      ctx.save(); ctx.beginPath(); ctx.rect(lx, 0, W - lx, H); ctx.clip();
+      ctx.strokeStyle = Deck.color(r[1]); ctx.lineWidth = ri === 3 ? 2.4 : 1.8; ctx.beginPath();
+      let first = true;
+      for (let k = k0; k <= k1; k++) {
+        const x0 = lx + (k - s) * bw, x1 = x0 + bw;
+        if (ri === 0) {
+          const xm = x0 + bw / 2;
+          if (first) { ctx.moveTo(x0, yL); first = false; }
+          ctx.lineTo(x0, yL); ctx.lineTo(x0, yH); ctx.lineTo(xm, yH); ctx.lineTo(xm, yL); ctx.lineTo(x1, yL);
+        } else {
+          const v = ri === 1 ? A(k) : ri === 2 ? B(k) : A(k) & B(k), y = v ? yH : yL;
+          if (first) { ctx.moveTo(x0, y); first = false; } else ctx.lineTo(x0, y);
+          ctx.lineTo(x1, y);
+        }
+      }
+      ctx.stroke(); ctx.restore();
+    });
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (RM) { if (ct === 0) { ct = 0.001; drawCover(); } return; } ct += dt; drawCover(); });
+
+  /* ---------- number-base converter ---------- */
+  Deck.onShow('conv', () => {
+    let W = 8, x = 217;
+    const box = $('cvBits');
+    function build() {
+      box.innerHTML = '';
+      for (let b = W - 1; b >= 0; b--) {
+        const bt = document.createElement('button'); bt.type = 'button'; bt.dataset.b = b;
+        bt.title = 'bit ' + b + ', weight ' + Math.pow(2, b);
+        bt.innerHTML = '<b class="v"></b><small>' + (b === W - 1 && W > 8 ? '2^' + b : Math.pow(2, b)) + '</small>';
+        bt.addEventListener('click', () => { x ^= (1 << b); draw(); });
+        box.appendChild(bt);
+      }
+    }
+    function msg(t) { $('cvSteps').innerHTML = '<span class="warn">' + t + '</span>'; }
+    function parse() {
+      W = +$('cvW').value; const base = +$('cvBase').value, mask = Math.pow(2, W) - 1;
+      let t = $('cvIn').value.trim().replace(/[\s_]/g, ''), neg = false;
+      if (base === 16) t = t.replace(/^0x/i, '');
+      if (base === 10 && /^[-−]/.test(t)) { neg = true; t = t.slice(1); }
+      const ok = { 10: /^\d+$/, 2: /^[01]+$/, 16: /^[0-9a-f]+$/i, 8: /^[0-7]+$/ }[base];
+      build();
+      if (!ok.test(t)) { draw(); msg('That is not a valid ' + { 10: 'decimal', 2: 'binary', 16: 'hexadecimal', 8: 'octal' }[base] + ' number.'); return; }
+      const v = parseInt(t, base);
+      if (neg) {
+        if (v > Math.pow(2, W - 1)) { draw(); msg('−' + v + ' needs more than ' + W + ' bits in 2\'s complement (range −' + Math.pow(2, W - 1) + ' … +' + (Math.pow(2, W - 1) - 1) + ').'); return; }
+        x = (Math.pow(2, W) - v) & mask;
+      } else {
+        if (v > mask) { draw(); msg(v + ' needs more than ' + W + ' bits (largest unsigned value ' + mask + ').'); return; }
+        x = v;
+      }
+      draw();
+    }
+    function draw() {
+      const half = Math.pow(2, W - 1), mask = Math.pow(2, W) - 1;
+      x &= mask;
+      box.querySelectorAll('button').forEach(bt => { const on = (x >> +bt.dataset.b) & 1; bt.classList.toggle('on', !!on); bt.querySelector('.v').textContent = on; });
+      const neg = x >= half, sgn = v => (v > 0 ? '+' : '') + v;
+      const tc = neg ? x - Math.pow(2, W) : x;
+      const oc = neg ? ((~x) & mask) === 0 ? '−0' : String(-((~x) & mask)) : sgn(x);
+      const sm = neg ? (x - half === 0 ? '−0' : String(-(x - half))) : sgn(x);
+      const hex = x.toString(16).toUpperCase().padStart(Math.ceil(W / 4), '0');
+      const bcd = String(x).split('').map(d => binS(+d, 4)).join(' ');
+      const gray = binS(x ^ (x >> 1), W);
+      let ones = 0; for (let k = 0; k < W; k++) ones += (x >> k) & 1;
+      const grp = s => s.replace(/(.{4})(?=.)/g, '$1 ');
+      $('cvTab').innerHTML =
+        '<tr><th>Read as</th><th>Value</th></tr>' +
+        '<tr><td>bits</td><td><b>' + grp(binS(x, W)) + '</b></td></tr>' +
+        '<tr><td>unsigned binary</td><td>' + x + '</td></tr>' +
+        '<tr><td>2\'s complement</td><td><b>' + sgn(tc) + '</b></td></tr>' +
+        '<tr><td>1\'s complement</td><td>' + oc + '</td></tr>' +
+        '<tr><td>sign-magnitude</td><td>' + sm + '</td></tr>' +
+        '<tr><td>hexadecimal / octal</td><td>' + hex + ' / ' + x.toString(8) + '</td></tr>' +
+        '<tr><td>BCD of unsigned value</td><td>' + bcd + '</td></tr>' +
+        '<tr><td>Gray code of word</td><td>' + grp(gray) + '</td></tr>' +
+        '<tr><td>even parity bit</td><td>' + (ones % 2) + ' &nbsp;(' + ones + ' ones)</td></tr>';
+      let st = [], v = x;
+      if (v === 0) st.push('0');
+      while (v > 0 && st.length < 16) { st.push(v + '÷2 = ' + Math.floor(v / 2) + ' r <b>' + (v % 2) + '</b>'); v = Math.floor(v / 2); }
+      $('cvSteps').innerHTML = 'Repeated division of ' + x + ': ' + st.join('; ') + ' → read remainders last to first.';
+    }
+    $('cvGo').addEventListener('click', parse);
+    $('cvIn').addEventListener('keydown', e => { if (e.key === 'Enter') parse(); });
+    $('cvW').addEventListener('change', () => { const m = Math.pow(2, +$('cvW').value) - 1; W = +$('cvW').value; x &= m; build(); draw(); });
+    $('cvInc').addEventListener('click', () => { x = (x + 1) % Math.pow(2, W); draw(); });
+    $('cvDec').addEventListener('click', () => { x = (x - 1 + Math.pow(2, W)) % Math.pow(2, W); draw(); });
+    $('cvInv').addEventListener('click', () => { x = (~x) & (Math.pow(2, W) - 1); draw(); });
+    $('cvNeg').addEventListener('click', () => { x = (Math.pow(2, W) - x) % Math.pow(2, W); draw(); });
+    build(); draw();
+    return draw;
+  });
+
+  /* ---------- absolute encoder ---------- */
+  Deck.onShow('enc', () => {
+    let playing = false;
+    const ang = $('enAng');
+    const get = Deck.controls('simEnc', draw);
+    const code = (s, g) => g ? s ^ (s >> 1) : s;
+    const decode = (c, g) => { if (!g) return c; let b = 0; while (c) { b ^= c; c >>= 1; } return b; };
+    const offs = (N, mis) => Array.from({ length: N }, (_, k) => N > 1 ? -mis + 2 * mis * k / (N - 1) : 0);
+    function raw(th, N, mis, g) {
+      const d = 360 / (1 << N), o = offs(N, mis); let c = 0;
+      for (let k = 0; k < N; k++) { const phi = ((th + o[k]) % 360 + 360) % 360, s = Math.floor(phi / d); if ((code(s, g) >> k) & 1) c |= 1 << k; }
+      return c;
+    }
+    $('enPlay').addEventListener('click', () => { playing = !playing; $('enPlay').textContent = playing ? 'Stop' : 'Rotate'; });
+    Deck.loop('enc', dt => {
+      if (!playing) return;
+      let a = +ang.value + dt * 18; if (a >= 360) a -= 360;
+      ang.value = a; ang.dispatchEvent(new Event('input'));
+    });
+    function draw() {
+      const v = get(), N = v.N, g = v.code === 'g', mis = v.mis, th = v.ang, S = 1 << N, d = 360 / S;
+      // disc
+      const cv = $('cvDisk'), { ctx, W, H } = Deck.sizeCanvas(cv);
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const cx = W / 2, cy = H / 2 + 4, R = Math.min(W, H) / 2 - 22, r0 = R * 0.26, w = (R - r0) / N, rad = a => a * Math.PI / 180;
+      for (let k = 0; k < N; k++) {
+        const i = N - 1 - k, rin = r0 + i * w, rout = rin + w;
+        for (let s = 0; s < S; s++) {
+          const a1 = rad(-90 + s * d - th), a2 = rad(-90 + (s + 1) * d - th);
+          ctx.beginPath(); ctx.arc(cx, cy, rout, a1, a2); ctx.arc(cx, cy, rin, a2, a1, true); ctx.closePath();
+          ctx.fillStyle = ((code(s, g) >> k) & 1) ? Deck.alpha('acc', 0.85) : Deck.color('panel'); ctx.fill();
+          ctx.strokeStyle = Deck.color('rule'); ctx.lineWidth = 1; ctx.stroke();
+        }
+      }
+      ctx.font = Deck.font(N > 3 ? 9.5 : 11, true); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = Deck.color('muted');
+      for (let s = 0; s < S; s++) { const a = rad(-90 + (s + 0.5) * d - th); ctx.fillText(String(s), cx + (R + 11) * Math.cos(a), cy + (R + 11) * Math.sin(a)); }
+      ctx.beginPath(); ctx.arc(cx, cy, r0 - 2, 0, 7); ctx.fillStyle = Deck.color('paper'); ctx.fill(); ctx.strokeStyle = Deck.color('muted'); ctx.stroke();
+      ctx.fillStyle = Deck.color('muted'); ctx.font = Deck.font(9.5); ctx.fillText('hub', cx, cy);
+      ctx.strokeStyle = Deck.color('muted'); ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(cx, cy - r0); ctx.lineTo(cx, cy - R - 4); ctx.stroke(); ctx.setLineDash([]);
+      const o = offs(N, mis);
+      for (let k = 0; k < N; k++) {
+        const i = N - 1 - k, rm = r0 + (i + 0.5) * w, a = rad(-90 + o[k]);
+        ctx.beginPath(); ctx.arc(cx + rm * Math.cos(a), cy + rm * Math.sin(a), 4.5, 0, 7);
+        ctx.fillStyle = Deck.color('blu'); ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = Deck.color('paper'); ctx.stroke();
+      }
+      // reading vs angle
+      const tru = [], rd = [];
+      for (let i = 0; i <= 1440; i++) { const t = i / 4; tru.push([t, Math.floor((t % 360) / d)]); rd.push([t, decode(raw(t, N, mis, g), g)]); }
+      Deck.plot($('cvEncP'), { x: [0, 360], y: [-0.5, S - 0.5], xlabel: 'shaft angle (degrees)', ylabel: 'sector number', xticks: [0, 90, 180, 270, 360],
+        yticks: N > 3 ? [0, 3, 6, 9, 12, 15] : [0, 1, 2, 3, 4, 5, 6, 7], pad: { l: 44 },
+        vlines: [{ x: th, color: 'blu', dash: [4, 3] }],
+        series: [{ pts: tru, color: 'muted', width: 3 }, { pts: rd, color: 'acc', width: 1.6 }] });
+      const c = raw(th, N, mis, g), val = decode(c, g), truth = Math.floor(th / d), err = ((val - truth + S + S / 2) % S) - S / 2;
+      $('roEnc').innerHTML = 'true sector <b>' + truth + '</b> &nbsp; detectors read <b>' + binS(c, N) + '</b>' + (g ? ' (Gray) → binary <b>' + binS(val, N) + '</b>' : '') +
+        ' = <b>' + val + '</b> &nbsp; error <b>' + (err > 0 ? '+' : '') + err + ' sector' + (Math.abs(err) === 1 ? '' : 's') + '</b> &nbsp; sector width <b>' + d.toFixed(1) + '°</b>';
+    }
+    return draw;
+  });
+
+  /* ---------- gate playground ---------- */
+  Deck.onShow('play', () => {
+    const L = 16; let inp = [[], [], []], cursor = 0, playing = false, acc = 0;
+    let mode = 'count';
+    const get = Deck.controls('simGate', () => { if (mode === 'count') countPreset(); draw(); });
+    const nIn = v => v.g === 'NOT' ? 1 : v.n;
+    function evalG(g, a) {
+      const all = a.every(t => t), any = a.some(t => t), x = a.reduce((p, t) => p ^ t, 0);
+      return { AND: all, OR: any, NAND: !all, NOR: !any, XOR: x, XNOR: !x, NOT: !a[0] }[g] ? 1 : 0;
+    }
+    function countPreset() { for (let i = 0; i < 3; i++) for (let t = 0; t < L; t++) { const n = nIn(get()), c = Math.floor(t / 2) % (1 << n); inp[i][t] = i < n ? (c >> (n - 1 - i)) & 1 : 0; } }
+    function randPreset() { for (let i = 0; i < 3; i++) for (let t = 0; t < L; t++) inp[i][t] = Math.random() < 0.5 ? 1 : 0; }
+    countPreset();
+    const names = ['A', 'B', 'C'];
+    const exprs = { AND: n => names.slice(0, n).join(''), OR: n => names.slice(0, n).join(' + '), NAND: n => '<span class="ov">' + names.slice(0, n).join('') + '</span>', NOR: n => '<span class="ov">' + names.slice(0, n).join(' + ') + '</span>', XOR: n => names.slice(0, n).join(' ⊕ '), XNOR: n => '<span class="ov">' + names.slice(0, n).join(' ⊕ ') + '</span>', NOT: () => '<span class="ov">A</span>' };
+    const cv = $('cvGate');
+    function geom() { const W = cv.clientWidth, H = parseFloat(cv.style.height) || 250, n = nIn(get()), lx = 30, sw = (W - lx - 8) / L, rows = n + 1, rh = (H - 22) / rows; return { W, H, n, lx, sw, rows, rh }; }
+    cv.addEventListener('click', e => {
+      const r = cv.getBoundingClientRect(), G = geom(), x = e.clientX - r.left, y = e.clientY - r.top;
+      const t = Math.floor((x - G.lx) / G.sw), row = Math.floor((y - 4) / G.rh);
+      if (t < 0 || t >= L) return;
+      if (row >= 0 && row < G.n) { inp[row][t] ^= 1; mode = 'custom'; }
+      cursor = t; draw();
+    });
+    $('gCount').addEventListener('click', () => { mode = 'count'; countPreset(); cursor = 0; draw(); });
+    $('gRand').addEventListener('click', () => { mode = 'random'; randPreset(); draw(); });
+    $('gPlay').addEventListener('click', () => { playing = !playing; $('gPlay').textContent = playing ? 'Stop cursor' : 'Play cursor'; });
+    Deck.loop('play', dt => { if (!playing) return; acc += dt; if (acc > 0.6) { acc = 0; cursor = (cursor + 1) % L; draw(); } });
+    function draw() {
+      const v = get(), n = nIn(v);
+      const out = []; for (let t = 0; t < L; t++) out.push(evalG(v.g, inp.slice(0, n).map(r => r[t])));
+      const { ctx, W, H } = Deck.sizeCanvas(cv);
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const lx = 30, sw = (W - lx - 8) / L, rows = n + 1, rh = (H - 22) / rows;
+      ctx.fillStyle = Deck.alpha('ylw', 0.18); ctx.fillRect(lx + cursor * sw, 0, sw, H - 18);
+      ctx.strokeStyle = Deck.color('rule'); ctx.lineWidth = 1;
+      for (let t = 0; t <= L; t++) { ctx.beginPath(); ctx.moveTo(lx + t * sw, 4); ctx.lineTo(lx + t * sw, H - 20); ctx.stroke(); }
+      ctx.font = Deck.font(10, true); ctx.fillStyle = Deck.color('muted'); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      for (let t = 0; t < L; t += (W < 480 ? 2 : 1)) ctx.fillText(String(t + 1), lx + (t + 0.5) * sw, H - 6);
+      for (let r = 0; r < rows; r++) {
+        const isOut = r === n, data = isOut ? out : inp[r], y0 = 4 + r * rh, yH = y0 + rh * 0.2, yL = y0 + rh * 0.78;
+        ctx.fillStyle = Deck.color(isOut ? 'acc' : 'blu'); ctx.font = Deck.font(12, true); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.fillText(isOut ? 'X' : names[r], 6, (yH + yL) / 2);
+        ctx.strokeStyle = Deck.color(isOut ? 'acc' : 'blu'); ctx.lineWidth = isOut ? 2.6 : 2; ctx.beginPath();
+        for (let t = 0; t < L; t++) { const y = data[t] ? yH : yL, x0 = lx + t * sw; if (t === 0) ctx.moveTo(x0, y); else ctx.lineTo(x0, y); ctx.lineTo(x0 + sw, y); }
+        ctx.stroke();
+      }
+      // symbol and truth table
+      $('gSym').innerHTML = gateSVG(v.g, 40, 7, n, names, 'X');
+      const cur = inp.slice(0, n).map(r => r[cursor]);
+      let h = '<tr>' + names.slice(0, n).map(c => '<th>' + c + '</th>').join('') + '<th>X</th></tr>';
+      for (let c = 0; c < (1 << n); c++) {
+        const bits = Array.from({ length: n }, (_, i) => (c >> (n - 1 - i)) & 1), isCur = bits.every((b, i) => b === cur[i]);
+        h += '<tr' + (isCur ? ' class="cur"' : '') + '>' + bits.map(b => '<td>' + b + '</td>').join('') + '<td>' + evalG(v.g, bits) + '</td></tr>';
+      }
+      $('gTab').innerHTML = h;
+      $('roGate').innerHTML = 'X = <b>' + exprs[v.g](n) + '</b> &nbsp; bit time <b>' + (cursor + 1) + '</b>: ' + cur.map((b, i) => names[i] + ' = <b>' + b + '</b>').join(', ') + ' → X = <b>' + out[cursor] + '</b>';
+    }
+    return draw;
+  });
+})();
+</script>
+</body>
+</html>

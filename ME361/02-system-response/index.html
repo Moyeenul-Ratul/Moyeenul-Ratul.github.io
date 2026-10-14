@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System Response · ME 361 panels</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:wght@400..700&display=swap">
+<style>
+:root{--paper:#F3F5F6;--panel:#FCFDFD;--ink:#16202B;--muted:#56636F;--rule:#D3DAE0;--grid:#E4E9ED;--acc:#C9481A;
+ --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;--f-body:"Public Sans","Segoe UI",Roboto,Arial,sans-serif;--f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root{--paper:#0E141A;--panel:#141C24;--ink:#E3E9EF;--muted:#94A2AF;--rule:#2B3743;--grid:#19222B;--acc:#FF7D4A;color-scheme:dark}}
+*{box-sizing:border-box} html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);line-height:1.5;padding-inline:16px;
+ background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px}
+.wrap{max-width:1040px;margin:0 auto;padding-block:36px 64px;display:flex;flex-direction:column;gap:22px}
+.eyebrow{font-family:var(--f-mono);font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--acc);margin:0}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(2.2rem,6vw,3.4rem);line-height:1.05;margin:0}
+h2{font-family:var(--f-display);font-weight:600;font-size:1.6rem;margin:0}
+p{margin:0;max-width:64ch} a{color:inherit}
+.back{font-family:var(--f-mono);font-size:.8rem;color:var(--muted);text-decoration:none}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.card{display:flex;flex-direction:column;gap:6px;text-decoration:none;background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:14px 16px}
+.card:hover{border-color:var(--acc)}
+.card .n{font-family:var(--f-mono);font-size:.75rem;color:var(--acc);font-weight:600}
+.card .t{font-weight:600}
+.card .d{color:var(--muted);font-size:.9rem}
+.topic{display:flex;flex-direction:column;gap:10px}
+.topic header{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid var(--rule);padding-bottom:6px}
+.topic header .n{font-family:var(--f-display);font-weight:700;font-size:1.8rem;color:var(--acc)}
+.topic header a{text-decoration:none}
+.muted{color:var(--muted);font-size:.9rem}
+</style></head><body><div class="wrap">
+<a class="back" href="../index.html">&larr; All topics</a>
+<header><p class="eyebrow">ME 361 · Instrumentation and Measurement · Topic 02</p><h1>System Response</h1><p class="muted">First- and second-order systems, frequency response, distortion. Open one panel at a time.</p></header>
+<div class="grid">
+<a class="card" href="02-01-first-order-step.html"><span class="n">02.01</span><span class="t">First-order step: time constant and rise time</span></a>
+<a class="card" href="02-02-find-hidden-tau.html"><span class="n">02.02</span><span class="t">First-order step: find the hidden τ</span></a>
+<a class="card" href="02-03-first-order-ramp.html"><span class="n">02.03</span><span class="t">First-order ramp input: constant lag</span></a>
+<a class="card" href="02-04-first-order-sine.html"><span class="n">02.04</span><span class="t">First-order sine input: amplitude ratio and lag</span></a>
+<a class="card" href="02-05-first-order-freq-response.html"><span class="n">02.05</span><span class="t">First-order frequency response curves</span></a>
+<a class="card" href="02-06-second-order-step-ringing.html"><span class="n">02.06</span><span class="t">Second-order step: ringing and damping</span></a>
+<a class="card" href="02-07-second-order-resonance.html"><span class="n">02.07</span><span class="t">Second-order resonance and frequency bands</span></a>
+<a class="card" href="02-08-freq-response-from-g.html"><span class="n">02.08</span><span class="t">Frequency response from G(iω)</span></a>
+<a class="card" href="02-09-phase-distortion.html"><span class="n">02.09</span><span class="t">Phase distortion: same harmonics, different shape</span></a>
+<a class="card" href="02-10-square-wave-distortion.html"><span class="n">02.10</span><span class="t">Square-wave distortion in a second-order system</span></a>
+<a class="card" href="02-11-bode-plot-chain.html"><span class="n">02.11</span><span class="t">Bode plot of a sensor–recorder chain</span></a>
+</div></div></body></html>

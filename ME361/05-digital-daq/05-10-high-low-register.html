@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>05.10 Digital signals: HIGH/LOW levels and a register · ME 361</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="../deck.css">
+<style>
+  .tbl.compact th,.tbl.compact td{padding:5px 10px;font-size:.88rem}
+  .readout{display:block;line-height:1.9}
+  .define{display:block}
+  .define::before{display:block;margin-bottom:4px}
+  svg .w{stroke:var(--ink);stroke-width:1.5;fill:none}
+  .bits{display:flex;gap:6px;flex-wrap:wrap}
+  .bits > button,.bits > span{min-width:2.4em;display:inline-flex;flex-direction:column;align-items:center;gap:1px;padding:.3em .35em;
+    border:1.5px solid var(--rule);border-radius:6px;background:var(--paper);color:var(--ink);font:600 1rem var(--f-mono);cursor:pointer}
+  .bits small{font:400 .62rem var(--f-mono);color:var(--muted)}
+  @media (max-width:480px){.bits{gap:4px}.bits > button,.bits > span{min-width:2em;padding:.25em .15em;font-size:.88rem}}
+  .bits .on{border-color:var(--acc);background:var(--acc-soft);color:var(--acc)}
+  .bits .cur{outline:2px solid var(--blu);outline-offset:1px}
+  .saplog{max-height:190px;overflow-y:auto}
+  .btnrow{display:flex;flex-wrap:wrap;gap:6px}
+  .btnrow .btn{font-size:.82rem;padding:.45em .75em}
+</style>
+<script>window.DECK = {"mode": "panel", "num": "05.10", "title": "Digital signals: HIGH/LOW levels and a register", "home": "index.html", "homeLabel": "Digital Devices & Data Acquisition", "course": "ME 361 · Instrumentation and Measurement"};</script>
+<script src="../deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+<section class="slide" id="register" data-title="HIGH and LOW signals; register simulator">
+  <p class="eyebrow">Simulator · a register on the wires</p>
+  <h2>HIGH and LOW: how a word travels on wires</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simReg">
+      <div class="simhead"><span>8-bit register</span><span class="legend"><span><i style="background:var(--acc)"></i>HIGH (1)</span><span><i style="background:var(--muted)"></i>LOW (0)</span></span></div>
+      <div class="bits" id="regBits" aria-label="Eight bit switches, most significant on the left; click to toggle"></div>
+      <canvas id="cvReg" data-h="250" aria-label="Left: eight parallel wires at 5 V or 0 V. Right: the same word sent serially on one wire, most significant bit first"></canvas>
+      <div class="btnrow"><button class="btn" type="button" id="regInc">Add 1</button><button class="btn" type="button" id="regNeg">Negate (invert, add 1)</button><button class="btn" type="button" id="regClr">Clear</button><button class="btn" type="button" id="reg179">Load 10110011</button></div>
+      <div class="readout" id="roReg"></div>
+    </div>
+    <div>
+      <p>Electronics represents a bit by a voltage. In 5 V <dfn>TTL</dfn> (transistor–transistor logic) a HIGH of about 5 V means 1 and a LOW of about 0 V means 0. A receiver accepts anything from 2 to 5.5 V as HIGH and anything below about 0.8 V as LOW. The undefined gap in between is a <dfn>noise margin</dfn>: a half-volt spike on a LOW line still reads LOW.</p>
+      <p><dfn>Parallel</dfn> transmission uses one wire per bit, so the whole word arrives at once. <dfn>Serial</dfn> transmission uses one wire and sends the bits one after another, each held for a fixed time \(\delta t\), so a word takes \(M\,\delta t\).</p>
+      <div class="analogy"><p>Parallel is an eight-lane bridge: a whole word crosses side by side. Serial is a single-lane bridge: the bits queue up, but you only have to build one lane.</p></div>
+      <div class="try"><p>Press <b>Load 10110011</b>: unsigned 179, two's complement −77. Press <b>Negate</b>: 01001101 = +77. Now set 01111111 (+127) and press <b>Add 1</b>. The pattern becomes 10000000, which two's complement reads as −128: integer overflow wraps round, it does not stop at the top.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · DAC -->
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const TAU = 2 * Math.PI;
+  const bin = (x, M) => (x >>> 0).toString(2).padStart(M, '0').slice(-M);
+
+  /* ---- cover: sine turned into a staircase ---- */
+  let cT = 0;
+  function drawCover() {
+    const n = 600, lev = 8, tt = Math.min(cT, 1), a = [], q = [];
+    for (let i = 0; i <= n; i++) {
+      const u = i / n; if (u > tt) break;
+      const v = Math.sin(TAU * 1.5 * u) * 0.92;
+      a.push([u, v]);
+      const c = Math.min(lev - 1, Math.floor((v + 1) / 2 * lev));
+      q.push([u, -1 + (c + 0.5) * 2 / lev]);
+    }
+    Deck.plot($('coverQ'), { x: [0, 1], y: [-1.15, 1.15], pad: { l: 8, r: 8, t: 6, b: 6 }, xticks: [], yticks: [],
+      series: [{ pts: a, color: 'muted', width: 1.3 }, { pts: q, color: 'acc', width: 2.4 }] });
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (cT < 1.05) { cT += RM ? 2 : dt * 0.3; drawCover(); } });
+
+  /* ---- register simulator ---- */
+  Deck.onShow('register', () => {
+    const M = 8, box = $('regBits'); let x = 0b10110011;
+    for (let b = M - 1; b >= 0; b--) {
+      const bt = document.createElement('button'); bt.type = 'button'; bt.dataset.b = b;
+      bt.title = 'bit ' + b + ', weight ' + (1 << b);
+      bt.innerHTML = '<b class="v"></b><small>' + (1 << b) + '</small>';
+      bt.style.padding = '.3em .35em';
+      bt.addEventListener('click', () => { x ^= (1 << b); draw(); });
+      box.appendChild(bt);
+    }
+    $('regInc').addEventListener('click', () => { x = (x + 1) & 255; draw(); });
+    $('regNeg').addEventListener('click', () => { x = ((~x) + 1) & 255; draw(); });
+    $('regClr').addEventListener('click', () => { x = 0; draw(); });
+    $('reg179').addEventListener('click', () => { x = 0b10110011; draw(); });
+    function draw() {
+      box.querySelectorAll('button').forEach(bt => { const on = (x >> +bt.dataset.b) & 1; bt.classList.toggle('on', !!on); bt.querySelector('.v').textContent = on; });
+      const cv = $('cvReg'), { ctx, W, H } = Deck.sizeCanvas(cv);
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const split = Math.round(W * 0.38), top = 26, rowH = (H - top - 10) / 8, fs = W < 480 ? 10 : 11.5;
+      ctx.font = Deck.font(fs); ctx.fillStyle = Deck.color('ink'); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+      ctx.fillText('parallel: 8 wires', 6, 16); ctx.fillText('serial: 1 wire, MSB first', split + 10, 16);
+      // parallel lines
+      for (let k = 0; k < 8; k++) {
+        const b = 7 - k, on = (x >> b) & 1, y0 = top + k * rowH, yH = y0 + rowH * 0.22, yL = y0 + rowH * 0.78;
+        ctx.fillStyle = Deck.color('muted'); ctx.font = Deck.font(fs - 1, true); ctx.textAlign = 'left';
+        ctx.fillText('b' + b, 4, (yH + yL) / 2 + 4);
+        ctx.strokeStyle = Deck.color(on ? 'acc' : 'muted'); ctx.lineWidth = on ? 2.6 : 1.6;
+        const y = on ? yH : yL; ctx.beginPath(); ctx.moveTo(28, y); ctx.lineTo(split - 44, y); ctx.stroke();
+        ctx.fillStyle = Deck.color(on ? 'acc' : 'muted'); ctx.textAlign = 'right';
+        ctx.fillText(on ? '5 V' : '0 V', split - 8, (yH + yL) / 2 + 4);
+      }
+      // serial waveform
+      const x0 = split + 14, x1 = W - 8, slot = (x1 - x0) / 10, yH = top + 30, yL = H - 46;
+      ctx.strokeStyle = Deck.color('rule'); ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
+      [yH, yL].forEach(y => { ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke(); });
+      ctx.setLineDash([]);
+      ctx.fillStyle = Deck.color('muted'); ctx.font = Deck.font(fs - 1, true); ctx.textAlign = 'left';
+      ctx.fillText('HIGH 5 V', x0, yH - 6); ctx.fillText('LOW 0 V', x0, yL + 14);
+      ctx.strokeStyle = Deck.color('acc'); ctx.lineWidth = 2.4; ctx.beginPath();
+      let px = x0, py = yL; ctx.moveTo(px, py); px += slot; ctx.lineTo(px, py);
+      for (let k = 0; k < 8; k++) {
+        const on = (x >> (7 - k)) & 1, y = on ? yH : yL;
+        ctx.lineTo(px, y); px += slot; ctx.lineTo(px, y);
+      }
+      ctx.lineTo(px, yL); ctx.lineTo(x1, yL); ctx.stroke();
+      ctx.font = Deck.font(fs + 1, true); ctx.textAlign = 'center';
+      for (let k = 0; k < 8; k++) {
+        const on = (x >> (7 - k)) & 1; ctx.fillStyle = Deck.color(on ? 'acc' : 'muted');
+        ctx.fillText(String(on), x0 + slot * (k + 1.5), (yH + yL) / 2 + 4);
+      }
+      ctx.strokeStyle = Deck.color('blu'); ctx.fillStyle = Deck.color('blu'); ctx.lineWidth = 1.4;
+      const ya = H - 16; ctx.beginPath(); ctx.moveTo(x0 + slot, ya); ctx.lineTo(x0 + 2 * slot, ya);
+      ctx.moveTo(x0 + slot, ya - 5); ctx.lineTo(x0 + slot, ya + 5); ctx.moveTo(x0 + 2 * slot, ya - 5); ctx.lineTo(x0 + 2 * slot, ya + 5); ctx.stroke();
+      ctx.font = Deck.font(fs, true); ctx.textAlign = 'left'; ctx.fillText('δt', x0 + 2 * slot + 6, ya + 4);
+      ctx.fillStyle = Deck.color('muted'); ctx.textAlign = 'right'; ctx.fillText('time →', x1, ya + 4);
+      const s = x >= 128 ? x - 256 : x, hex = x.toString(16).toUpperCase().padStart(2, '0');
+      $('roReg').innerHTML = 'word <b>' + bin(x, 8) + '</b> &nbsp; hex <b>' + hex + '</b> &nbsp; unsigned <b>' + x + '</b> &nbsp; two\'s complement <b>' + (s > 0 ? '+' : '') + s + '</b> &nbsp; 0–10 V D/A output <b>' + (10 * x / 256).toFixed(3) + ' V</b>';
+    }
+    return draw;
+  });
+
+  /* ---- quantization simulator ---- */
+  Deck.onShow('quant', () => {
+    const get = Deck.controls('simQ', draw);
+    function draw() {
+      const v = get(), M = v.M, A = v.A, off = v.o;
+      const rng = { u10: [0, 10], b5: [-5, 5], b10: [-10, 10] }[v.R], lo = rng[0], hi = rng[1];
+      const Q = (hi - lo) / Math.pow(2, M), top = Math.pow(2, M) - 1;
+      const an = [], dg = [], er = []; let emax = 0, sat = false;
+      for (let i = 0; i <= 900; i++) {
+        const t = 2 * i / 900, E = off + A * Math.sin(TAU * t);
+        let c = v.s === 'r' ? Math.floor((E - lo) / Q + 0.5) : Math.floor((E - lo) / Q);
+        if (c > top) { c = top; sat = true; } if (c < 0) { c = 0; sat = true; }
+        const Eo = lo + c * Q, e = E - Eo;
+        an.push([t, E]); dg.push([t, Eo]); er.push([t, e * 1000]);
+        emax = Math.max(emax, Math.abs(e));
+      }
+      const hs = Math.max(A, 2 * Q) * 1.25, ylo = off - hs, yhi = off + hs;
+      Deck.plot($('cvQ'), { x: [0, 2], y: [ylo, yhi], ylabel: 'volts', xticks: [], pad: { b: 10 },
+        bands: [{ y0: hi, y1: 1e3, color: 'red', alpha: .12 }, { y0: -1e3, y1: lo, color: 'red', alpha: .12 }],
+        series: [{ pts: an, color: 'muted', width: 1.4 }, { pts: dg, color: 'acc', width: 2.2, steps: false }] });
+      const band = v.s === 'r' ? [-Q / 2, Q / 2] : [0, Q];
+      const ylim = Math.max(1.6 * Q, Math.min(emax, 50) * 1.1) * 1000;
+      Deck.plot($('cvQe'), { x: [0, 2], y: [-ylim, ylim], xlabel: 'time (signal periods)', ylabel: 'eQ (mV)',
+        bands: [{ y0: band[0] * 1000, y1: band[1] * 1000, color: 'blu', alpha: .14 }], hlines: [{ y: 0, color: 'muted', dash: [2, 3] }],
+        series: [{ pts: er, color: 'blu', width: 1.4 }] });
+      const fmtV = q => q >= 1 ? q.toPrecision(3) + ' V' : q >= 1e-3 ? (q * 1e3).toPrecision(3) + ' mV' : (q * 1e6).toPrecision(3) + ' µV';
+      $('roQ').innerHTML = 'levels 2<sup>M</sup> = <b>' + (top + 1) + '</b> &nbsp; E<sub>FSR</sub> = <b>' + (hi - lo) + ' V</b> &nbsp; Q = <b>' + fmtV(Q) + '</b> &nbsp; theory max |e<sub>Q</sub>| = <b>' + fmtV(v.s === 'r' ? Q / 2 : Q) + '</b> &nbsp; e<sub>Q</sub>/amplitude = <b>' + (100 * (v.s === 'r' ? Q / 2 : Q) / A).toPrecision(3) + ' %</b> &nbsp; SNR = <b>' + (20 * M * Math.log10(2)).toFixed(1) + ' dB</b>' + (sat ? ' &nbsp; <b>SATURATION: input leaves the range</b>' : '');
+    }
+    return draw;
+  });
+
+  /* ---- successive approximation ---- */
+  Deck.onShow('sar', () => {
+    let st = null;
+    const get = Deck.controls('simSar', reset);
+    function reset() { const v = get(); st = { M: +v.M, E: v.E, code: 0, bit: +v.M - 1, trials: [], done: false }; draw(); }
+    function tick() {
+      if (st.done) return;
+      const Q = 15 / Math.pow(2, st.M), trial = st.code | (1 << st.bit), Es = trial * Q, keep = Es <= st.E;
+      st.trials.push({ bit: st.bit, trial, Es, keep });
+      if (keep) st.code = trial;
+      st.bit--; if (st.bit < 0) st.done = true;
+      draw();
+    }
+    $('sarNext').addEventListener('click', tick);
+    $('sarAll').addEventListener('click', () => { while (!st.done) tick(); });
+    $('sarReset').addEventListener('click', reset);
+    function draw() {
+      if (!st) { const v = get(); st = { M: +v.M, E: v.E, code: 0, bit: +v.M - 1, trials: [], done: false }; }
+      const Q = 15 / Math.pow(2, st.M);
+      const kept = [[0, 0]].concat(st.trials.map((t, i) => [i + 1, (t.keep ? t.trial : (t.trial & ~(1 << t.bit))) * Q]));
+      Deck.plot($('cvSar'), { x: [0, st.M + 0.5], y: [0, 15.5], xlabel: 'clock tick', ylabel: 'E* (V)', xticks: Array.from({ length: st.M + 1 }, (_, i) => i),
+        hlines: [{ y: st.E, color: 'blu', width: 2, dash: [6, 3], label: 'Ei = ' + st.E.toFixed(2) + ' V' }],
+        series: [{ pts: kept, color: 'grn', steps: true, width: 2 }],
+        points: st.trials.map((t, i) => ({ x: i + 1, y: t.Es, color: t.keep ? 'acc' : 'red', r: st.M > 8 ? 4 : 5.5 })) });
+      let h = '';
+      for (let b = st.M - 1; b >= 0; b--) {
+        const on = (st.code >> b) & 1, cur = !st.done && b === st.bit;
+        h += '<span class="' + (on ? 'on' : '') + (cur ? ' cur' : '') + '" title="bit ' + b + '">' + on + '</span>';
+      }
+      $('sarBits').innerHTML = h;
+      let rows = '<tr><th>Tick</th><th>Trial</th><th>E* (V)</th><th>Comparator</th></tr>';
+      st.trials.forEach((t, i) => { rows += '<tr><td>' + (i + 1) + '</td><td>' + bin(t.trial, st.M) + '</td><td>' + t.Es.toFixed(4) + '</td><td>' + (t.keep ? 'E* ≤ Ei: HIGH, keep 1' : 'E* &gt; Ei: LOW, reset 0') + '</td></tr>'; });
+      $('sarLog').innerHTML = rows;
+      const out = st.code * Q;
+      $('roSar').innerHTML = 'Q = <b>' + (Q * 1000).toPrecision(4) + ' mV</b> &nbsp; register <b>' + bin(st.code, st.M) + '</b> = <b>' + st.code + '</b> → <b>' + out.toFixed(4) + ' V</b>' + (st.done ? ' &nbsp; done in <b>' + st.M + ' ticks</b> (' + st.M + ' µs at 1 MHz); e<sub>Q</sub> = <b>' + ((st.E - out) * 1000).toFixed(1) + ' mV</b>' : ' &nbsp; next: test bit ' + st.bit);
+    }
+    reset();
+    return draw;
+  });
+
+  /* ---- dual-slope integrator ---- */
+  Deck.onShow('ramp', () => {
+    const get = Deck.controls('simDS', draw);
+    function draw() {
+      const v = get(), Eref = 10, t1 = +v.t1 / 1000, Ei = v.E, h = v.h, ph = v.p * Math.PI / 180, w = TAU * 50;
+      // normalised integrator: y(t) = (1/(Eref t1)) * integral of input  (full scale input -> 1 at t1)
+      const humInt = t => h * (Math.cos(ph) - Math.cos(w * t + ph)) / w;
+      const y1 = t => (Ei * t + humInt(t)) / (Eref * t1), y0 = t => Ei * t / (Eref * t1);
+      const ys = y1(t1), tm = ys * t1, reading = Eref * tm / t1;
+      const tmax = 2.15 * t1, pts = [], ptsC = [];
+      for (let i = 0; i <= 400; i++) { const t = t1 * i / 400; pts.push([t * 1000, y1(t)]); ptsC.push([t * 1000, y0(t)]); }
+      pts.push([(t1 + Math.max(tm, 0)) * 1000, 0]);
+      ptsC.push([(t1 + Ei * t1 / Eref) * 1000, 0]);
+      Deck.plot($('cvDS'), { x: [0, tmax * 1000], y: [Math.min(0, -0.05), 1.15], xlabel: 'time (ms)', ylabel: 'integrator output (norm.)',
+        vlines: [{ x: t1 * 1000, color: 'blu', dash: [4, 3], label: 't1' }, { x: (t1 + tm) * 1000, color: 'acc', dash: [2, 3], label: 't1+tm' }],
+        series: [{ pts: ptsC, color: 'muted', width: 1.4, dash: [5, 4] }, { pts, color: 'acc', width: 2.2 }] });
+      $('roDS').innerHTML = 't<sub>1</sub> = <b>' + (t1 * 1000) + ' ms</b> &nbsp; t<sub>m</sub> = <b>' + (tm * 1000).toFixed(3) + ' ms</b> &nbsp; reading E<sub>ref</sub>t<sub>m</sub>/t<sub>1</sub> = <b>' + reading.toFixed(3) + ' V</b> &nbsp; error = <b>' + ((reading - Ei) * 1000).toFixed(0) + ' mV</b> &nbsp; mains cycles in t<sub>1</sub>: <b>' + (t1 * 50).toFixed(2) + '</b>';
+    }
+    return draw;
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>05.19 Sigma-delta modulator · ME 361</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="../deck.css">
+<style>
+  .tbl.compact th,.tbl.compact td{padding:5px 10px;font-size:.88rem}
+  .readout{display:block;line-height:1.9}
+  svg .w{stroke:var(--ink);stroke-width:1.5;fill:none}
+  .simbtns{display:flex;gap:8px;flex-wrap:wrap}
+</style>
+<script>window.DECK = {"mode": "panel", "num": "05.19", "title": "Sigma-delta modulator", "home": "index.html", "homeLabel": "Digital Devices & Data Acquisition", "course": "ME 361 · Instrumentation and Measurement"};</script>
+<script src="../deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+<section class="slide" id="sd" data-title="The sigma-delta modulator">
+  <p class="eyebrow">Sigma-delta converters · principle</p>
+  <h2>A 1-bit converter, run very fast, whose bit density tracks the input</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simSD">
+      <div class="simhead"><span>First-order modulator</span><span class="legend"><span><i style="background:var(--muted)"></i>input</span><span><i style="background:var(--acc)"></i>word average</span><span><i style="background:var(--blu)"></i>bits ±V</span><span><i style="background:var(--acc)"></i>integrator (dashed)</span></span></div>
+      <canvas id="cvSD1" data-h="125" aria-label="Input voltage and the average of the bitstream over each block of clocks, shown as a staircase that follows the input"></canvas>
+      <canvas id="cvSD2" data-h="120" aria-label="The bitstream as plus or minus one pulses, and the integrator output"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="sdm">Input</label>
+          <select id="sdm" data-key="mode"><option value="dc" selected>constant</option><option value="sin">slow sine</option></select></div>
+        <div class="ctl"><label for="sdx">Input level / amplitude (× V) <output data-for="x"></output></label>
+          <input type="range" id="sdx" data-key="x" min="-0.95" max="0.95" step="0.05" value="0.5" data-fmt="2"></div>
+        <div class="ctl"><label for="sdM">Bits averaged per output word</label>
+          <select id="sdM" data-key="M"><option value="8">8</option><option value="16" selected>16</option><option value="32">32</option></select></div>
+      </div>
+      <div class="simbtns"><button class="btn" type="button" id="sdReplay">Replay clock by clock</button></div>
+      <div class="readout" id="roSD"></div>
+      <div class="try"><p>Set a constant 0.5 and replay: three bits in four are 1 and the staircase settles on 0.5. Try 0.05: the pattern is nearly 1010…, with an occasional extra 1. Switch to "slow sine" and change the bits per word from 8 to 32: more bits per word give finer steps but fewer, later words. That is the speed-for-resolution trade.</p></div>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 160" aria-label="Sigma-delta modulator: input V in enters a summing junction, then an integrator, then a clocked 1-bit quantizer (comparator and latch). The output bitstream goes to a digital filter and decimator that produces M-bit words at a low rate. The bitstream also drives a 1-bit DAC whose output, plus or minus V, is subtracted at the summing junction.">
+<text x="6" y="44" text-anchor="start" class="t-acc" font-size="11">V<tspan baseline-shift="-3" font-size="75%">in</tspan></text>
+<path d="M6 52 L56 52" class="w"/><path d="M56 52 L49 55.5 L49 48.5 Z" class="fill-ink"/>
+<circle cx="68" cy="52" r="12" class="fill-panel" style="stroke:var(--ink);stroke-width:1.5"/>
+<text x="68" y="57" text-anchor="middle" font-size="13">Σ</text>
+<text x="50" y="44" text-anchor="middle" font-size="10">+</text>
+<path d="M80 52 L102 52" class="w"/><path d="M102 52 L95 55.5 L95 48.5 Z" class="fill-ink"/>
+<rect x="102" y="34" width="52" height="36" rx="5" class="box"/>
+<text x="128" y="58" text-anchor="middle" font-size="18">∫</text>
+<text x="128" y="83" text-anchor="middle" class="t-muted" font-size="9">integrator</text>
+<path d="M154 52 L176 52" class="w"/><path d="M176 52 L169 55.5 L169 48.5 Z" class="fill-ink"/>
+<rect x="176" y="34" width="70" height="36" rx="5" class="box-acc"/>
+<text x="211" y="50" text-anchor="middle" font-size="9.5">1-bit</text>
+<text x="211" y="62" text-anchor="middle" font-size="9.5">quantizer</text>
+<text x="211" y="28" text-anchor="middle" class="t-muted" font-size="9">comparator + latch</text>
+<path d="M211 96 L211 70" class="ln-thin"/><path d="M211 70 L214.5 77 L207.5 77 Z" class="fill-muted"/>
+<text x="205" y="96" text-anchor="end" class="t-mono t-muted" font-size="8.5">clock</text>
+<path d="M246 52 L262 52" class="w"/>
+<circle cx="262" cy="52" r="2.6" class="fill-ink"/>
+<path d="M262 52 L290 52" class="w"/><path d="M290 52 L283 55.5 L283 48.5 Z" class="fill-ink"/>
+<rect x="290" y="30" width="104" height="44" rx="5" class="box-blu"/>
+<text x="342" y="48" text-anchor="middle" font-size="9.5">digital filter</text>
+<text x="342" y="61" text-anchor="middle" font-size="9.5">+ decimator</text>
+<path d="M342 74 L342 102" class="w"/><path d="M342 102 L338.5 95 L345.5 95 Z" class="fill-ink"/>
+<text x="342" y="114" text-anchor="middle" class="t-blu" font-size="9.5">M-bit words</text>
+<text x="342" y="126" text-anchor="middle" class="t-blu" font-size="9.5">at a low rate</text>
+<text x="267" y="84" text-anchor="start" class="t-mono t-blu" font-size="8.5">bit-</text>
+<text x="267" y="94" text-anchor="start" class="t-mono t-blu" font-size="8.5">stream</text>
+<path d="M262 52 L262 124 L200 124" class="w"/>
+<rect x="128" y="110" width="72" height="28" rx="5" class="box"/>
+<text x="164" y="122" text-anchor="middle" font-size="9.5">1-bit DAC</text>
+<text x="164" y="133" text-anchor="middle" class="t-mono" font-size="8.5">±V</text>
+<path d="M128 124 L68 124 L68 71" class="w"/>
+<path d="M68 64 L71.5 71 L64.5 71 Z" class="fill-ink"/>
+<text x="78" y="84" text-anchor="start" font-size="12">−</text>
+<text x="96" y="152" text-anchor="start" class="t-muted" font-size="9">feedback: +V for a 1, −V for a 0</text>
+        </svg>
+      </figure>
+      <p>A <dfn>sigma-delta converter</dfn> (also called delta-sigma) is the modulator drawn here followed by a digital filter. At every clock tick the loop subtracts the feedback (\(+V\) after a 1, \(-V\) after a 0) from the input, adds the difference to the integrator, and the comparator outputs 1 if the integrator is positive. If the input is higher than the average feedback, the integrator climbs and more 1s are produced, so the feedback is pulled up to match.</p>
+      <ol class="steps">
+        <li>After \(N\) clocks the integrator holds \(u_N=\sum_{k}(V_{in}-v_k)\), with \(v_k=\pm V\).</li>
+        <li>The feedback keeps \(u_N\) bounded (within about \(\pm2V\)), so dividing by \(N\): \(V_{in}-\frac1N\sum v_k\to0\).</li>
+        <li>With \(n_1\) ones: \(\frac{V(n_1-(N-n_1))}{N}=V_{in}\), so \(\dfrac{n_1}{N}=\dfrac12\Big(1+\dfrac{V_{in}}{V}\Big)\).</li>
+      </ol>
+      <p>So \(V_{in}=0.5V\) gives 75 % ones, \(0\) gives half, \(-V\) none; counting the 1s over 4096 clocks gives a 12-bit result.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 11 · Oversampling, noise shaping, choosing -->
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const TAU = 2 * Math.PI;
+
+  /* ---------- shared signal tools ---------- */
+  function rng(seed) { let s = seed; return () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; }; }
+  function gauss(r) { let u = 0; for (let i = 0; i < 6; i++) u += r(); return (u - 3) / Math.sqrt(0.5); }
+  function maMag(f, N, dt) { const x = Math.PI * f * dt; if (Math.abs(Math.sin(x)) < 1e-12) return 1; return Math.abs(Math.sin(N * x) / (N * Math.sin(x))); }
+  function iirMag(f, a, dt) { const w = TAU * f * dt, re = 1 - (1 - a) * Math.cos(w), im = (1 - a) * Math.sin(w); return a / Math.hypot(re, im); }
+
+  /* ---------- cover ---------- */
+  let cT = 0;
+  const cr = rng(7), cN = 700, craw = [], ctrue = [];
+  for (let i = 0; i < cN; i++) { const t = i / cN; const s = 0.55 * Math.sin(TAU * 1.3 * t) + 0.25 * Math.sin(TAU * 3.1 * t + 1); ctrue.push(s); craw.push(s + 0.28 * Math.sin(TAU * 35 * t) + 0.08 * gauss(cr)); }
+  const cfil = craw.map((_, i) => { let a = 0, n = 0; for (let k = i - 10; k <= i + 9; k++) if (k >= 0 && k < cN) { a += craw[k]; n++; } return a / n; });
+  function drawCover() {
+    const cv = $('coverTrace'), { ctx, W, H } = Deck.sizeCanvas(cv);
+    ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+    const X = i => 6 + (W - 12) * i / (cN - 1), Y = v => H / 2 - v * H * 0.42;
+    ctx.strokeStyle = Deck.color('muted'); ctx.lineWidth = 1; ctx.beginPath();
+    craw.forEach((v, i) => i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v))); ctx.stroke();
+    const upto = Math.min(cN - 1, Math.floor(cT * cN));
+    ctx.strokeStyle = Deck.color('acc'); ctx.lineWidth = 2.6; ctx.beginPath();
+    for (let i = 0; i <= upto; i++) i ? ctx.lineTo(X(i), Y(cfil[i])) : ctx.moveTo(X(i), Y(cfil[i]));
+    ctx.stroke();
+    ctx.fillStyle = Deck.color('acc'); ctx.beginPath(); ctx.arc(X(upto), Y(cfil[upto]), 4, 0, 7); ctx.fill();
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (cT < 1.01) { cT += RM ? 2 : dt * 0.25; drawCover(); } });
+
+  /* ---------- loop budget simulator ---------- */
+  const RHO = 1.72e-8;
+  let loopState = null, dotPhase = 0;
+  function loopCalc(v) {
+    const L = +(+v.L).toPrecision(3), A = +v.A * 1e-6, Rs = +v.Rs, Rw = RHO * 2 * L / A;
+    const Idem = (4 + 16 * v.P / 100) / 1000, Ilim = Math.max(0, (v.Vs - v.Vm) / (Rw + Rs));
+    const I = Math.min(Idem, Ilim), starved = Idem > Ilim + 1e-9;
+    const Vw = I * Rw, Vr = I * Rs, Vtx = v.Vs - Vw - Vr;
+    const Rmax = (v.Vs - v.Vm) / 0.020, Lmax = Math.max(0, (Rmax - Rs) * A / RHO / 2);
+    return { L, A, Rs, Rw, Idem, I, starved, Vw, Vr, Vtx, Rmax, Lmax, Vs: v.Vs, Vm: v.Vm, P: v.P };
+  }
+  function zig(ctx, x1, x2, y, amp) {
+    const lead = (x2 - x1) * 0.18, a = x1 + lead, b = x2 - lead; ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(a, y);
+    for (let i = 0; i < 6; i++) ctx.lineTo(a + (b - a) * (i + .5) / 6, y + (i % 2 ? -amp : amp));
+    ctx.lineTo(b, y); ctx.lineTo(x2, y); ctx.stroke();
+  }
+  function drawLoop() {
+    const s = loopState; if (!s) return;
+    const cv = $('cvLoop'), { ctx, W, H } = Deck.sizeCanvas(cv);
+    ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+    const small = W < 520, fs = small ? 10 : 12;
+    const xS = 34, xR = W * 0.24, xC = W * 0.52, xT = W - (small ? 58 : 80), yT = 46, yB = H - 50;
+    const ink = Deck.color('ink'), mut = Deck.color('muted');
+    // zones
+    ctx.setLineDash([4, 4]); ctx.strokeStyle = Deck.color('rule'); ctx.lineWidth = 1;
+    ctx.strokeRect(4, 8, xR + 34, H - 14); ctx.strokeRect(xT - (small ? 40 : 52), 8, W - xT + (small ? 36 : 48), H - 14); ctx.setLineDash([]);
+    ctx.font = Deck.font(fs - 1); ctx.fillStyle = mut; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText('control room', 10, 12); ctx.textAlign = 'right'; ctx.fillText('field', W - 10, 12);
+    ctx.textAlign = 'center'; ctx.fillText('cable ' + s.L + ' m, ' + (s.A * 1e6) + ' mm²', xC, (yT + yB) / 2 - 8);
+    // wires
+    ctx.strokeStyle = ink; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(xS, (yT + yB) / 2 - 14); ctx.lineTo(xS, yT); ctx.lineTo(xC - 26, yT); ctx.stroke();
+    zig(ctx, xC - 26, xC + 26, yT, 5);
+    ctx.beginPath(); ctx.moveTo(xC + 26, yT); ctx.lineTo(xT, yT); ctx.lineTo(xT, yT + 24); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(xT, yB - 24); ctx.lineTo(xT, yB); ctx.lineTo(xC + 26, yB); ctx.stroke();
+    zig(ctx, xC - 26, xC + 26, yB, 5);
+    ctx.beginPath(); ctx.moveTo(xC - 26, yB); ctx.lineTo(xR + 24, yB); ctx.stroke();
+    zig(ctx, xR - 24, xR + 24, yB, 5);
+    ctx.beginPath(); ctx.moveTo(xR - 24, yB); ctx.lineTo(xS, yB); ctx.lineTo(xS, (yT + yB) / 2 + 14); ctx.stroke();
+    // battery
+    const yc = (yT + yB) / 2; ctx.lineWidth = 2.2;
+    [[-14, 14], [-6, 7], [2, 14], [10, 7]].forEach(([dy, hw], k) => { ctx.beginPath(); ctx.moveTo(xS - hw, yc + dy); ctx.lineTo(xS + hw, yc + dy); ctx.stroke(); });
+    ctx.lineWidth = 1.6;
+    ctx.fillStyle = Deck.color('acc'); ctx.font = Deck.font(fs, true); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(s.Vs.toFixed(1) + ' V', xS + 18, yc - 4);
+    // transmitter box
+    const ok = !s.starved;
+    ctx.fillStyle = Deck.alpha(ok ? 'grn' : 'red', .18); ctx.strokeStyle = Deck.color(ok ? 'grn' : 'red');
+    ctx.fillRect(xT - (small ? 30 : 40), yT + 24, small ? 60 : 80, yB - yT - 48); ctx.strokeRect(xT - (small ? 30 : 40), yT + 24, small ? 60 : 80, yB - yT - 48);
+    ctx.fillStyle = ink; ctx.font = Deck.font(fs - 1); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('transmitter', xT, yc - 16);
+    ctx.font = Deck.font(fs, true); ctx.fillStyle = Deck.color(ok ? 'grn' : 'red'); ctx.fillText(s.Vtx.toFixed(1) + ' V', xT, yc + 2);
+    ctx.font = Deck.font(fs - 2, true); ctx.fillStyle = mut; ctx.fillText('needs ' + s.Vm.toFixed(1), xT, yc + 18);
+    // labels
+    ctx.font = Deck.font(fs - 1, true); ctx.textBaseline = 'bottom'; ctx.fillStyle = mut;
+    ctx.fillText((s.Rw / 2).toFixed(1) + ' Ω: ' + (s.Vw / 2).toFixed(2) + ' V', xC, yT - 8);
+    ctx.textBaseline = 'top'; ctx.fillText((s.Rw / 2).toFixed(1) + ' Ω: ' + (s.Vw / 2).toFixed(2) + ' V', xC, yB + 9);
+    ctx.fillStyle = Deck.color('blu'); ctx.fillText(s.Rs + ' Ω: ' + s.Vr.toFixed(2) + ' V', xR, yB + 9);
+    ctx.textBaseline = 'bottom'; ctx.fillText('DAQ reads', xR, yB - 10);
+    // current label
+    ctx.fillStyle = Deck.color('acc'); ctx.font = Deck.font(fs, true); ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+    ctx.fillText('I = ' + (s.I * 1000).toFixed(2) + ' mA', xS + 10, yT - 6);
+    // moving dots along loop path
+    const segs = [[xS, yT, xT, yT], [xT, yT, xT, yB], [xT, yB, xS, yB], [xS, yB, xS, yT]];
+    const lens = segs.map(g => Math.hypot(g[2] - g[0], g[3] - g[1])), per = lens.reduce((a, b) => a + b, 0);
+    ctx.fillStyle = Deck.color('acc');
+    for (let d = dotPhase % 34; d < per; d += 34) {
+      let r = d, k = 0; while (k < 3 && r > lens[k]) { r -= lens[k]; k++; }
+      const g = segs[k], u = r / lens[k], x = g[0] + (g[2] - g[0]) * u, y = g[1] + (g[3] - g[1]) * u;
+      if (k === 1 && y > yT + 22 && y < yB - 22) continue;
+      if (k === 3 && Math.abs(y - yc) < 18) continue;
+      ctx.beginPath(); ctx.arc(x, y, 2.6, 0, 7); ctx.fill();
+    }
+    // budget bar
+    const cb = $('cvBar'), b = Deck.sizeCanvas(cb), c2 = b.ctx, BW = b.W, BH = b.H;
+    c2.fillStyle = Deck.color('paper'); c2.fillRect(0, 0, BW, BH);
+    const x0 = 8, x1 = BW - 8, sc = (x1 - x0) / s.Vs, y0 = 22, hh = 24;
+    const parts = [[s.Vr, 'blu', 'sense'], [s.Vw, 'muted', 'cable'], [s.Vtx, ok ? 'grn' : 'red', 'transmitter']];
+    let xx = x0; c2.font = Deck.font(10.5, true); c2.textBaseline = 'middle'; c2.textAlign = 'center';
+    parts.forEach(([v, col, lab]) => {
+      const w = v * sc; c2.fillStyle = Deck.alpha(col, .55); c2.fillRect(xx, y0, w, hh);
+      if (w > 64) { c2.fillStyle = Deck.color('ink'); c2.fillText(lab + ' ' + v.toFixed(1) + ' V', xx + w / 2, y0 + hh / 2); }
+      xx += w;
+    });
+    const xm = x1 - s.Vm * sc; c2.strokeStyle = Deck.color('red'); c2.lineWidth = 2; c2.setLineDash([4, 3]);
+    c2.beginPath(); c2.moveTo(xm, y0 - 6); c2.lineTo(xm, y0 + hh + 6); c2.stroke(); c2.setLineDash([]);
+    c2.fillStyle = Deck.color('red'); c2.textAlign = 'right'; c2.textBaseline = 'top'; c2.font = Deck.font(10, true);
+    c2.fillText('transmitter needs ≥ ' + s.Vm.toFixed(1) + ' V from here →', xm + (xm > BW * 0.6 ? -4 : 160), y0 + hh + 7);
+    c2.fillStyle = Deck.color('muted'); c2.textAlign = 'left'; c2.textBaseline = 'bottom'; c2.fillText('0 V', x0, y0 - 3);
+    c2.textAlign = 'right'; c2.fillText(s.Vs.toFixed(1) + ' V supply', x1, y0 - 3);
+  }
+  Deck.onShow('loopsim', () => {
+    const get = Deck.controls('simLoop', upd);
+    function upd() {
+      loopState = loopCalc(get()); const s = loopState;
+      const pRead = (s.I * 1000 - 4) / 16 * 100;
+      $('roLoop').innerHTML = 'R<sub>w</sub> (both cores) <b>' + s.Rw.toFixed(1) + ' Ω</b> &nbsp; wanted <b>' + (s.Idem * 1000).toFixed(2) + ' mA</b> &nbsp; actual <b>' + (s.I * 1000).toFixed(2) + ' mA</b> &nbsp; DAQ reads <b>' + pRead.toFixed(1) + ' %</b> &nbsp; R<sub>L,max</sub> at 20 mA <b>' + s.Rmax.toFixed(0) + ' Ω</b> &nbsp; longest cable <b>' + (s.Lmax >= 1000 ? (s.Lmax / 1000).toFixed(2) + ' km' : s.Lmax.toFixed(0) + ' m') + '</b>' + (s.starved ? ' &nbsp; <b>LOOP STARVED: reading clipped</b>' : '');
+      drawLoop();
+    }
+    return upd;
+  });
+  Deck.loop('loopsim', dt => { if (!loopState || RM) return; dotPhase += dt * 40 * loopState.I / 0.012; drawLoop(); });
+
+  /* ---------- sigma-delta modulator ---------- */
+  const SDN = 128; let sdShow = SDN, sdData = null;
+  function sdRun(v) {
+    const x = [], bits = [], u = [];
+    let ui = 0, fb = 0;
+    for (let n = 0; n < SDN; n++) {
+      const xi = v.mode === 'sin' ? v.x * Math.sin(TAU * n / SDN) : v.x;
+      ui += xi - fb; const b = ui >= 0 ? 1 : 0; fb = b ? 1 : -1;
+      x.push(xi); bits.push(b); u.push(ui);
+    }
+    return { x, bits, u, M: +v.M, mode: v.mode, xv: v.x };
+  }
+  function drawSD() {
+    const d = sdData; if (!d) return;
+    const n = Math.max(1, Math.min(SDN, Math.floor(sdShow)));
+    const xin = d.x.map((v, i) => [i, v]);
+    const stair = [];
+    for (let k = 0; (k + 1) * d.M <= n; k++) {
+      let s = 0; for (let i = k * d.M; i < (k + 1) * d.M; i++) s += d.bits[i] ? 1 : -1;
+      const avg = s / d.M; stair.push([k * d.M, avg]); stair.push([(k + 1) * d.M, avg]);
+    }
+    Deck.plot($('cvSD1'), { x: [0, SDN], y: [-1.2, 1.2], ylabel: 'value (× V)', yticks: [-1, 0, 1], xticks: [], pad: { b: 10 },
+      series: [{ pts: xin, color: 'muted', width: 2 }, { pts: stair, color: 'acc', width: 2.4 }] });
+    const bs = [], us = [];
+    for (let i = 0; i < n; i++) { const v = d.bits[i] ? 1 : -1; bs.push([i, v]); bs.push([i + 1, v]); us.push([i + 1, d.u[i]]); }
+    Deck.plot($('cvSD2'), { x: [0, SDN], y: [-2.4, 2.4], xlabel: 'clock tick', ylabel: 'level', yticks: [-2, 0, 2],
+      series: [{ pts: bs, color: 'blu', width: 1.2 }, { pts: us, color: 'acc', width: 1.2, dash: [3, 3] }] });
+    const m = Math.min(n, d.M); let ones = 0; for (let i = 0; i < m; i++) ones += d.bits[i];
+    let tot = 0; for (let i = 0; i < n; i++) tot += d.bits[i];
+    const str = d.bits.slice(0, Math.min(n, 24)).join('');
+    $('roSD').innerHTML = 'first bits <b>' + str + (n > 24 ? '…' : '') + '</b> &nbsp; ones in first word <b>' + ones + ' of ' + m + '</b> &nbsp; decoded 2n<sub>1</sub>/N − 1 = <b>' + (2 * ones / m - 1).toFixed(3) + '</b>' + (d.mode === 'dc' ? ' &nbsp; ones over ' + n + ' ticks <b>' + (100 * tot / n).toFixed(1) + ' %</b> (theory ' + (50 * (1 + d.xv)).toFixed(1) + ' %)' : '') + ' &nbsp; output words <b>' + Math.floor(n / d.M) + '</b>';
+  }
+  Deck.onShow('sd', () => {
+    const get = Deck.controls('simSD', () => { sdData = sdRun(get()); drawSD(); });
+    sdData = sdRun(get()); sdShow = RM ? SDN : 0;
+    $('sdReplay').addEventListener('click', () => { sdShow = RM ? SDN : 0; drawSD(); });
+    return () => drawSD();
+  });
+  Deck.loop('sd', dt => { if (sdShow < SDN) { sdShow = Math.min(SDN, sdShow + dt * 70); drawSD(); } });
+
+  /* ---------- oversampling / noise shaping ---------- */
+  Deck.onShow('osr', () => {
+    const get = Deck.controls('simOSR', draw);
+    function draw() {
+      const R = +get().R, fB = 1 / (2 * R);
+      Deck.plot($('cvOSR'), { x: [0, 0.5], y: [0, 2.15], xlabel: 'frequency / modulator clock rate  (f / fs)', ylabel: 'noise (relative)',
+        bands: [{ x0: 0, x1: fB, color: 'blu', alpha: .2 }],
+        series: [{ f: () => 1, color: 'muted', width: 2 }, { f: f => 2 * Math.sin(Math.PI * f), color: 'acc', width: 2.4 }],
+        vlines: [{ x: fB, color: 'blu', label: 'f_B' }] });
+      const plain = 1 / R, shaped = (2 * fB - Math.sin(TAU * fB) / Math.PI) / 0.5;
+      const dbp = -10 * Math.log10(plain), dbs = -10 * Math.log10(shaped);
+      $('roOSR').innerHTML = 'band 0 to <b>f<sub>s</sub>/' + (2 * R) + '</b> &nbsp; in-band noise: plain <b>−' + dbp.toFixed(1) + ' dB (+' + (dbp / 6.02).toFixed(1) + ' bits)</b> &nbsp; shaped <b>' + (dbs >= 0 ? '−' : '+') + Math.abs(dbs).toFixed(1) + ' dB (' + (dbs >= 0 ? '+' : '−') + Math.abs(dbs / 6.02).toFixed(1) + ' bits)</b>';
+    }
+    return draw;
+  });
+
+  /* ---------- moving average response ---------- */
+  Deck.onShow('ma', () => () => {
+    const dt = 1e-3, a = dt / (1 / (TAU * 5) + dt);
+    Deck.plot($('cvMA'), { x: [0, 500], y: [0, 1.05], xlabel: 'frequency (Hz)', ylabel: 'magnitude ratio |H|',
+      series: [{ f: f => maMag(f, 20, dt), color: 'acc', width: 2.2, n: 1500 }, { f: f => iirMag(f, a, dt), color: 'blu', width: 2, n: 600 }],
+      points: [50, 100, 150, 200, 250, 300, 350, 400, 450].map(f => ({ x: f, y: 0, color: 'acc', r: 3.5 })).concat([{ x: 50, y: 0, r: 0.1, color: 'acc', label: '50 Hz' }]) });
+  });
+
+  /* ---------- filter playground ---------- */
+  Deck.onShow('play', () => {
+    const fsr = 1000, dt = 1 / fsr, Nn = 1000;
+    const r = rng(2024), noise = [], spk = new Float64Array(Nn);
+    for (let i = 0; i < Nn; i++) noise.push(0.05 * gauss(r));
+    for (let k = 0; k < 18; k++) { const i = 20 + Math.floor(r() * 960); spk[i] = (r() < 0.5 ? -1 : 1) * (1.2 + 1.2 * r()); }
+    const tru = []; for (let i = 0; i < Nn; i++) { const t = i * dt; tru.push(0.5 * Math.sin(TAU * 1.5 * t) + (t >= 0.5 ? 0.8 : 0)); }
+    const get = Deck.controls('simF', draw);
+    function filt(x, v) {
+      const N = Math.max(1, Math.round(v.N)), n = x.length, y = new Array(n);
+      if (v.type === 'none') return x.slice();
+      if (v.type === 'ma') { let s = 0; for (let i = 0; i < n; i++) { s += x[i]; if (i >= N) s -= x[i - N]; y[i] = s / Math.min(i + 1, N); } return y; }
+      if (v.type === 'mac') { const h1 = Math.floor((N - 1) / 2); for (let i = 0; i < n; i++) { let s = 0, c = 0; for (let k = i - h1; k < i - h1 + N; k++) if (k >= 0 && k < n) { s += x[k]; c++; } y[i] = s / c; } return y; }
+      const tau = 1 / (TAU * v.fc), a = dt / (tau + dt);
+      if (v.type === 'iir' || v.type === 'iirfb') {
+        y[0] = x[0]; for (let i = 1; i < n; i++) y[i] = y[i - 1] + a * (x[i] - y[i - 1]);
+        if (v.type === 'iir') return y;
+        const z = new Array(n); z[n - 1] = y[n - 1]; for (let i = n - 2; i >= 0; i--) z[i] = z[i + 1] + a * (y[i] - z[i + 1]); return z;
+      }
+      // median (centred)
+      const h1 = Math.floor((N - 1) / 2);
+      for (let i = 0; i < n; i++) { const w = []; for (let k = i - h1; k < i - h1 + N; k++) if (k >= 0 && k < n) w.push(x[k]); w.sort((p, q) => p - q); const m = w.length; y[i] = m % 2 ? w[(m - 1) / 2] : 0.5 * (w[m / 2 - 1] + w[m / 2]); }
+      return y;
+    }
+    function draw() {
+      const v = get(), fm = v.fm, A = v.hum;
+      const x = []; for (let i = 0; i < Nn; i++) { const t = i * dt; x.push(tru[i] + A * Math.sin(TAU * fm * t + 0.3) + 0.3 * A * Math.sin(TAU * 3 * fm * t + 1.1) + noise[i] + (+v.sp ? spk[i] : 0)); }
+      const y = filt(x, v);
+      const raw = x.map((q, i) => [i * dt, q]), fy = y.map((q, i) => [i * dt, q]), tp = tru.map((q, i) => [i * dt, q]);
+      Deck.plot($('cvF1'), { x: [0, 1], y: [-1.6, 2.4], xlabel: 'time (s)', ylabel: 'signal',
+        series: [{ pts: raw, color: 'muted', width: 1 }, { pts: tp, color: 'ink', width: 1.4, dash: [5, 4] }, { pts: fy, color: 'acc', width: 2.2 }] });
+      const N = Math.max(1, Math.round(v.N)), a = dt / (1 / (TAU * v.fc) + dt);
+      let Hf = null, delay = '';
+      if (v.type === 'ma' || v.type === 'mac') { Hf = f => maMag(f, N, dt); delay = v.type === 'ma' ? ((N - 1) * dt * 500).toFixed(1) + ' ms' : '0 (offline)'; }
+      else if (v.type === 'iir') { Hf = f => iirMag(f, a, dt); delay = '≈ τ = ' + (1000 / (TAU * v.fc)).toFixed(1) + ' ms at low f'; }
+      else if (v.type === 'iirfb') { Hf = f => Math.pow(iirMag(f, a, dt), 2); delay = '0 (offline)'; }
+      else if (v.type === 'none') { Hf = () => 1; delay = '0'; }
+      const opts = { x: [0, 500], y: [0, 1.08], xlabel: 'frequency (Hz)', ylabel: '|H|', yticks: [0, 0.5, 1], yfmt: v => v.toFixed(1),
+        vlines: [{ x: fm, color: 'red', label: fm.toFixed(1) + ' Hz' }, { x: 3 * fm, color: 'red' }], series: [] };
+      if (Hf) opts.series.push({ f: Hf, color: 'acc', width: 2, n: 1200 });
+      const P = Deck.plot($('cvF2'), opts);
+      if (!Hf) { P.ctx.fillStyle = Deck.color('muted'); P.ctx.font = Deck.font(12); P.ctx.textAlign = 'center'; P.ctx.textBaseline = 'middle'; P.ctx.fillText('median: non-linear, so no frequency response', (P.box.x0 + P.box.x1) / 2, (P.box.y0 + P.box.y1) / 2); }
+      let se = 0, c = 0; for (let i = 100; i < Nn; i++) { se += (y[i] - tru[i]) ** 2; c++; }
+      $('roF').innerHTML = 'rms error vs true (t &gt; 0.1 s) <b>' + Math.sqrt(se / c).toFixed(3) + '</b> &nbsp; |H| at mains <b>' + (Hf ? Hf(fm).toFixed(3) : 'n/a') + '</b> &nbsp; delay <b>' + (delay || 'about (N−1)/2 samples smear, no shift') + '</b>' + (v.type === 'iir' || v.type === 'iirfb' ? ' &nbsp; α <b>' + a.toFixed(4) + '</b>' : '');
+    }
+    return draw;
+  });
+
+  /* ---------- alias: identical samples ---------- */
+  Deck.onShow('noalias', () => () => {
+    const pts = []; for (let n = 0; n <= 50; n++) pts.push({ x: n, y: Math.cos(TAU * 980 * n / 1000), color: 'acc', r: 3.6 });
+    Deck.plot($('cvAl'), { x: [0, 50], y: [-1.25, 1.25], xlabel: 'time (ms)', ylabel: 'signal', yticks: [-1, 0, 1],
+      series: [{ f: t => Math.cos(TAU * 0.98 * t), color: 'muted', width: 0.8, n: 4000 }, { f: t => Math.cos(TAU * 0.02 * t), color: 'blu', width: 2.4 }], points: pts });
+  });
+})();
+</script>
+</body>
+</html>

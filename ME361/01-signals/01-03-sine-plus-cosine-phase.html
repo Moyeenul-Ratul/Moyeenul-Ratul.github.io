@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>01.03 Sine + cosine = one sine (amplitude and phase) · ME 361</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="../deck.css">
+<script>window.DECK = {"mode": "panel", "num": "01.03", "title": "Sine + cosine = one sine (amplitude and phase)", "home": "index.html", "homeLabel": "Signals", "course": "ME 361 · Instrumentation and Measurement"};</script>
+<script src="../deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+<style>
+  .presets{display:flex;gap:8px;flex-wrap:wrap}
+  svg .fill-soft{fill:var(--acc-soft)}
+  svg .t-small{font-size:11.5px}
+</style>
+</head>
+<body>
+<main class="deck">
+<section class="slide" id="phase" data-title="Phase: one sine from sine plus cosine">
+  <p class="eyebrow">Signal amplitude and frequency · phase</p>
+  <h2>Sine plus cosine is one sine, shifted by a phase angle</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simPh">
+      <div class="simhead"><span>Rotating arrow (phasor), ω = 4 rad/s</span><span class="legend"><span><i style="background:var(--acc)"></i>y(t)</span><span><i style="background:var(--blu)"></i>B sin ωt</span><span><i style="background:var(--muted)"></i>A cos ωt</span></span></div>
+      <canvas id="cvPh" data-h="250" aria-label="Rotating arrow and the sine wave its height traces out"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="pA">Cosine coefficient A <output data-for="A"></output></label>
+          <input type="range" id="pA" data-key="A" min="-6" max="6" step="0.5" value="3" data-fmt="1"></div>
+        <div class="ctl"><label for="pB">Sine coefficient B <output data-for="B"></output></label>
+          <input type="range" id="pB" data-key="B" min="-6" max="6" step="0.5" value="5" data-fmt="1"></div>
+      </div>
+      <div class="readout" id="roPh"></div>
+      <div class="try"><p>Set A = 0: the orange wave is a pure sine, φ* = 0. Set B = 0: a pure cosine, which is a sine shifted ahead by a quarter cycle (φ* = π/2 = 1.571 rad). Any mix gives a sine of length \(C = \sqrt{A^2+B^2}\).</p></div>
+    </div>
+    <div>
+      <p>The spring-mass solution \(A\cos\omega t + B\sin\omega t\) is really one sine. Expand \(C\sin(\omega t + \phi^*) = C\cos\phi^*\,\sin\omega t + C\sin\phi^*\,\cos\omega t\) and match terms: \(B = C\cos\phi^*\) and \(A = C\sin\phi^*\). Squaring and adding, or dividing, gives:</p>
+      <div class="eq"><span class="label">Amplitude and phase of a sine–cosine pair</span>
+        $$A\cos\omega t + B\sin\omega t = C\sin(\omega t + \phi^*)$$
+        $$\phantom{A\cos\omega t + B\sin\omega t} = C\cos(\omega t - \phi)$$
+        $$C = \sqrt{A^2+B^2},\qquad \tan\phi^* = \frac AB$$
+        $$\tan\phi = \frac BA,\qquad \phi = \frac\pi2 - \phi^*$$
+      </div>
+      <p class="define"><span>The <dfn>phase angle</dfn> \(\phi^*\) says how far (in radians) the wave is shifted along the time axis relative to a plain \(\sin\omega t\). A positive \(\phi^*\) means the wave reaches its peak earlier by \(\phi^*/\omega\) seconds.</span></p>
+      <div class="analogy"><p>A Ferris wheel seen from the side: each seat goes up and down as a sine. Two seats on the same wheel have the same amplitude and frequency but reach the top at different times; that offset is the phase.</p></div>
+      <div class="reveal-box" data-label="Worked: write 5 sin 4t + 3 cos 4t as one sine">
+        <div class="answer"><p>Here \(A = 3\), \(B = 5\), \(\omega = 4\) rad/s. \(C = \sqrt{9 + 25} = \sqrt{34} = 5.83\). \(\phi^* = \tan^{-1}(3/5) = 0.540\) rad, so \(y = 5.83\sin(4t + 0.540)\). As a cosine: \(\phi = \tan^{-1}(5/3) = 1.030\) rad, \(y = 5.83\cos(4t - 1.030)\). Period \(T = 2\pi/4 = 1.571\) s, \(f = 0.637\) Hz. These are the simulator’s default settings.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 17 · Check yourself -->
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const out = (id, parts) => { $(id).innerHTML = parts.map(p => '<span>' + p + '</span>').join(''); };
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const TAU = 2 * Math.PI;
+  function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+  function gauss(r) { let u = 0; while (u === 0) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * r()); }
+
+  /* ---- functions for the inline SVG figures ---- */
+  const sig4 = x => Math.sin(TAU * x) + 0.35 * Math.sin(3 * TAU * x + 0.6);
+  const qz = (v, L, lo, hi) => { const Q = (hi - lo) / L; let i = Math.floor((v - lo) / Q); i = Math.max(0, Math.min(L - 1, i)); return lo + (i + 0.5) * Q; };
+  const FN = {
+    sig4, sig4q: x => qz(sig4(x), 8, -1.5, 1.5),
+    cyl: x => { const u = x - Math.floor(x); return 0.08 + 0.92 * Math.exp(-Math.pow((u - 0.45) / 0.07, 2) / 2); },
+    cst: () => 0.75,
+    sp: x => 0.8 * Math.sin(TAU * 2 * x),
+    cp: x => 0.6 * Math.sin(TAU * 2 * x) + 0.35 * Math.sin(TAU * 6 * x + 1) + 0.2 * Math.sin(TAU * 4 * x),
+    rnd: x => 0.42 * Math.sin(TAU * 3.1 * x + 1) + 0.3 * Math.sin(TAU * 7.3 * x + 2) + 0.25 * Math.sin(TAU * 13.7 * x) + 0.18 * Math.sin(TAU * 21.1 * x + 4) + 0.12 * Math.sin(TAU * 33.3 * x + 0.5),
+    stp: x => x < 0.3 ? 0 : 1,
+    rmp: x => x < 0.3 ? 0 : (x - 0.3) / 0.7 * 1.3,
+    pls: x => (x >= 0.3 && x < 0.62) ? 1 : 0,
+    trn: x => x < 0.12 ? 0 : 1.6 * Math.exp(-(x - 0.12) / 0.2) * Math.sin(TAU * 6 * (x - 0.12)),
+    mfig: x => 1 + 0.55 * Math.sin(TAU * 2 * x),
+    dfig: x => 1 + 0.45 * Math.sin(TAU * 1.3 * x) + 0.2 * Math.sin(TAU * 3.1 * x + 1),
+    sin1: x => Math.sin(TAU * x)
+  };
+  // data-map = a,b,X0,X1,Ybase,scale,n : x in [a,b] -> [X0,X1], y -> Ybase - scale*y
+  document.querySelectorAll('path[data-fn]').forEach(p => {
+    const f = FN[p.dataset.fn], m = p.dataset.map.split(',').map(Number), [a, b, X0, X1, Yb, S, n] = m;
+    let d = '';
+    for (let i = 0; i <= n; i++) { const x = a + (b - a) * i / n; d += (i ? 'L' : 'M') + (X0 + (X1 - X0) * i / n).toFixed(1) + ' ' + (Yb - S * f(x)).toFixed(1); }
+    p.setAttribute('d', d);
+  });
+  // data-samp = fn,a,b,dx,X0,X1,Ybase,scale,mode (dot|stem|hold)
+  const NS = 'http://www.w3.org/2000/svg';
+  document.querySelectorAll('[data-samp]').forEach(g => {
+    const s = g.dataset.samp.split(','), f = FN[s[0]], [a, b, dx, X0, X1, Yb, S] = s.slice(1, 8).map(Number), mode = s[8];
+    // the x-range of the figure is taken as [0,1] for all sample figures
+    const X = x => X0 + (X1 - X0) * x, Y = v => Yb - S * v;
+    const xs = []; for (let x = a; x <= b + 1e-9; x += dx) xs.push(x);
+    if (mode === 'hold') {
+      let d = ''; xs.forEach((x, i) => { const y = Y(f(x)); d += (i ? 'H' + X(x).toFixed(1) + 'V' + y.toFixed(1) : 'M' + X(x).toFixed(1) + ' ' + y.toFixed(1)); });
+      d += 'H' + X(1).toFixed(1); g.setAttribute('d', d); return;
+    }
+    xs.forEach(x => {
+      if (mode === 'stem') { const l = document.createElementNS(NS, 'path'); l.setAttribute('d', 'M' + X(x).toFixed(1) + ' ' + Yb + ' V' + Y(f(x)).toFixed(1)); l.setAttribute('class', 'ln-blu'); l.style.strokeWidth = '1.6'; g.appendChild(l); }
+      const c = document.createElementNS(NS, 'circle'); c.setAttribute('cx', X(x).toFixed(1)); c.setAttribute('cy', Y(f(x)).toFixed(1)); c.setAttribute('r', '3.2'); g.appendChild(c);
+    });
+  });
+  // data-levels = L,lo,hi,X0,X1,Ybase,scale
+  document.querySelectorAll('[data-levels]').forEach(g => {
+    const [L, lo, hi, X0, X1, Yb, S] = g.dataset.levels.split(',').map(Number), Q = (hi - lo) / L;
+    for (let i = 0; i < L; i++) { const y = Yb - S * (lo + (i + 0.5) * Q), l = document.createElementNS(NS, 'path'); l.setAttribute('d', 'M' + X0 + ' ' + y.toFixed(1) + ' H' + X1); l.setAttribute('class', 'ln-thin'); l.style.strokeDasharray = '2 3'; l.style.opacity = '.7'; g.appendChild(l); }
+  });
+
+  /* ---- cover: analog trace drawn, then sampled ---- */
+  let coverT = 0;
+  function drawCover() {
+    const end = Math.min(coverT, 3), samp = [], held = [];
+    for (let x = 0; x <= end + 1e-9; x += 0.1) { samp.push([x, sig4(x)]); held.push([x, qz(sig4(x), 8, -1.5, 1.5)]); }
+    const p = Deck.plot($('coverTrace'), { x: [0, 3], y: [-1.6, 1.6], pad: { l: 8, r: 8, t: 6, b: 6 }, xticks: [], yticks: [],
+      series: [{ f: x => x <= end ? sig4(x) : NaN, color: 'muted', width: 1.6, n: 600 },
+               { pts: held.length ? held.concat([[end, held[held.length - 1][1]]]) : [], color: 'acc', width: 2.2, steps: true },
+               { pts: samp, color: 'blu', dotsOnly: true, r: 2.6 }] });
+    return p;
+  }
+  Deck.onShow('cover', () => { if (reduce) coverT = 99; return drawCover; });
+  Deck.loop('cover', dt => { if (coverT < 3.2) { coverT += dt * 0.9; drawCover(); } });
+
+  /* ---- sampler and quantizer ---- */
+  Deck.onShow('sampler', () => {
+    const y = t => Math.sin(TAU * t) + 0.35 * Math.sin(TAU * 3 * t + 0.6);
+    const get = Deck.controls('simTypes', draw);
+    function draw() {
+      const v = get(), L = Math.pow(2, v.bits), lo = -1.5, hi = 1.5, Q = (hi - lo) / L;
+      const samples = [], held = [];
+      for (let t = 0; t <= 2 + 1e-9; t += v.dt) { samples.push([t, y(t)]); held.push([t, qz(y(t), L, lo, hi)]); }
+      held.push([2, held[held.length - 1][1]]);
+      const levels = []; if (L <= 32) for (let i = 0; i < L; i++) levels.push({ y: lo + (i + 0.5) * Q, color: 'rule', dash: [2, 4], width: 1 });
+      Deck.plot($('cvTypes'), { x: [0, 2], y: [-1.6, 1.6], xlabel: 'time t (s)', ylabel: 'signal', hlines: levels,
+        series: [{ f: y, color: 'muted', width: 1.8 }, { pts: held, color: 'acc', width: 2.2, steps: true }, { pts: samples, color: 'blu', stem: true }] });
+      out('roTypes', ['samples <b>' + samples.length + '</b>', 'sample rate 1/δt = <b>' + (1 / v.dt).toFixed(1) + ' Hz</b>', 'levels 2<sup>M</sup> = <b>' + L + '</b>', 'Q = <b>' + Q.toFixed(3) + '</b>', 'max rounding error <b>±' + (Q / 2).toFixed(3) + '</b>']);
+    }
+    return draw;
+  });
+
+  /* ---- worked example: sine current ---- */
+  Deck.onShow('ex-sine', () => () => {
+    Deck.plot($('cvSineEx'), { x: [0, TAU], y: [-11, 11], xlabel: 't (s)', ylabel: 'I (A)', xticks: [0, Math.PI / 2, Math.PI, 3 * Math.PI / 2, TAU], xfmt: v => ['0', 'π/2', 'π', '3π/2', '2π'][Math.round(v / (Math.PI / 2))],
+      bands: [{ x0: 0, x1: Math.PI, color: 'acc', alpha: .07 }],
+      hlines: [{ y: 20 / Math.PI, color: 'acc', label: 'mean 0–π: 6.37' }, { y: Math.sqrt(50), color: 'blu', dash: [2, 3], label: 'RMS 7.07' }, { y: 0, color: 'muted', label: 'mean 0–2π: 0' }],
+      series: [{ f: t => 10 * Math.sin(t), color: 'acc' }] });
+  });
+
+  /* ---- worked example: data ---- */
+  Deck.onShow('ex-data', () => () => {
+    const d = [31.2, 32.0, 31.5, 30.1, 29.4, 29.6, 30.3, 30.9, 30.4, 29.8];
+    Deck.plot($('cvData'), { x: [-0.05, 0.95], y: [29, 32.5], xlabel: 't (s)', ylabel: 'y (V)',
+      hlines: [{ y: 30.52, color: 'acc', label: 'ȳ = 30.52 V' }],
+      series: [{ pts: d.map((v, i) => [i * 0.1, v]), color: 'blu', width: 1.2, dash: [3, 3], dots: true, r: 4 }] });
+  });
+
+  /* ---- DC offset figure ---- */
+  Deck.onShow('dcac', () => () => {
+    const f = t => 1.2 * Math.sin(TAU * 0.68 * t + 0.6) + 0.9 * Math.sin(TAU * 0.29 * t + 0.4) - 0.3 * Math.sin(TAU * 1.4 * t);
+    let m = 0; const N = 2000; for (let i = 0; i < N; i++) m += f(3.5 * i / N); m /= N;
+    Deck.plot($('cvDC1'), { x: [0, 3.5], y: [0, 35], ylabel: 'y(t) (V)', title: 'Before: DC + AC', hlines: [{ y: 30 + m, color: 'acc', label: 'mean ≈ 30 V' }], series: [{ f: t => 30 + f(t), color: 'ink', width: 2 }] });
+    Deck.plot($('cvDC2'), { x: [0, 3.5], y: [-2.5, 2.5], xlabel: 'time (s)', ylabel: 'y − ȳ (V)', title: 'After: AC part only', hlines: [{ y: 0, color: 'acc' }], series: [{ f: t => f(t) - m, color: 'ink', width: 2 }] });
+  });
+
+  /* ---- averaging window ---- */
+  Deck.onShow('window', () => {
+    const nr = rng(17), NZ = 4001, noise = []; for (let i = 0; i < NZ; i++) noise.push(gauss(nr));
+    const get = Deck.controls('simMR', draw);
+    function draw() {
+      const v = get(), f = 3, sig = (t, i) => v.A0 + v.C * Math.sin(TAU * f * t) + v.s * noise[i];
+      const pts = []; for (let i = 0; i < NZ; i++) { const t = 2 * i / (NZ - 1); pts.push([t, sig(t, i)]); }
+      let s1 = 0, s2 = 0, n = 0; pts.forEach(p => { if (p[0] <= v.tf + 1e-9) { s1 += p[1]; s2 += p[1] * p[1]; n++; } });
+      const m = s1 / n, rms = Math.sqrt(s2 / n), ac = Math.sqrt(Math.max(0, rms * rms - m * m));
+      const ext = v.C + 3 * v.s + 3, yl = Math.min(-2, v.A0 - ext), yh = Math.max(2, v.A0 + ext, Math.abs(v.A0) + 2);
+      Deck.plot($('cvMR'), { x: [0, 2], y: [yl, yh], xlabel: 'time t (s)', ylabel: 'y(t)',
+        bands: [{ x0: 0, x1: v.tf, color: 'ylw', alpha: 0.16 }],
+        hlines: [{ y: 0, color: 'rule', dash: [] }, { y: m, color: 'acc', dash: [6, 4], width: 2 }, { y: rms, color: 'blu', dash: [2, 3], width: 2 }],
+        vlines: [{ x: v.tf, color: 'ylw', dash: [4, 3], label: 'window end' }],
+        series: [{ pts, color: 'ink', width: v.s > 0 ? 1 : 2 }] });
+      const per = v.tf * f;
+      out('roMR', ['window = <b>' + per.toFixed(2) + ' periods</b>', 'mean <b>' + m.toFixed(2) + '</b>', 'RMS <b>' + rms.toFixed(2) + '</b>', 'AC RMS <b>' + ac.toFixed(2) + '</b>', 'long-record RMS <b>' + Math.sqrt(v.A0 * v.A0 + v.C * v.C / 2 + v.s * v.s).toFixed(2) + '</b>']);
+    }
+    return draw;
+  });
+
+  /* ---- rotating phasor ---- */
+  let phT = 0, drawPh = null;
+  Deck.onShow('phase', () => {
+    const get = Deck.controls('simPh', () => drawPh && drawPh());
+    function draw() {
+      const v = get(), A = v.A, B = v.B, C = Math.hypot(A, B), w = 4;
+      const cv = $('cvPh'), { ctx, W, H } = Deck.sizeCanvas(cv);
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const R = Math.min(H * 0.38, W * 0.16), cx = R + 16, cy = H / 2, sc = R / 8.5;
+      ctx.strokeStyle = Deck.color('rule'); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(cx, cy, C * sc, 0, 7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(W - 8, cy); ctx.moveTo(cx, cy - R - 6); ctx.lineTo(cx, cy + R + 6); ctx.stroke();
+      const phs = Math.atan2(A, B), ang = w * phT + phs;
+      const px = cx + C * sc * Math.cos(ang), py = cy - C * sc * Math.sin(ang);
+      const bx = cx + B * sc * Math.cos(w * phT), by = cy - B * sc * Math.sin(w * phT);
+      ctx.strokeStyle = Deck.color('blu'); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(bx, by); ctx.stroke();
+      ctx.strokeStyle = Deck.color('muted'); ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(px, py); ctx.stroke();
+      ctx.strokeStyle = Deck.color('acc'); ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(px, py); ctx.stroke();
+      ctx.fillStyle = Deck.color('acc'); ctx.beginPath(); ctx.arc(px, py, 4.5, 0, 7); ctx.fill();
+      const x0 = cx + R + 30, x1 = W - 10, tSpan = TAU / w * 2;
+      const X = t => x0 + (t / tSpan) * (x1 - x0), Y = yv => cy - yv * sc;
+      ctx.setLineDash([3, 4]); ctx.strokeStyle = Deck.color('muted'); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x0, py); ctx.stroke(); ctx.setLineDash([]);
+      function curve(fn, col, lw, dash) { ctx.strokeStyle = Deck.color(col); ctx.lineWidth = lw; ctx.setLineDash(dash || []); ctx.beginPath(); for (let i = 0; i <= 300; i++) { const t = tSpan * i / 300, yy = fn(phT - t); i ? ctx.lineTo(X(t), Y(yy)) : ctx.moveTo(X(t), Y(yy)); } ctx.stroke(); ctx.setLineDash([]); }
+      curve(t => A * Math.cos(w * t), 'muted', 1.3, [5, 4]);
+      curve(t => B * Math.sin(w * t), 'blu', 1.3, [5, 4]);
+      curve(t => A * Math.cos(w * t) + B * Math.sin(w * t), 'acc', 2.6);
+      ctx.fillStyle = Deck.color('acc'); ctx.beginPath(); ctx.arc(x0, py, 4.5, 0, 7); ctx.fill();
+      ctx.fillStyle = Deck.color('muted'); ctx.font = Deck.font(11, true); ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.fillText('older values →', x1, H - 4);
+      const phi = Math.atan2(B, A);
+      out('roPh', ['C = <b>' + C.toFixed(3) + '</b>', 'φ* = tan⁻¹(A/B) = <b>' + phs.toFixed(3) + ' rad</b>', 'φ = tan⁻¹(B/A) = <b>' + phi.toFixed(3) + ' rad</b>', 'T = 2π/ω = <b>' + (TAU / 4).toFixed(3) + ' s</b>']);
+    }
+    drawPh = draw;
+    return draw;
+  });
+  Deck.loop('phase', dt => { if (!drawPh || reduce) return; phT += dt * 0.25; drawPh(); });
+})();
+</script>
+</body>
+</html>

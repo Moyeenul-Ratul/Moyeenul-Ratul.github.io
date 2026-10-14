@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>04.08 Op-amp circuits: inverting, non-inverting, follower, differential · ME 361</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="../deck.css">
+<style>
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:640px){.duo{grid-template-columns:1fr}}
+  .tbl.compact th,.tbl.compact td{padding:6px 10px;font-size:.88rem}
+  .card p{max-width:none}
+</style>
+<script>window.DECK = {"mode": "panel", "num": "04.08", "title": "Op-amp circuits: inverting, non-inverting, follower, differential", "home": "index.html", "homeLabel": "Analog Signal Conditioning", "course": "ME 361 · Instrumentation and Measurement"};</script>
+<script src="../deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+<section class="slide" id="opamp-sim" data-title="Op-amp circuit simulator">
+  <p class="eyebrow">Simulator · op-amp circuits</p>
+  <h2>Gain, bandwidth and clipping of real op-amp circuits</h2>
+  <div class="sim" id="simOA">
+    <div class="simhead"><span>Op-amp bench · GBW 1 MHz, ±13.5 V swing</span><span class="legend"><span><i style="background:var(--blu)"></i>input</span><span><i style="background:var(--acc)"></i>output</span><span><i style="background:var(--muted)"></i>open-loop gain</span></span></div>
+    <div class="duo">
+      <canvas id="cvOAt" data-h="240" aria-label="Input and output voltage against time for the chosen circuit"></canvas>
+      <canvas id="cvOAf" data-h="240" aria-label="Gain magnitude against frequency on log axes: open-loop gain and closed-loop gain"></canvas>
+    </div>
+    <div class="controls">
+      <div class="ctl"><label for="oac">Circuit</label>
+        <select id="oac" data-key="c"><option value="inv">Inverting</option><option value="non" selected>Non-inverting</option><option value="fol">Voltage follower</option><option value="dif">Differential (1 V common mode)</option></select></div>
+      <div class="ctl"><label for="oar1">R₁ <output data-for="r1"></output></label>
+        <input type="range" id="oar1" data-key="r1" data-scale="log" data-min="1000" data-max="100000" min="0" max="1000" value="500" data-fmt="-1" data-unit=" Ω"></div>
+      <div class="ctl"><label for="oar2">R₂ <output data-for="r2"></output></label>
+        <input type="range" id="oar2" data-key="r2" data-scale="log" data-min="1000" data-max="1000000" min="0" max="1000" value="667" data-fmt="-1" data-unit=" Ω"></div>
+      <div class="ctl"><label for="oav">Input amplitude <output data-for="v"></output></label>
+        <input type="range" id="oav" data-key="v" data-scale="log" data-min="0.001" data-max="5" min="0" max="1000" value="541" data-fmt="-1" data-unit=" V"></div>
+      <div class="ctl"><label for="oaf">Signal frequency <output data-for="f"></output></label>
+        <input type="range" id="oaf" data-key="f" data-scale="log" data-min="10" data-max="1000000" min="0" max="1000" value="400" data-fmt="-1" data-unit=" Hz"></div>
+    </div>
+    <div class="readout" id="roOA"></div>
+  </div>
+  <div class="cols">
+    <div class="try"><p>Non-inverting with R₁ = 10 kΩ, R₂ = 100 kΩ (gain 11) and 0.1 V in: output 1.1 V. Raise R₂ to 1 MΩ: gain 101, and the closed-loop bandwidth shrinks to about 10 kHz. Push the frequency past it and the gain falls and the output lags. Raise the input to 0.5 V: the output tries for 50 V and flattens at 13.5 V.</p></div>
+    <div><p class="small">The open-loop gain of a general-purpose op-amp falls by a factor of 10 for every factor of 10 in frequency above a few hertz, so gain × bandwidth is constant: the <dfn>gain–bandwidth product</dfn> (GBW). A circuit whose feedback divider has \(1/\beta=1+R_2/R_1\) keeps its designed gain only up to about \(f_B=\text{GBW}\,\beta\). Large gains need either a faster op-amp or two stages of moderate gain.</p></div>
+  </div>
+</section>
+
+<!-- 8 · Instrumentation amplifier -->
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---- cover: noisy small signal -> large clean signal ---- */
+  let coverT = 0;
+  function drawCover() {
+    const tEnd = 14, tt = Math.min(coverT, tEnd), a = [], b = [];
+    for (let i = 0; i <= 700; i++) {
+      const t = tEnd * i / 700; if (t > tt) break;
+      const s = Math.sin(0.8 * t) + 0.3 * Math.sin(2.1 * t + 1);
+      a.push([t, -1.15 + 0.12 * s + 0.08 * Math.sin(37 * t) + 0.05 * Math.sin(83 * t + 2)]);
+      b.push([t, 0.45 + 0.75 * Math.sin(0.8 * t - 0.25) + 0.22 * Math.sin(2.1 * t + 0.4)]);
+    }
+    Deck.plot($('coverTrace'), { x: [0, tEnd], y: [-1.6, 1.6], pad: { l: 8, r: 8, t: 6, b: 6 }, xticks: [], yticks: [],
+      series: [{ pts: a, color: 'muted', width: 1.4 }, { pts: b, color: 'acc', width: 2.4 }] });
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (coverT < 15) { coverT += RM ? 15 : dt * 3; drawCover(); } });
+
+  /* ---- op-amp bench ---- */
+  Deck.onShow('opamp-sim', () => {
+    const get = Deck.controls('simOA', () => draw());
+    const GBW = 1e6, A0 = 2e5, ESAT = 13.5;
+    function draw() {
+      const v = get(), c = v.c;
+      document.getElementById('oar1').closest('.ctl').style.opacity = c === 'fol' ? .4 : 1;
+      document.getElementById('oar2').closest('.ctl').style.opacity = c === 'fol' ? .4 : 1;
+      let G0, NG, zin;
+      if (c === 'inv') { G0 = -v.r2 / v.r1; NG = 1 + v.r2 / v.r1; zin = 'Z_in = R₁ = ' + fmtR(v.r1); }
+      else if (c === 'non') { G0 = 1 + v.r2 / v.r1; NG = G0; zin = 'Z_in: very high'; }
+      else if (c === 'fol') { G0 = A0 / (1 + A0); NG = 1; zin = 'Z_in: very high'; }
+      else { G0 = v.r2 / v.r1; NG = 1 + v.r2 / v.r1; zin = 'Z_in = ' + fmtR(v.r1) + ' and ' + fmtR(v.r1 + v.r2); }
+      const fB = GBW / NG, mag = Math.abs(G0) / Math.sqrt(1 + Math.pow(v.f / fB, 2)), lag = Math.atan(v.f / fB);
+      const sgn = G0 < 0 ? -1 : 1;
+      const inp = [], inp2 = [], out = []; let clipped = false;
+      const T = 1 / v.f;
+      for (let i = 0; i <= 400; i++) {
+        const t = 2 * T * i / 400, w = 2 * Math.PI * v.f * t;
+        let e = sgn * mag * v.v * Math.sin(w - lag);
+        if (c === 'dif') { inp.push([t * 1e3, 1 + 0.5 * v.v * Math.sin(w)]); inp2.push([t * 1e3, 1 - 0.5 * v.v * Math.sin(w)]); }
+        else inp.push([t * 1e3, v.v * Math.sin(w)]);
+        if (e > ESAT) { e = ESAT; clipped = true; } if (e < -ESAT) { e = -ESAT; clipped = true; }
+        out.push([t * 1e3, e]);
+      }
+      const ymax = Math.max(0.12, (c === 'dif' ? 1 + 0.5 * v.v : v.v), Math.min(ESAT, mag * v.v)) * 1.15;
+      const ser = [{ pts: inp, color: 'blu', width: 1.6 }];
+      if (c === 'dif') ser.push({ pts: inp2, color: 'blu', width: 1.6, dash: [4, 3] });
+      ser.push({ pts: out, color: 'acc', width: 2.4 });
+      Deck.plot($('cvOAt'), { x: [0, 2 * T * 1e3], y: [-ymax, ymax], xlabel: 'time (ms)', ylabel: 'voltage (V)', series: ser,
+        hlines: clipped ? [{ y: ESAT, color: 'red', dash: [3, 3], label: '+13.5 V' }, { y: -ESAT, color: 'red', dash: [3, 3] }] : [] });
+      const Gabs = Math.abs(G0);
+      Deck.plot($('cvOAf'), { x: [10, 1e7], y: [0.1, 1e6], logx: true, logy: true, xlabel: 'frequency (Hz)', ylabel: '|gain|',
+        series: [{ f: f => A0 / Math.sqrt(1 + Math.pow(f * A0 / GBW, 2)), color: 'muted', width: 1.6, dash: [5, 4] },
+                 { f: f => Gabs / Math.sqrt(1 + Math.pow(f / fB, 2)), color: 'acc', width: 2.4 }],
+        vlines: [{ x: fB, color: 'blu', dash: [3, 4], label: 'f_B' }],
+        points: [{ x: v.f, y: Math.max(0.1, mag), color: 'ink', r: 5 }] });
+      const sp = t => '<span>' + t + '</span>';
+      $('roOA').innerHTML = sp('ideal gain <b>' + (+G0.toPrecision(4)) + '</b>') + sp('bandwidth f_B <b>' + fmtF(fB) + '</b>') + sp('gain at ' + fmtF(v.f) + ' <b>' + (sgn * mag).toPrecision(3) + '</b>, lag <b>' + (lag * 180 / Math.PI).toFixed(0) + '°</b>') + sp(zin) + sp(clipped ? '<b>output clipped at ±13.5 V</b>' : 'peak out <b>' + (mag * v.v).toPrecision(3) + ' V</b>');
+    }
+    function fmtR(r) { return r >= 1e6 ? (+(r / 1e6).toPrecision(3)) + ' MΩ' : r >= 1e3 ? (+(r / 1e3).toPrecision(3)) + ' kΩ' : (+r.toPrecision(3)) + ' Ω'; }
+    function fmtF(f) { return f >= 1e6 ? (+(f / 1e6).toPrecision(3)) + ' MHz' : f >= 1e3 ? (+(f / 1e3).toPrecision(3)) + ' kHz' : (+f.toPrecision(3)) + ' Hz'; }
+    return draw;
+  });
+
+  /* ---- static Butterworth family (slide 13) ---- */
+  Deck.onShow('butterworth', () => {
+    function draw() {
+      const cols = ['ylw', 'grn', 'blu', 'acc', 'red'];
+      const ser = [1, 2, 3, 4, 5].map((k, i) => ({ f: x => 1 / Math.sqrt(1 + Math.pow(x, 2 * k)), color: cols[i], width: 2 }));
+      const r = Deck.plot($('cvBW'), { x: [0.1, 10], y: [0.001, 1.5], logx: true, logy: true, xlabel: 'f / f_c', ylabel: 'M(f)', series: ser,
+        hlines: [{ y: 0.707, color: 'muted', dash: [2, 4], label: '0.707 (−3 dB)' }] });
+      const ctx = r.ctx; ctx.font = Deck.font(11, true); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      [1, 2, 3, 4, 5].forEach((k, i) => { const x = 3.2, y = 1 / Math.sqrt(1 + Math.pow(x, 2 * k)); ctx.fillStyle = Deck.color(cols[i]); ctx.fillText('k=' + k, r.X(x) + 4, r.Y(y) - 2); });
+    }
+    return draw;
+  });
+
+  /* ---- attenuation chart (slide 15) ---- */
+  Deck.onShow('ex-order', () => {
+    function draw() {
+      const cols = ['ylw', 'grn', 'blu', 'acc', 'red'];
+      const ser = [1, 2, 3, 4, 5].map((k, i) => ({ f: x => 10 * Math.log10(1 + Math.pow(x, 2 * k)), color: cols[i], width: k === 3 ? 3 : 1.6 }));
+      const r = Deck.plot($('cvAtt'), { x: [1, 20], y: [0, 120], logx: true, xlabel: 'f / f_c', ylabel: 'attenuation (dB)', series: ser,
+        xticks: [1, 2, 5, 10, 20], hlines: [{ y: 60, color: 'muted', dash: [3, 4] }], vlines: [{ x: 10, color: 'muted', dash: [3, 4] }],
+        points: [{ x: 10, y: 60, color: 'ink', r: 5, label: 'need ≥ 60 dB', align: 'right' }] });
+      const ctx = r.ctx; ctx.font = Deck.font(11, true); ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      [1, 2, 3, 4, 5].forEach((k, i) => { const x = 18, y = 10 * Math.log10(1 + Math.pow(x, 2 * k)); if (y < 118) { ctx.fillStyle = Deck.color(cols[i]); ctx.fillText('k=' + k, r.X(x) - 4, r.Y(y) - 8); } });
+    }
+    return draw;
+  });
+
+  /* ---- filter bench ---- */
+  const cmul = (a, b) => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]];
+  const cdiv = (a, b) => { const d = b[0] * b[0] + b[1] * b[1]; return [(a[0] * b[0] + a[1] * b[1]) / d, (a[1] * b[0] - a[0] * b[1]) / d]; };
+  function butter(k, fn, hp) { // H(j fn), fn = f/fc
+    const s = hp ? [0, -1 / fn] : [0, fn]; let H = [1, 0];
+    for (let i = 1; i <= k; i++) {
+      const th = Math.PI * (2 * i + k - 1) / (2 * k), p = [Math.cos(th), Math.sin(th)];
+      H = cmul(H, cdiv([-p[0], -p[1]], [s[0] - p[0], s[1] - p[1]]));
+    }
+    return H;
+  }
+  function fact(n) { let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; }
+  const besselCache = {};
+  function besselCoef(k) {
+    if (besselCache[k]) return besselCache[k];
+    const a = []; for (let j = 0; j <= k; j++) a.push(fact(2 * k - j) / (Math.pow(2, k - j) * fact(j) * fact(k - j)));
+    const evalMag = w => { let re = 0, im = 0, pw = [1, 0]; for (let j = 0; j <= k; j++) { re += a[j] * pw[0]; im += a[j] * pw[1]; pw = cmul(pw, [0, w]); } return Math.hypot(re, im); };
+    let lo = 0.01, hi = 20; for (let it = 0; it < 80; it++) { const m = (lo + hi) / 2; if (evalMag(m) < Math.SQRT2 * a[0]) lo = m; else hi = m; }
+    besselCache[k] = { a: a, w3: (lo + hi) / 2 }; return besselCache[k];
+  }
+  function bessel(k, fn) {
+    const { a, w3 } = besselCoef(k); let den = [0, 0], pw = [1, 0];
+    for (let j = 0; j <= k; j++) { den = [den[0] + a[j] * pw[0], den[1] + a[j] * pw[1]]; pw = cmul(pw, [0, fn * w3]); }
+    return cdiv([a[0], 0], den);
+  }
+  const HISS = (function () {
+    const c = []; let s = 12345; const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+    for (let i = 0; i < 24; i++) c.push({ f: 90 + 360 * i / 23 + 6 * rnd(), a: 0.04 + 0.05 * rnd(), p: 6.283 * rnd() });
+    return c;
+  })();
+  const SIG = {
+    sine: [{ f: 5, a: 1, p: 0, sig: 1 }, { f: 50, a: 0.4, p: 0.3 }].concat(HISS),
+    sq: (function () { const c = []; for (let n = 1; n <= 59; n += 2) c.push({ f: 5 * n, a: 4 / Math.PI / n, p: 0, sig: 1 }); return c.concat(HISS.map(h => ({ f: h.f + 300, a: h.a, p: h.p }))); })()
+  };
+  Deck.onShow('filter-sim', () => {
+    const get = Deck.controls('simFilt', () => draw());
+    function draw() {
+      const v = get(), k = v.k, fc = v.fc, ty = v.type, comps = SIG[v.sig];
+      const Hf = f => ty === 'bes' ? bessel(k, f / fc) : butter(k, f / fc, ty === 'hp');
+      const H = comps.map(c => Hf(c.f));
+      const Mf = f => Math.hypot.apply(null, Hf(f));
+      Deck.plot($('cvFiltM'), { x: [1, 1000], y: [0.001, 2], logx: true, logy: true, xlabel: 'frequency f (Hz)', ylabel: 'amplitude (V) and M(f)',
+        vlines: [{ x: fc, color: 'blu', dash: [3, 4], label: 'f_c' }], hlines: [{ y: 0.707, color: 'muted', dash: [2, 4], label: '0.707' }],
+        series: [{ f: Mf, color: 'blu', width: 2 },
+          { pts: comps.map(c => [c.f, c.a]), color: 'muted', dotsOnly: true, r: 3.2 },
+          { pts: comps.map((c, i) => [c.f, Math.max(1.1e-3, c.a * Math.hypot(H[i][0], H[i][1]))]), color: 'acc', dotsOnly: true, r: 3.2 }] });
+      const inp = [], out = [], cln = [];
+      for (let j = 0; j <= 900; j++) {
+        const t = 0.4 * j / 900; let a = 0, b = 0, s = 0;
+        comps.forEach((c, i) => { const w = 2 * Math.PI * c.f * t + c.p; a += c.a * Math.sin(w); if (c.sig) s += c.a * Math.sin(w); b += c.a * Math.hypot(H[i][0], H[i][1]) * Math.sin(w + Math.atan2(H[i][1], H[i][0])); });
+        inp.push([t, a]); out.push([t, b]); cln.push([t, s]);
+      }
+      Deck.plot($('cvFiltT'), { x: [0, 0.4], y: [-2.4, 2.4], xlabel: 'time t (s)', ylabel: 'signal (V)',
+        series: [{ pts: inp, color: 'muted', width: 1 }, { pts: cln, color: 'grn', width: 1.3, dash: [4, 4] }, { pts: out, color: 'acc', width: 2.4 }] });
+      const H5 = Hf(5), m5 = Math.hypot(H5[0], H5[1]), ph5 = Math.atan2(H5[1], H5[0]);
+      const sp = t => '<span>' + t + '</span>';
+      let extra;
+      if (v.sig === 'sine') { const m50 = Mf(50); extra = sp('hum M(50 Hz) <b>' + m50.toPrecision(3) + '</b> (' + (-20 * Math.log10(m50)).toFixed(1) + ' dB)'); }
+      else { let mx = -9; out.forEach(p => { if (p[1] > mx) mx = p[1]; }); extra = sp('output peak <b>' + mx.toFixed(2) + ' V</b> (square wave is 1.00 V): overshoot <b>' + Math.max(0, (mx - 1) * 100).toFixed(0) + ' %</b>'); }
+      $('roFilt').innerHTML = sp('M(5 Hz) <b>' + m5.toFixed(3) + '</b>') + extra + sp('phase at 5 Hz <b>' + (ph5 * 180 / Math.PI).toFixed(1) + '°</b> = delay <b>' + (Math.abs(ph5) / (2 * Math.PI * 5) * 1000).toFixed(1) + ' ms</b>') + sp(ty === 'bes' ? 'Bessel: softer knee, near-constant delay' : 'roll-off <b>' + (20 * k) + ' dB/decade</b>');
+    }
+    return draw;
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>03.05 Photoconductive cell in a voltage divider · ME 361</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="../deck.css">
+<style>
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:640px){.duo{grid-template-columns:1fr}}
+  .tbl.compact th,.tbl.compact td{padding:6px 10px;font-size:.86rem}
+  .card p{max-width:none}
+</style>
+<script>window.DECK = {"mode": "panel", "num": "03.05", "title": "Photoconductive cell in a voltage divider", "home": "index.html", "homeLabel": "Sensing Elements", "course": "ME 361 · Instrumentation and Measurement"};</script>
+<script src="../deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+<section class="slide" id="ldr" data-title="Photoconductive cell in a divider">
+  <p class="eyebrow">Optical transducers · simulator</p>
+  <h2>A light-dependent resistor in a voltage divider</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simLDR">
+      <div class="simhead"><span>Photoconductive cell bench</span><span class="legend"><span><i style="background:var(--acc)"></i>Eₒ against illuminance</span><span><i style="background:var(--blu)"></i>sensitivity per decade</span></span></div>
+      <canvas id="cvLDR" data-h="260" aria-label="Output voltage of the divider and its sensitivity against illuminance on a log axis"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="le">Illuminance E <output data-for="E"></output></label>
+          <input type="range" id="le" data-key="E" data-scale="log" data-min="0.1" data-max="10000" min="0" max="1000" value="500" data-fmt="-1" data-unit=" lx"></div>
+        <div class="ctl"><label for="lr">Fixed resistor R<sub>f</sub> <output data-for="Rf"></output></label>
+          <input type="range" id="lr" data-key="Rf" data-scale="log" data-min="100" data-max="1000000" min="0" max="1000" value="500" data-fmt="-1" data-unit=" Ω"></div>
+        <div class="ctl"><label for="lg">Cell exponent γ <output data-for="g"></output></label>
+          <input type="range" id="lg" data-key="g" min="0.5" max="1" step="0.05" value="0.7" data-fmt="2"></div>
+      </div>
+      <div class="readout" id="roLDR"></div>
+    </div>
+    <div>
+      <p>A cadmium sulphide cell’s resistance falls as a power of the illuminance \(E\) (light flux per area, lux):</p>
+      <div class="eq"><span class="label">Photoconductive cell model</span>$$R_c=R_{10}\left(\frac{E}{10\ \text{lx}}\right)^{-\gamma}$$</div>
+      <p class="small">The sim uses \(R_{10}=10\) kΩ at 10 lx and \(\gamma\approx0.7\), typical of small cells. Put the cell on top and a fixed \(R_f\) below across 5 V: \(E_o=5R_f/(R_f+R_c)\), which rises with light.</p>
+      <div class="try"><p>Set \(R_f=10\) kΩ and sweep the light: the steepest part of the S-curve (blue peak) sits at 10 lx, where \(R_c=R_f\). Move \(R_f\) to 1 kΩ and the peak moves to about 270 lx. This is the ballast-circuit rule from Part A: the divider is most sensitive where the fixed resistor equals the sensor’s resistance.</p></div>
+      <div class="quiz" data-correct="1">
+        <p class="q">You need to detect light between 200 and 2000 lx with this cell. Which fixed resistor is the best choice?</p>
+        <div class="opts">
+          <button class="opt" data-why="10 kΩ matches the cell at 10 lx, far below the range; at 200–2000 lx the output is already near the top of the S-curve.">10 kΩ</button>
+          <button class="opt" data-why="Right. At about 630 lx, the geometric middle of the range, \(R_c=10\ \text{k}\Omega\times63^{-0.7}\approx550\ \Omega\). Choose \(R_f\) near that.">About 560 Ω</button>
+          <button class="opt" data-why="At 2000 lx the cell is still about 245 Ω, so a 10 Ω resistor leaves the output near zero over the whole range.">10 Ω</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 · Detector figures of merit + worked example -->
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---- cover: quadrature pulses ---- */
+  let coverT = 0;
+  function drawCover() {
+    const tEnd = 14, tt = Math.min(coverT, tEnd), a = [], b = [];
+    for (let i = 0; i <= 1400; i++) {
+      const t = tEnd * i / 1400; if (t > tt) break;
+      const ph = 2 * Math.PI * (0.25 * t + 0.06 * t * t);
+      a.push([t, (Math.sin(ph) >= 0 ? 1 : 0) + 0.3]); b.push([t, (Math.sin(ph - Math.PI / 2) >= 0 ? 1 : 0) - 1.3]);
+    }
+    Deck.plot($('coverTrace'), { x: [0, tEnd], y: [-1.6, 1.6], pad: { l: 8, r: 8, t: 6, b: 6 }, xticks: [], yticks: [], noGrid: true,
+      series: [{ pts: a, color: 'acc', width: 2 }, { pts: b, color: 'blu', width: 2 }] });
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (coverT < 15) { coverT += RM ? 15 : dt * 3; drawCover(); } });
+
+  /* ---- piezo leakage ---- */
+  Deck.onShow('piezorc', () => {
+    const get = Deck.controls('simPiezo', draw);
+    function draw() {
+      const v = get(), tau = v.tau, T = v.T, w = v.w;
+      let tEnd, F;
+      if (w === 'step') { tEnd = Math.max(2, Math.min(8, 4 * tau)); F = t => (t >= 0.1 * tEnd ? 1 : 0); }
+      else if (w === 'pulse') { tEnd = Math.max(5 * T, Math.min(4 * tau, 20 * T)); F = t => { const s = t - 0.1 * tEnd; return s >= 0 && s <= T ? Math.sin(Math.PI * s / T) : 0; }; }
+      else { tEnd = 4 * T; F = t => Math.sin(2 * Math.PI * t / T); }
+      const n = 2400, dt = tEnd / n, ptsF = [], ptsE = [];
+      let E = w === 'sine' ? 0 : 0, Fp = F(0);
+      // for sine start from periodic steady state
+      if (w === 'sine') { const wt = 2 * Math.PI * tau / T, A = wt / Math.sqrt(1 + wt * wt), ph = Math.atan2(1, wt); E = A * Math.sin(ph); }
+      for (let i = 0; i <= n; i++) {
+        const t = i * dt, Fi = F(t);
+        if (i > 0) { const sub = 8, h = dt / sub; const dF = (Fi - Fp) / sub; for (let k = 0; k < sub; k++) E += dF - E * h / tau; }
+        Fp = Fi; ptsF.push([t, Fi]); ptsE.push([t, E]);
+      }
+      Deck.plot($('cvPiezo'), { x: [0, tEnd], y: [-1.2, 1.25], xlabel: 'time (s)', ylabel: 'force, voltage (scaled to dF/C)',
+        hlines: [{ y: 0, color: 'muted', dash: [2, 3] }],
+        series: [{ pts: ptsF, color: 'muted', width: 1.6 }, { pts: ptsE, color: 'acc', width: 2.4 }] });
+      let txt = 'τ = <b>' + (+tau.toPrecision(3)) + ' s</b> &nbsp; corner frequency <b>' + (+(1 / (2 * Math.PI * tau)).toPrecision(3)) + ' Hz</b> &nbsp; ';
+      if (w === 'step') txt += 'reading 1 s after the step: <b>' + (Math.exp(-1 / tau) * 100).toFixed(1) + ' %</b> of true';
+      else if (w === 'pulse') { let mn = 0, mx = 0; ptsE.forEach(p => { mn = Math.min(mn, p[1]); mx = Math.max(mx, p[1]); }); txt += 'peak <b>' + (mx * 100).toFixed(1) + ' %</b> of true &nbsp; undershoot <b>' + (mn * 100).toFixed(1) + ' %</b>'; }
+      else { const wt = 2 * Math.PI * tau / T; txt += 'f = <b>' + (+(1 / T).toPrecision(3)) + ' Hz</b> &nbsp; amplitude ratio <b>' + (wt / Math.sqrt(1 + wt * wt)).toFixed(3) + '</b> &nbsp; phase lead <b>' + (Math.atan2(1, wt) * 180 / Math.PI).toFixed(1) + '°</b>'; }
+      $('roPiezo').innerHTML = txt;
+    }
+    return draw;
+  });
+
+  /* ---- photoconductive divider ---- */
+  Deck.onShow('ldr', () => {
+    const get = Deck.controls('simLDR', draw);
+    function draw() {
+      const v = get(), Ei = 5;
+      const Rc = E => 1e4 * Math.pow(E / 10, -v.g);
+      const Eo = E => Ei * v.Rf / (v.Rf + Rc(E));
+      const sens = E => Eo(E * Math.sqrt(10)) - Eo(E / Math.sqrt(10));
+      const r = Deck.plot($('cvLDR'), { x: [0.1, 10000], y: [0, 5], logx: true, xlabel: 'illuminance E (lx)', ylabel: 'Eₒ (V)  and  ΔEₒ per decade (V)',
+        series: [{ f: Eo, color: 'acc' }, { f: sens, color: 'blu', dash: [5, 4], width: 2 }],
+        points: [{ x: v.E, y: Eo(v.E), color: 'ink', r: 5 }] });
+      const Epk = 10 * Math.pow(v.Rf / 1e4, -1 / v.g);
+      $('roLDR').innerHTML = 'cell resistance <b>' + fmtR(Rc(v.E)) + '</b> &nbsp; Eₒ = <b>' + Eo(v.E).toFixed(3) + ' V</b> &nbsp; steepest (cell = fixed R) at <b>' + (+Epk.toPrecision(3)) + ' lx</b>';
+    }
+    return draw;
+  });
+  function fmtR(R) { return R >= 1e6 ? (R / 1e6).toPrecision(3) + ' MΩ' : R >= 1e3 ? (R / 1e3).toPrecision(3) + ' kΩ' : R.toPrecision(3) + ' Ω'; }
+
+  /* ---- photovoltaic static plot ---- */
+  Deck.onShow('pvfbg', () => {
+    const Vt = 0.02569, I0 = 1e-9;
+    function V(E, RL) {
+      const IL = 0.1e-6 * E;
+      if (!RL) return Vt * Math.log(1 + IL / I0);
+      let lo = 0, hi = 1;
+      for (let k = 0; k < 60; k++) { const m = (lo + hi) / 2, f = IL - I0 * (Math.exp(m / Vt) - 1) - m / RL; if (f > 0) lo = m; else hi = m; }
+      return lo;
+    }
+    return function () {
+      Deck.plot($('cvPV'), { x: [1, 10000], y: [0, 0.4], logx: true, xlabel: 'illuminance (lx)', ylabel: 'cell voltage (V)',
+        series: [{ f: E => V(E, 0), color: 'acc', n: 200 }, { f: E => V(E, 1e4), color: 'blu', n: 200 }, { f: E => V(E, 1e3), color: 'grn', n: 200 }] });
+    };
+  });
+
+  /* ---- Hall plate ---- */
+  const KH = { ge: -8.0e-3, te: 5.3e-5, si: 4.1e-6, bi: -1e-6, cu: -5.2e-11 };   // SI, m^3/C
+  let hallDraw = null, hallParts = [], hallT = 0;
+  Deck.onShow('hallsim', () => {
+    const get = Deck.controls('simHall', () => hallDraw && hallDraw());
+    for (let k = 0; k < 36; k++) hallParts.push({ x: Math.random(), y: Math.random() });
+    function fmtV(v) { const a = Math.abs(v); const s = v < 0 ? '−' : '+'; return a >= 1 ? s + a.toFixed(2) + ' V' : a >= 1e-3 ? s + (a * 1e3).toFixed(2) + ' mV' : a >= 1e-6 ? s + (a * 1e6).toFixed(2) + ' µV' : s + (a * 1e9).toFixed(3) + ' nV'; }
+    function draw() {
+      const v = get(), R = KH[v.m], I = v.I * 1e-3, B = v.B, t = v.t * 1e-3;
+      const VH = R * I * B / t, holes = R > 0;
+      const { ctx, W, H } = Deck.sizeCanvas($('cvHall'));
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const px = W * 0.12, pw = W * 0.62, py = H * 0.22, ph = H * 0.5;
+      ctx.fillStyle = Deck.alpha('acc', .12); ctx.fillRect(px, py, pw, ph);
+      ctx.strokeStyle = Deck.color('acc'); ctx.lineWidth = 1.5; ctx.strokeRect(px, py, pw, ph);
+      // B symbols
+      ctx.strokeStyle = Deck.color('blu'); ctx.fillStyle = Deck.color('blu'); ctx.lineWidth = 1.2;
+      const nb = Math.round(Math.abs(B) * 4);
+      for (let i = 0; i < 6; i++) for (let j = 0; j < 3; j++) {
+        if ((i + j) % 2 && nb < 3) continue; if (nb === 0) continue;
+        const cx = px + pw * (i + 0.5) / 6, cy = py + ph * (j + 0.5) / 3;
+        ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 7); ctx.globalAlpha = .5; ctx.stroke();
+        if (B > 0) { ctx.beginPath(); ctx.arc(cx, cy, 1.6, 0, 7); ctx.fill(); }
+        else { ctx.beginPath(); ctx.moveTo(cx - 3, cy - 3); ctx.lineTo(cx + 3, cy + 3); ctx.moveTo(cx + 3, cy - 3); ctx.lineTo(cx - 3, cy + 3); ctx.stroke(); }
+        ctx.globalAlpha = 1;
+      }
+      ctx.font = Deck.font(11.5, true); ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillStyle = Deck.color('blu');
+      ctx.fillText(Math.abs(B) < 0.005 ? 'B = 0' : (B > 0 ? 'B out of screen (⊙)' : 'B into screen (⊗)'), px, py + ph + 8);
+      // current arrow
+      ctx.strokeStyle = Deck.color('ink'); ctx.fillStyle = Deck.color('ink'); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(4, py + ph / 2); ctx.lineTo(px - 4, py + ph / 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px - 4, py + ph / 2); ctx.lineTo(px - 12, py + ph / 2 - 5); ctx.lineTo(px - 12, py + ph / 2 + 5); ctx.fill();
+      ctx.textBaseline = 'bottom'; ctx.fillText('I', 6, py + ph / 2 - 4);
+      // deflection edge: F = q v x B. Current +x, B +z: for holes v=+x -> v x B = -y (down in maths, up on screen? take screen y downward): use edge = top when B>0
+      const edgeTop = B < 0; // F = qv x B: both carrier types pushed to the same edge (bottom when B points out of the screen)
+      const defl = Math.max(-1, Math.min(1, B));
+      // carriers
+      const col = holes ? 'red' : 'blu';
+      hallParts.forEach(p => {
+        const yy = 0.5 + (p.y - 0.5) * (1 - 0.6 * Math.abs(defl)) + (edgeTop ? -1 : 1) * 0.3 * Math.abs(defl) * Math.pow(holes ? p.x : 1 - p.x, 0.7);
+        const cx = px + pw * p.x, cy = py + ph * Math.max(0.05, Math.min(0.95, yy));
+        ctx.fillStyle = Deck.color(col); ctx.beginPath(); ctx.arc(cx, cy, 3.2, 0, 7); ctx.fill();
+      });
+      // edge charges
+      const lvl = Math.abs(VH) < 1e-12 ? 0 : Math.max(1, Math.min(12, Math.round(3 + Math.log10(Math.abs(VH) / 1e-6) * 2)));
+      const topSign = edgeTop ? (holes ? '+' : '−') : (holes ? '−' : '+'), botSign = topSign === '+' ? '−' : '+';
+      ctx.font = Deck.font(14, true); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      for (let k = 0; k < lvl; k++) {
+        const xx = px + pw * (k + 0.5) / 12;
+        ctx.fillStyle = Deck.color(topSign === '+' ? 'red' : 'blu'); ctx.fillText(topSign, xx, py - 9);
+        ctx.fillStyle = Deck.color(botSign === '+' ? 'red' : 'blu'); ctx.fillText(botSign, xx, py + ph + 30);
+      }
+      // voltmeter
+      const mx = px + pw + (W - px - pw) / 2, my = py + ph / 2, mr = Math.min(28, (W - px - pw) / 2 - 6);
+      ctx.strokeStyle = Deck.color('muted'); ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(px + pw * 0.5, py); ctx.lineTo(px + pw * 0.5, py - 22); ctx.lineTo(mx, py - 22); ctx.lineTo(mx, my - mr); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px + pw * 0.5, py + ph); ctx.lineTo(px + pw * 0.5, py + ph + 46); ctx.lineTo(mx, py + ph + 46); ctx.lineTo(mx, my + mr); ctx.stroke();
+      ctx.fillStyle = Deck.color('panel'); ctx.strokeStyle = Deck.color('ink'); ctx.beginPath(); ctx.arc(mx, my, mr, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = Deck.color('ink'); ctx.font = Deck.font(12, true); ctx.fillText('VH', mx, my);
+      $('roHall').innerHTML = 'Hall voltage <b>' + fmtV(VH) + '</b> (bottom edge minus top edge) &nbsp; coefficient <b>' + R.toExponential(1) + ' m³/C</b> &nbsp; carriers: <b>' + (holes ? 'holes' : 'electrons') + '</b>, n ≈ <b>' + (1 / (Math.abs(R) * 1.602e-19)).toExponential(1) + ' m⁻³</b>';
+    }
+    hallDraw = draw; return draw;
+  });
+  Deck.loop('hallsim', dt => {
+    if (!hallDraw || RM) return;
+    const m = (document.getElementById('hm') || {}).value, holes = KH[m] > 0, I = +(document.getElementById('hI') || {}).value || 0;
+    hallParts.forEach(p => { p.x += (holes ? 1 : -1) * dt * 0.05 * I; if (p.x > 1) { p.x -= 1; p.y = Math.random(); } if (p.x < 0) { p.x += 1; p.y = Math.random(); } });
+    hallDraw();
+  });
+
+  /* ---- quadrature encoder ---- */
+  let enc = { th: 0, c4: 0, st: null, hist: [], t: 0 }, encDraw = null, encGet = null;
+  const SEQ = [0, 2, 3, 1];   // forward order of (A,B): 00, 10, 11, 01
+  function chan(th, N) { const ph = N * th; return [Math.sin(ph) >= 0 ? 1 : 0, Math.sin(ph - Math.PI / 2) >= 0 ? 1 : 0]; }
+  Deck.onShow('encsim', () => {
+    encGet = Deck.controls('simEnc', () => { enc.c4 = 0; enc.th = 0; enc.st = null; enc.hist = []; encDraw && encDraw(); });
+    function draw() {
+      const v = encGet(), N = v.N;
+      const { ctx, W, H } = Deck.sizeCanvas($('cvEncA'));
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const cx = W / 2, cy = H / 2 + 6, R = Math.min(W, H) * 0.4, r0 = R * 0.72;
+      ctx.fillStyle = Deck.color('panel'); ctx.strokeStyle = Deck.color('ink'); ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = Deck.alpha('ink', .7);
+      for (let k = 0; k < N; k++) {
+        const a0 = enc.th + 2 * Math.PI * k / N, a1 = a0 + Math.PI / N;
+        ctx.beginPath(); ctx.arc(cx, cy, R * 0.95, -a0, -a1, true); ctx.arc(cx, cy, r0, -a1, -a0, false); ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = Deck.color('muted'); ctx.beginPath(); ctx.arc(cx, cy, 6, 0, 7); ctx.fill();
+      // detectors at angle 0 (A) and -quarter pitch (B)
+      const [A, Bc] = chan(enc.th, N);
+      [[0, 'A', 'acc', A], [Math.PI / (2 * N), 'B', 'blu', Bc]].forEach(([ang, lab, col, on]) => {
+        const rr = (R * 0.95 + r0) / 2, x = cx + rr * Math.cos(-ang), y = cy + rr * Math.sin(-ang) + (lab === 'B' ? 0 : 0);
+        ctx.fillStyle = on ? Deck.color(col) : Deck.color('panel'); ctx.strokeStyle = Deck.color(col); ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = Deck.color(col); ctx.font = Deck.font(12, true); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.fillText(lab, x + 10, y + (lab === 'B' ? -12 : 12));
+      });
+      ctx.fillStyle = Deck.color('muted'); ctx.font = Deck.font(11, true); ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText('slots dark = opaque', cx, 2);
+      // traces
+      const h = enc.hist, tNow = enc.t, span = 2;
+      const pa = [], pb = [];
+      h.forEach(p => { pa.push([p[0] - tNow, p[1] * 0.8 + 1.2]); pb.push([p[0] - tNow, p[2] * 0.8]); });
+      Deck.plot($('cvEncB'), { x: [-span, 0], y: [-0.2, 2.2], xlabel: 'time (s), now at right', yticks: [], pad: { l: 30 },
+        series: [{ pts: pa, color: 'acc', width: 2 }, { pts: pb, color: 'blu', width: 2 }] });
+      const d = v.d, cnt = Math.floor(enc.c4 / (4 / d)), stepDeg = 360 / (N * d);
+      const trueDeg = enc.th * 180 / Math.PI;
+      $('roEnc').innerHTML = 'count <b>' + cnt + '</b> &nbsp; angle from count <b>' + (cnt * stepDeg).toFixed(1) + '°</b> &nbsp; true <b>' + trueDeg.toFixed(1) + '°</b> &nbsp; step <b>' + stepDeg.toFixed(2) + '°</b> &nbsp; ' + (v.s > 0 ? 'A leads B: forward' : v.s < 0 ? 'B leads A: reverse' : 'stopped');
+    }
+    encDraw = draw; return draw;
+  });
+  Deck.loop('encsim', dt => {
+    if (!encDraw) return;
+    const v = encGet(), N = v.N, sub = 20, h = (RM ? 0 : dt) / sub;
+    for (let k = 0; k < sub; k++) {
+      enc.th += 2 * Math.PI * v.s * h; enc.t += h;
+      const [A, B] = chan(enc.th, N), st = SEQ.indexOf(A * 2 + B);
+      if (enc.st !== null && st !== enc.st) { const dlt = (st - enc.st + 4) % 4; enc.c4 += dlt === 1 ? 1 : dlt === 3 ? -1 : 0; }
+      enc.st = st;
+    }
+    const [A, B] = chan(enc.th, N); enc.hist.push([enc.t, A, B]);
+    while (enc.hist.length && enc.hist[0][0] < enc.t - 2.05) enc.hist.shift();
+    encDraw();
+  });
+})();
+</script>
+</body>
+</html>

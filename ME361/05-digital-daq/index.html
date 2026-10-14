@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Digital Devices &amp; Data Acquisition · ME 361 panels</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:wght@400..700&display=swap">
+<style>
+:root{--paper:#F3F5F6;--panel:#FCFDFD;--ink:#16202B;--muted:#56636F;--rule:#D3DAE0;--grid:#E4E9ED;--acc:#C9481A;
+ --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;--f-body:"Public Sans","Segoe UI",Roboto,Arial,sans-serif;--f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root{--paper:#0E141A;--panel:#141C24;--ink:#E3E9EF;--muted:#94A2AF;--rule:#2B3743;--grid:#19222B;--acc:#FF7D4A;color-scheme:dark}}
+*{box-sizing:border-box} html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);line-height:1.5;padding-inline:16px;
+ background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px}
+.wrap{max-width:1040px;margin:0 auto;padding-block:36px 64px;display:flex;flex-direction:column;gap:22px}
+.eyebrow{font-family:var(--f-mono);font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--acc);margin:0}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(2.2rem,6vw,3.4rem);line-height:1.05;margin:0}
+h2{font-family:var(--f-display);font-weight:600;font-size:1.6rem;margin:0}
+p{margin:0;max-width:64ch} a{color:inherit}
+.back{font-family:var(--f-mono);font-size:.8rem;color:var(--muted);text-decoration:none}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.card{display:flex;flex-direction:column;gap:6px;text-decoration:none;background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:14px 16px}
+.card:hover{border-color:var(--acc)}
+.card .n{font-family:var(--f-mono);font-size:.75rem;color:var(--acc);font-weight:600}
+.card .t{font-weight:600}
+.card .d{color:var(--muted);font-size:.9rem}
+.topic{display:flex;flex-direction:column;gap:10px}
+.topic header{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid var(--rule);padding-bottom:6px}
+.topic header .n{font-family:var(--f-display);font-weight:700;font-size:1.8rem;color:var(--acc)}
+.topic header a{text-decoration:none}
+.muted{color:var(--muted);font-size:.9rem}
+</style></head><body><div class="wrap">
+<a class="back" href="../index.html">&larr; All topics</a>
+<header><p class="eyebrow">ME 361 · Instrumentation and Measurement · Topic 05</p><h1>Digital Devices &amp; Data Acquisition</h1><p class="muted">Logic, sampling and aliasing, converters, DAQ, 4–20 mA and digital filters. Open one panel at a time.</p></header>
+<div class="grid">
+<a class="card" href="05-01-number-base-converter.html"><span class="n">05.01</span><span class="t">Number-base converter</span></a>
+<a class="card" href="05-02-absolute-encoder.html"><span class="n">05.02</span><span class="t">Absolute encoder: binary and Gray code</span></a>
+<a class="card" href="05-03-logic-gates.html"><span class="n">05.03</span><span class="t">Logic gate playground</span></a>
+<a class="card" href="05-04-karnaugh-map.html"><span class="n">05.04</span><span class="t">Karnaugh-map simplifier</span></a>
+<a class="card" href="05-05-flip-flops.html"><span class="n">05.05</span><span class="t">Latches and flip-flops: timing and encoder direction</span></a>
+<a class="card" href="05-06-frequency-counter.html"><span class="n">05.06</span><span class="t">Frequency counter: gate time and ±1 count</span></a>
+<a class="card" href="05-07-aliasing.html"><span class="n">05.07</span><span class="t">Aliasing: sample rate vs signal frequency</span></a>
+<a class="card" href="05-08-wagon-wheel-effect.html"><span class="n">05.08</span><span class="t">Wagon-wheel effect (aliasing on camera)</span></a>
+<a class="card" href="05-09-spectral-leakage.html"><span class="n">05.09</span><span class="t">Spectral leakage in the DFT</span></a>
+<a class="card" href="05-10-high-low-register.html"><span class="n">05.10</span><span class="t">Digital signals: HIGH/LOW levels and a register</span></a>
+<a class="card" href="05-11-adc-quantization.html"><span class="n">05.11</span><span class="t">ADC quantization error</span></a>
+<a class="card" href="05-12-successive-approximation-adc.html"><span class="n">05.12</span><span class="t">Successive-approximation ADC</span></a>
+<a class="card" href="05-13-ramp-dual-slope-adc.html"><span class="n">05.13</span><span class="t">Ramp and dual-slope ADCs</span></a>
+<a class="card" href="05-14-multiplexer-rate-skew.html"><span class="n">05.14</span><span class="t">Multiplexed DAQ: per-channel rate and skew</span></a>
+<a class="card" href="05-15-gain-and-offset.html"><span class="n">05.15</span><span class="t">DAQ input: gain and offset</span></a>
+<a class="card" href="05-16-single-ended-vs-differential.html"><span class="n">05.16</span><span class="t">Single-ended vs differential wiring</span></a>
+<a class="card" href="05-17-digital-images.html"><span class="n">05.17</span><span class="t">Digital images: threshold and edge detection</span></a>
+<a class="card" href="05-18-4-20ma-loop-budget.html"><span class="n">05.18</span><span class="t">4–20 mA current loop budget</span></a>
+<a class="card" href="05-19-sigma-delta-modulator.html"><span class="n">05.19</span><span class="t">Sigma-delta modulator</span></a>
+<a class="card" href="05-20-oversampling-noise-shaping.html"><span class="n">05.20</span><span class="t">Oversampling and noise shaping: sigma-delta vs SAR</span></a>
+<a class="card" href="05-21-digital-filters-50hz.html"><span class="n">05.21</span><span class="t">Digital filters and the 50 Hz hum example</span></a>
+</div></div></body></html>

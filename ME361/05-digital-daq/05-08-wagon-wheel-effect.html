@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>05.08 Wagon-wheel effect (aliasing on camera) · ME 361</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="../deck.css">
+<style>
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:640px){.duo{grid-template-columns:1fr}}
+  .tbl.compact th,.tbl.compact td{padding:5px 10px;font-size:.88rem}
+  .presets{display:flex;flex-wrap:wrap;gap:6px}
+  .presets .btn{font-size:.8rem;padding:.4em .7em}
+  .readout{display:block;line-height:1.9}
+  .define{display:block}
+  .define::before{display:block;margin-bottom:4px}
+</style>
+<script>window.DECK = {"mode": "panel", "num": "05.08", "title": "Wagon-wheel effect (aliasing on camera)", "home": "index.html", "homeLabel": "Digital Devices & Data Acquisition", "course": "ME 361 · Instrumentation and Measurement"};</script>
+<script src="../deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+<section class="slide" id="wheel" data-title="Wagon-wheel effect">
+  <p class="eyebrow">Animation · aliasing you can see</p>
+  <h2>The wagon wheel that turns backwards</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simWheel">
+      <div class="simhead"><span>Camera and wheel</span><span class="legend"><span><i style="background:var(--muted)"></i>4 identical spokes</span><span><i style="background:var(--acc)"></i>one marked spot</span></span></div>
+      <canvas id="cvWheel" data-h="230" aria-label="Two wheels: the true continuous rotation and the same wheel seen through a camera with a finite frame rate"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="wf">Wheel speed <output data-for="f"></output></label>
+          <input type="range" id="wf" data-key="f" min="0" max="6" step="0.05" value="2.2" data-fmt="2" data-unit=" rev/s"></div>
+        <div class="ctl"><label for="wfs">Camera frame rate <output data-for="fs"></output></label>
+          <input type="range" id="wfs" data-key="fs" min="2" max="24" step="0.5" value="9" data-fmt="1" data-unit=" frames/s"></div>
+      </div>
+      <div class="readout" id="roWheel"></div>
+    </div>
+    <div>
+      <p>Each camera frame is one sample of the wheel's angle. Between frames the marked spot turns \(f/f_s\) of a revolution, but a single frame cannot show how many whole turns happened. Only the leftover fraction is visible, and a leftover of, say, 0.9 turn forwards looks exactly like 0.1 turn backwards.</p>
+      <p>The four identical spokes are worse: the pattern repeats every quarter turn, so it behaves like a signal at \(4f\) and aliases at a quarter of the wheel speed. Strobe lights used to measure shaft speed rely on this, which is why the shaft is given a single, non-symmetric mark.</p>
+      <div class="try"><p>Set the frame rate to 9 frames/s. Raise the wheel speed from 0 to 4.5 rev/s. The marked spot turns forward up to 4.5 rev/s (f<sub>N</sub>), then appears to reverse. At exactly 9 rev/s it would freeze. The spokes reverse much earlier, near 1.1 rev/s.</p></div>
+      <div class="analogy"><p>Photograph a clock once every 55 minutes. In each photo the minute hand stands 5 minutes <i>earlier</i> than in the one before, so the clock seems to run backwards.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 11 · Anti-alias & fidelity -->
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const TAU = 2 * Math.PI;
+  function aliasOf(f, fs) { return f - fs * Math.round(f / fs); } // signed alias in [-fs/2, fs/2]
+  function presetButtons(root, map) {
+    root.querySelectorAll('.presets .btn').forEach(b => b.addEventListener('click', () => {
+      Object.keys(map).forEach(attr => { if (b.dataset[attr] !== undefined) { const el = $(map[attr]); el.value = b.dataset[attr]; el.dispatchEvent(new Event('input')); } });
+    }));
+  }
+
+  /* ---- cover: fast sine, samples, slow alias ---- */
+  let coverT = 0;
+  function drawCover() {
+    const tEnd = 14, tt = Math.min(coverT, tEnd), a = [], s = [], al = [];
+    for (let i = 0; i <= 900; i++) { const t = tEnd * i / 900; if (t > tt) break; a.push([t, Math.sin(TAU * 0.92 * t)]); }
+    for (let r = 0; r <= tEnd; r++) { if (r > tt) break; s.push([r, Math.sin(TAU * 0.92 * r)]); }
+    for (let i = 0; i <= 300; i++) { const t = tEnd * i / 300; if (t > tt) break; al.push([t, -Math.sin(TAU * 0.08 * t)]); }
+    Deck.plot($('coverTrace'), { x: [0, tEnd], y: [-1.3, 1.3], pad: { l: 8, r: 8, t: 6, b: 6 }, xticks: [], yticks: [],
+      series: [{ pts: a, color: 'muted', width: 1.2 }, { pts: al, color: 'blu', width: 2.4, dash: [6, 4] }, { pts: s, color: 'acc', dotsOnly: true, r: 4.5 }] });
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (coverT < 15) { coverT += RM ? 15 : dt * 2.5; drawCover(); } });
+
+  /* ---- aliasing simulator ---- */
+  Deck.onShow('alias-sim', () => {
+    const get = Deck.controls('simAlias', draw);
+    presetButtons($('simAlias'), { f: 'af', fs: 'afs' });
+    function draw() {
+      const { f, fs } = get(), fN = fs / 2, sa = aliasOf(f, fs), fa = Math.abs(sa);
+      const sgn = sa >= 0 ? 1 : -1, T = 1;
+      const samples = []; for (let r = 0; r / fs <= T + 1e-9; r++) samples.push([r / fs, Math.sin(TAU * f * r / fs)]);
+      Deck.plot($('cvAliasT'), { x: [0, T], y: [-1.35, 1.35], xlabel: 'time t (s)', ylabel: 'y(t)',
+        series: [{ f: t => Math.sin(TAU * f * t), color: 'muted', width: 1.1, n: 1600 },
+          { f: t => sgn * Math.sin(TAU * fa * t), color: 'blu', width: 2.2, dash: [6, 4], n: 600 },
+          { pts: samples, color: 'acc', dotsOnly: true, r: fs > 60 ? 2.5 : 3.8 }] });
+      const xmax = Math.max(f * 1.2, 4 * fN), segs = [];
+      for (let m = 0; m * fN < xmax; m++) {
+        const up = m % 2 === 0;
+        segs.push({ pts: [[m * fN, up ? 0 : fN], [(m + 1) * fN, up ? fN : 0]], color: up ? 'grn' : 'red', width: 2.2 });
+      }
+      const vl = []; for (let m = 1; m * fN <= xmax; m++) vl.push({ x: m * fN, color: 'rule', dash: [2, 4], label: m === 1 ? 'fN' : m + 'fN' });
+      vl.push({ x: f, color: 'acc', dash: [4, 3] });
+      Deck.plot($('cvAliasF'), { x: [0, xmax], y: [0, fN * 1.18], xlabel: 'input frequency f (Hz)', ylabel: 'apparent frequency (Hz)',
+        vlines: vl, hlines: [{ y: fa, color: 'blu', dash: [4, 3], label: 'fa = ' + fa.toFixed(2) + ' Hz' }],
+        series: segs, points: [{ x: f, y: fa, color: 'ink', r: 5 }] });
+      const ok = fs > 2 * f;
+      const leg = (fa < 1e-9 || Math.abs(fa - fN) < 1e-9) ? 'at a fold point' : (sa > 0 ? 'in phase' : 'inverted');
+      $('roAlias').innerHTML = 'f<sub>N</sub> = <b>' + fN.toFixed(2) + ' Hz</b> &nbsp; f/f<sub>N</sub> = <b>' + (f / fN).toFixed(2) + '</b> &nbsp; apparent f<sub>a</sub> = <b>' + fa.toFixed(2) + ' Hz</b> (' + leg + ') &nbsp; samples per cycle <b>' + (fs / f).toFixed(2) + '</b> &nbsp; ' + (ok ? '<b>OK: f<sub>s</sub> &gt; 2f</b>' : '<b>ALIASED: f<sub>s</sub> &le; 2f</b>');
+    }
+    return draw;
+  });
+
+  /* ---- wagon wheel ---- */
+  let wT = 0, drawW = null, getW = null;
+  Deck.onShow('wheel', () => {
+    getW = Deck.controls('simWheel', () => { if (drawW) drawW(); });
+    function wheel(ctx, cx, cy, R, ang, title) {
+      ctx.strokeStyle = Deck.color('ink'); ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.stroke();
+      ctx.strokeStyle = Deck.color('muted'); ctx.lineWidth = 3;
+      for (let k = 0; k < 4; k++) { const a = ang + k * Math.PI / 2; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + R * Math.cos(a), cy + R * Math.sin(a)); ctx.stroke(); }
+      ctx.fillStyle = Deck.color('acc'); ctx.beginPath(); ctx.arc(cx + R * 0.72 * Math.cos(ang + Math.PI / 4), cy + R * 0.72 * Math.sin(ang + Math.PI / 4), Math.max(5, R * 0.1), 0, 7); ctx.fill();
+      ctx.fillStyle = Deck.color('ink'); ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 7); ctx.fill();
+      ctx.fillStyle = Deck.color('muted'); ctx.font = Deck.font(12); ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(title, cx, 6);
+    }
+    function draw() {
+      const { f, fs } = getW(), cv = $('cvWheel'); const { ctx, W, H } = Deck.sizeCanvas(cv);
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const R = Math.min(W * 0.2, (H - 40) / 2);
+      const angTrue = -TAU * f * wT, tFrame = Math.floor(wT * fs) / fs, angCam = -TAU * f * tFrame;
+      wheel(ctx, W * 0.26, H / 2 + 12, R, angTrue, 'true motion');
+      wheel(ctx, W * 0.74, H / 2 + 12, R, angCam, 'camera, ' + fs.toFixed(1) + ' frames/s');
+      const am = aliasOf(f, fs), ap = aliasOf(4 * f, fs) / 4;
+      const dir = v => Math.abs(v) < 1e-3 ? 'frozen' : (v > 0 ? 'forwards' : 'backwards');
+      $('roWheel').innerHTML = 'turn per frame <b>' + (f / fs).toFixed(3) + ' rev</b> &nbsp; marked spot appears: <b>' + Math.abs(am).toFixed(2) + ' rev/s ' + dir(am) + '</b> &nbsp; spoke pattern appears: <b>' + Math.abs(ap).toFixed(2) + ' rev/s ' + dir(ap) + '</b>';
+    }
+    drawW = draw;
+    return draw;
+  });
+  Deck.loop('wheel', dt => { if (!drawW) return; if (!RM) wT += dt; drawW(); });
+
+  /* ---- leakage simulator ---- */
+  Deck.onShow('leakage', () => {
+    const root = $('simLeak');
+    const get = Deck.controls(root, draw);
+    root.querySelectorAll('.presets .btn').forEach(b => b.addEventListener('click', () => {
+      const fsEl = $('lfs'); fsEl.value = b.dataset.fs; $('lN').value = b.dataset.n; $('lf0').value = 100;
+      fsEl.dispatchEvent(new Event('input'));
+    }));
+    function draw() {
+      const v = get(), f0 = v.f0, N = +v.N, fs = v.fs, dt = 1 / fs, df = fs / N, Tn = N * dt;
+      const y = new Float64Array(N); for (let r = 0; r < N; r++) y[r] = 10 * Math.cos(TAU * f0 * r * dt);
+      const kmax = Math.min(Math.floor(N / 2), Math.ceil(205 / df)), spec = [];
+      let peak = 0, pk = 0;
+      for (let k = 0; k <= kmax; k++) {
+        let re = 0, im = 0; const w = TAU * k / N;
+        for (let r = 0; r < N; r++) { re += y[r] * Math.cos(w * r); im -= y[r] * Math.sin(w * r); }
+        const a = (k === 0 || k === N / 2 ? 1 : 2) * Math.hypot(re, im) / N;
+        spec.push([k * df, a]); if (a > peak) { peak = a; pk = k; }
+      }
+      const tp = []; const step = Math.max(1, Math.floor(N / 400));
+      for (let r = 0; r < N; r += step) tp.push([r * dt, y[r]]);
+      Deck.plot($('cvLeakT'), { x: [0, Tn], y: [-12, 12], ylabel: 'y (V)', yticks: [-10, 0, 10], xfmt: t => (t * 1000).toFixed(0) + ' ms',
+        series: [{ pts: tp, color: 'acc', width: 1.4, dots: N <= 256, r: 1.8 }], pad: { b: 22 } });
+      Deck.plot($('cvLeakF'), { x: [0, 200], y: [0, 11], xlabel: 'frequency (Hz)', ylabel: 'amplitude (V)',
+        hlines: [{ y: 10, color: 'muted', dash: [3, 4], label: 'true amplitude 10' }], vlines: [{ x: f0, color: 'grn', dash: [2, 4] }].concat(fs / 2 < 200 ? [{ x: fs / 2, color: 'red', dash: [4, 3], label: 'fN' }] : []),
+        series: [spec.length < 90 ? { pts: spec.filter(p => p[0] <= 200), color: 'blu', stem: true } : { pts: spec.filter(p => p[0] <= 200), color: 'blu', width: 1.6 }] });
+      const per = f0 * Tn;
+      $('roLeak').innerHTML = 'δf = <b>' + df.toPrecision(3) + ' Hz</b> &nbsp; Nδt = <b>' + (Tn * 1000).toPrecision(4) + ' ms</b> &nbsp; cycles in record <b>' + per.toFixed(2) + '</b> &nbsp; f₀/δf = <b>' + (f0 / df).toFixed(2) + '</b> &nbsp; peak <b>' + peak.toFixed(2) + '</b> at <b>' + (pk * df).toFixed(1) + ' Hz</b>' + (Math.abs(per - Math.round(per)) < 1e-6 ? ' &nbsp; <b>whole cycles: no leakage</b>' : '');
+    }
+    return draw;
+  });
+})();
+</script>
+</body>
+</html>

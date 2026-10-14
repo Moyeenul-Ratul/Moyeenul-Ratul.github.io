@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>05.18 4–20 mA current loop budget · ME 361</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="../deck.css">
+<style>
+  .tbl.compact th,.tbl.compact td{padding:5px 10px;font-size:.88rem}
+  .readout{display:block;line-height:1.9}
+  svg .w{stroke:var(--ink);stroke-width:1.5;fill:none}
+  .simbtns{display:flex;gap:8px;flex-wrap:wrap}
+</style>
+<script>window.DECK = {"mode": "panel", "num": "05.18", "title": "4–20 mA current loop budget", "home": "index.html", "homeLabel": "Digital Devices & Data Acquisition", "course": "ME 361 · Instrumentation and Measurement"};</script>
+<script src="../deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+<section class="slide" id="loopsim" data-title="Loop budget simulator">
+  <p class="eyebrow">Simulator · 4–20 mA loop budget</p>
+  <h2>Watch where the supply voltage goes</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simLoop">
+      <div class="simhead"><span>Two-wire loop, live voltage drops</span><span class="legend"><span><i style="background:var(--blu)"></i>sense resistor</span><span><i style="background:var(--muted)"></i>cable</span><span><i style="background:var(--grn)"></i>left for transmitter</span></span></div>
+      <canvas id="cvLoop" data-h="230" aria-label="Loop drawing with the supply, cable resistances, sense resistor and transmitter, labelled with the live voltage across each, and moving dots showing the current"></canvas>
+      <canvas id="cvBar" data-h="70" aria-label="Bar dividing the supply voltage into sense resistor drop, cable drop and the voltage left for the transmitter, with the transmitter minimum marked"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="lV">Supply voltage <output data-for="Vs"></output></label>
+          <input type="range" id="lV" data-key="Vs" min="12" max="36" step="0.5" value="24" data-fmt="1" data-unit=" V"></div>
+        <div class="ctl"><label for="lM">Transmitter minimum <output data-for="Vm"></output></label>
+          <input type="range" id="lM" data-key="Vm" min="8" max="20" step="0.5" value="12" data-fmt="1" data-unit=" V"></div>
+        <div class="ctl"><label for="lL">Cable length (one way) <output data-for="L"></output></label>
+          <input type="range" id="lL" data-key="L" min="50" max="10000" step="50" value="600" data-fmt="0" data-unit=" m"></div>
+        <div class="ctl"><label for="lA">Core cross-section</label>
+          <select id="lA" data-key="A"><option value="0.5" selected>0.5 mm²</option><option value="0.75">0.75 mm²</option><option value="1.5">1.5 mm²</option></select></div>
+        <div class="ctl"><label for="lR">Sense resistor</label>
+          <select id="lR" data-key="Rs"><option value="250" selected>250 Ω</option><option value="500">500 Ω</option><option value="100">100 Ω</option></select></div>
+        <div class="ctl"><label for="lP">Process value <output data-for="P"></output></label>
+          <input type="range" id="lP" data-key="P" min="0" max="110" step="1" value="100" data-fmt="0" data-unit=" %"></div>
+      </div>
+      <div class="readout" id="roLoop"></div>
+    </div>
+    <div>
+      <p>The model: the transmitter tries to pass \(I=4+16\,P/100\) mA for process value \(P\) (it goes above 20 mA if \(P\) exceeds 100 %). If the supply cannot provide that current while keeping \(V_{min}\) across the transmitter, the current stops at \((V_s-V_{min})/(R_w+R_s)\). The DAQ then reads a wrong, clipped value without any warning, which is the dangerous failure of an under-powered loop.</p>
+      <div class="try"><p>Start at the worked example (24 V, 12 V, 600 m, 0.5 mm², 250 Ω, 100 %): 18.2 V is left for the transmitter. Drag the cable to 10 km: the green part shrinks and turns red near 5.1 km, and the reading clips. Return to 600 m and choose 500 Ω: the loop now starves above about 90 %. Finally set the supply to 18 V with 250 Ω: the loop still works, but 110 % (22 mA) is clipped, so a high alarm would never arrive.</p></div>
+      <div class="pitfall"><p>A starved loop does not read zero; it reads a believable but low value near full scale. Check the budget at the highest current the transmitter can send, including its alarm current, and at the lowest supply voltage.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 · Engineering units -->
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const TAU = 2 * Math.PI;
+
+  /* ---------- shared signal tools ---------- */
+  function rng(seed) { let s = seed; return () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; }; }
+  function gauss(r) { let u = 0; for (let i = 0; i < 6; i++) u += r(); return (u - 3) / Math.sqrt(0.5); }
+  function maMag(f, N, dt) { const x = Math.PI * f * dt; if (Math.abs(Math.sin(x)) < 1e-12) return 1; return Math.abs(Math.sin(N * x) / (N * Math.sin(x))); }
+  function iirMag(f, a, dt) { const w = TAU * f * dt, re = 1 - (1 - a) * Math.cos(w), im = (1 - a) * Math.sin(w); return a / Math.hypot(re, im); }
+
+  /* ---------- cover ---------- */
+  let cT = 0;
+  const cr = rng(7), cN = 700, craw = [], ctrue = [];
+  for (let i = 0; i < cN; i++) { const t = i / cN; const s = 0.55 * Math.sin(TAU * 1.3 * t) + 0.25 * Math.sin(TAU * 3.1 * t + 1); ctrue.push(s); craw.push(s + 0.28 * Math.sin(TAU * 35 * t) + 0.08 * gauss(cr)); }
+  const cfil = craw.map((_, i) => { let a = 0, n = 0; for (let k = i - 10; k <= i + 9; k++) if (k >= 0 && k < cN) { a += craw[k]; n++; } return a / n; });
+  function drawCover() {
+    const cv = $('coverTrace'), { ctx, W, H } = Deck.sizeCanvas(cv);
+    ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+    const X = i => 6 + (W - 12) * i / (cN - 1), Y = v => H / 2 - v * H * 0.42;
+    ctx.strokeStyle = Deck.color('muted'); ctx.lineWidth = 1; ctx.beginPath();
+    craw.forEach((v, i) => i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v))); ctx.stroke();
+    const upto = Math.min(cN - 1, Math.floor(cT * cN));
+    ctx.strokeStyle = Deck.color('acc'); ctx.lineWidth = 2.6; ctx.beginPath();
+    for (let i = 0; i <= upto; i++) i ? ctx.lineTo(X(i), Y(cfil[i])) : ctx.moveTo(X(i), Y(cfil[i]));
+    ctx.stroke();
+    ctx.fillStyle = Deck.color('acc'); ctx.beginPath(); ctx.arc(X(upto), Y(cfil[upto]), 4, 0, 7); ctx.fill();
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (cT < 1.01) { cT += RM ? 2 : dt * 0.25; drawCover(); } });
+
+  /* ---------- loop budget simulator ---------- */
+  const RHO = 1.72e-8;
+  let loopState = null, dotPhase = 0;
+  function loopCalc(v) {
+    const L = +(+v.L).toPrecision(3), A = +v.A * 1e-6, Rs = +v.Rs, Rw = RHO * 2 * L / A;
+    const Idem = (4 + 16 * v.P / 100) / 1000, Ilim = Math.max(0, (v.Vs - v.Vm) / (Rw + Rs));
+    const I = Math.min(Idem, Ilim), starved = Idem > Ilim + 1e-9;
+    const Vw = I * Rw, Vr = I * Rs, Vtx = v.Vs - Vw - Vr;
+    const Rmax = (v.Vs - v.Vm) / 0.020, Lmax = Math.max(0, (Rmax - Rs) * A / RHO / 2);
+    return { L, A, Rs, Rw, Idem, I, starved, Vw, Vr, Vtx, Rmax, Lmax, Vs: v.Vs, Vm: v.Vm, P: v.P };
+  }
+  function zig(ctx, x1, x2, y, amp) {
+    const lead = (x2 - x1) * 0.18, a = x1 + lead, b = x2 - lead; ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(a, y);
+    for (let i = 0; i < 6; i++) ctx.lineTo(a + (b - a) * (i + .5) / 6, y + (i % 2 ? -amp : amp));
+    ctx.lineTo(b, y); ctx.lineTo(x2, y); ctx.stroke();
+  }
+  function drawLoop() {
+    const s = loopState; if (!s) return;
+    const cv = $('cvLoop'), { ctx, W, H } = Deck.sizeCanvas(cv);
+    ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+    const small = W < 520, fs = small ? 10 : 12;
+    const xS = 34, xR = W * 0.24, xC = W * 0.52, xT = W - (small ? 58 : 80), yT = 46, yB = H - 50;
+    const ink = Deck.color('ink'), mut = Deck.color('muted');
+    // zones
+    ctx.setLineDash([4, 4]); ctx.strokeStyle = Deck.color('rule'); ctx.lineWidth = 1;
+    ctx.strokeRect(4, 8, xR + 34, H - 14); ctx.strokeRect(xT - (small ? 40 : 52), 8, W - xT + (small ? 36 : 48), H - 14); ctx.setLineDash([]);
+    ctx.font = Deck.font(fs - 1); ctx.fillStyle = mut; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText('control room', 10, 12); ctx.textAlign = 'right'; ctx.fillText('field', W - 10, 12);
+    ctx.textAlign = 'center'; ctx.fillText('cable ' + s.L + ' m, ' + (s.A * 1e6) + ' mm²', xC, (yT + yB) / 2 - 8);
+    // wires
+    ctx.strokeStyle = ink; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(xS, (yT + yB) / 2 - 14); ctx.lineTo(xS, yT); ctx.lineTo(xC - 26, yT); ctx.stroke();
+    zig(ctx, xC - 26, xC + 26, yT, 5);
+    ctx.beginPath(); ctx.moveTo(xC + 26, yT); ctx.lineTo(xT, yT); ctx.lineTo(xT, yT + 24); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(xT, yB - 24); ctx.lineTo(xT, yB); ctx.lineTo(xC + 26, yB); ctx.stroke();
+    zig(ctx, xC - 26, xC + 26, yB, 5);
+    ctx.beginPath(); ctx.moveTo(xC - 26, yB); ctx.lineTo(xR + 24, yB); ctx.stroke();
+    zig(ctx, xR - 24, xR + 24, yB, 5);
+    ctx.beginPath(); ctx.moveTo(xR - 24, yB); ctx.lineTo(xS, yB); ctx.lineTo(xS, (yT + yB) / 2 + 14); ctx.stroke();
+    // battery
+    const yc = (yT + yB) / 2; ctx.lineWidth = 2.2;
+    [[-14, 14], [-6, 7], [2, 14], [10, 7]].forEach(([dy, hw], k) => { ctx.beginPath(); ctx.moveTo(xS - hw, yc + dy); ctx.lineTo(xS + hw, yc + dy); ctx.stroke(); });
+    ctx.lineWidth = 1.6;
+    ctx.fillStyle = Deck.color('acc'); ctx.font = Deck.font(fs, true); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(s.Vs.toFixed(1) + ' V', xS + 18, yc - 4);
+    // transmitter box
+    const ok = !s.starved;
+    ctx.fillStyle = Deck.alpha(ok ? 'grn' : 'red', .18); ctx.strokeStyle = Deck.color(ok ? 'grn' : 'red');
+    ctx.fillRect(xT - (small ? 30 : 40), yT + 24, small ? 60 : 80, yB - yT - 48); ctx.strokeRect(xT - (small ? 30 : 40), yT + 24, small ? 60 : 80, yB - yT - 48);
+    ctx.fillStyle = ink; ctx.font = Deck.font(fs - 1); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('transmitter', xT, yc - 16);
+    ctx.font = Deck.font(fs, true); ctx.fillStyle = Deck.color(ok ? 'grn' : 'red'); ctx.fillText(s.Vtx.toFixed(1) + ' V', xT, yc + 2);
+    ctx.font = Deck.font(fs - 2, true); ctx.fillStyle = mut; ctx.fillText('needs ' + s.Vm.toFixed(1), xT, yc + 18);
+    // labels
+    ctx.font = Deck.font(fs - 1, true); ctx.textBaseline = 'bottom'; ctx.fillStyle = mut;
+    ctx.fillText((s.Rw / 2).toFixed(1) + ' Ω: ' + (s.Vw / 2).toFixed(2) + ' V', xC, yT - 8);
+    ctx.textBaseline = 'top'; ctx.fillText((s.Rw / 2).toFixed(1) + ' Ω: ' + (s.Vw / 2).toFixed(2) + ' V', xC, yB + 9);
+    ctx.fillStyle = Deck.color('blu'); ctx.fillText(s.Rs + ' Ω: ' + s.Vr.toFixed(2) + ' V', xR, yB + 9);
+    ctx.textBaseline = 'bottom'; ctx.fillText('DAQ reads', xR, yB - 10);
+    // current label
+    ctx.fillStyle = Deck.color('acc'); ctx.font = Deck.font(fs, true); ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+    ctx.fillText('I = ' + (s.I * 1000).toFixed(2) + ' mA', xS + 10, yT - 6);
+    // moving dots along loop path
+    const segs = [[xS, yT, xT, yT], [xT, yT, xT, yB], [xT, yB, xS, yB], [xS, yB, xS, yT]];
+    const lens = segs.map(g => Math.hypot(g[2] - g[0], g[3] - g[1])), per = lens.reduce((a, b) => a + b, 0);
+    ctx.fillStyle = Deck.color('acc');
+    for (let d = dotPhase % 34; d < per; d += 34) {
+      let r = d, k = 0; while (k < 3 && r > lens[k]) { r -= lens[k]; k++; }
+      const g = segs[k], u = r / lens[k], x = g[0] + (g[2] - g[0]) * u, y = g[1] + (g[3] - g[1]) * u;
+      if (k === 1 && y > yT + 22 && y < yB - 22) continue;
+      if (k === 3 && Math.abs(y - yc) < 18) continue;
+      ctx.beginPath(); ctx.arc(x, y, 2.6, 0, 7); ctx.fill();
+    }
+    // budget bar
+    const cb = $('cvBar'), b = Deck.sizeCanvas(cb), c2 = b.ctx, BW = b.W, BH = b.H;
+    c2.fillStyle = Deck.color('paper'); c2.fillRect(0, 0, BW, BH);
+    const x0 = 8, x1 = BW - 8, sc = (x1 - x0) / s.Vs, y0 = 22, hh = 24;
+    const parts = [[s.Vr, 'blu', 'sense'], [s.Vw, 'muted', 'cable'], [s.Vtx, ok ? 'grn' : 'red', 'transmitter']];
+    let xx = x0; c2.font = Deck.font(10.5, true); c2.textBaseline = 'middle'; c2.textAlign = 'center';
+    parts.forEach(([v, col, lab]) => {
+      const w = v * sc; c2.fillStyle = Deck.alpha(col, .55); c2.fillRect(xx, y0, w, hh);
+      if (w > 64) { c2.fillStyle = Deck.color('ink'); c2.fillText(lab + ' ' + v.toFixed(1) + ' V', xx + w / 2, y0 + hh / 2); }
+      xx += w;
+    });
+    const xm = x1 - s.Vm * sc; c2.strokeStyle = Deck.color('red'); c2.lineWidth = 2; c2.setLineDash([4, 3]);
+    c2.beginPath(); c2.moveTo(xm, y0 - 6); c2.lineTo(xm, y0 + hh + 6); c2.stroke(); c2.setLineDash([]);
+    c2.fillStyle = Deck.color('red'); c2.textAlign = 'right'; c2.textBaseline = 'top'; c2.font = Deck.font(10, true);
+    c2.fillText('transmitter needs ≥ ' + s.Vm.toFixed(1) + ' V from here →', xm + (xm > BW * 0.6 ? -4 : 160), y0 + hh + 7);
+    c2.fillStyle = Deck.color('muted'); c2.textAlign = 'left'; c2.textBaseline = 'bottom'; c2.fillText('0 V', x0, y0 - 3);
+    c2.textAlign = 'right'; c2.fillText(s.Vs.toFixed(1) + ' V supply', x1, y0 - 3);
+  }
+  Deck.onShow('loopsim', () => {
+    const get = Deck.controls('simLoop', upd);
+    function upd() {
+      loopState = loopCalc(get()); const s = loopState;
+      const pRead = (s.I * 1000 - 4) / 16 * 100;
+      $('roLoop').innerHTML = 'R<sub>w</sub> (both cores) <b>' + s.Rw.toFixed(1) + ' Ω</b> &nbsp; wanted <b>' + (s.Idem * 1000).toFixed(2) + ' mA</b> &nbsp; actual <b>' + (s.I * 1000).toFixed(2) + ' mA</b> &nbsp; DAQ reads <b>' + pRead.toFixed(1) + ' %</b> &nbsp; R<sub>L,max</sub> at 20 mA <b>' + s.Rmax.toFixed(0) + ' Ω</b> &nbsp; longest cable <b>' + (s.Lmax >= 1000 ? (s.Lmax / 1000).toFixed(2) + ' km' : s.Lmax.toFixed(0) + ' m') + '</b>' + (s.starved ? ' &nbsp; <b>LOOP STARVED: reading clipped</b>' : '');
+      drawLoop();
+    }
+    return upd;
+  });
+  Deck.loop('loopsim', dt => { if (!loopState || RM) return; dotPhase += dt * 40 * loopState.I / 0.012; drawLoop(); });
+
+  /* ---------- sigma-delta modulator ---------- */
+  const SDN = 128; let sdShow = SDN, sdData = null;
+  function sdRun(v) {
+    const x = [], bits = [], u = [];
+    let ui = 0, fb = 0;
+    for (let n = 0; n < SDN; n++) {
+      const xi = v.mode === 'sin' ? v.x * Math.sin(TAU * n / SDN) : v.x;
+      ui += xi - fb; const b = ui >= 0 ? 1 : 0; fb = b ? 1 : -1;
+      x.push(xi); bits.push(b); u.push(ui);
+    }
+    return { x, bits, u, M: +v.M, mode: v.mode, xv: v.x };
+  }
+  function drawSD() {
+    const d = sdData; if (!d) return;
+    const n = Math.max(1, Math.min(SDN, Math.floor(sdShow)));
+    const xin = d.x.map((v, i) => [i, v]);
+    const stair = [];
+    for (let k = 0; (k + 1) * d.M <= n; k++) {
+      let s = 0; for (let i = k * d.M; i < (k + 1) * d.M; i++) s += d.bits[i] ? 1 : -1;
+      const avg = s / d.M; stair.push([k * d.M, avg]); stair.push([(k + 1) * d.M, avg]);
+    }
+    Deck.plot($('cvSD1'), { x: [0, SDN], y: [-1.2, 1.2], ylabel: 'value (× V)', yticks: [-1, 0, 1], xticks: [], pad: { b: 10 },
+      series: [{ pts: xin, color: 'muted', width: 2 }, { pts: stair, color: 'acc', width: 2.4 }] });
+    const bs = [], us = [];
+    for (let i = 0; i < n; i++) { const v = d.bits[i] ? 1 : -1; bs.push([i, v]); bs.push([i + 1, v]); us.push([i + 1, d.u[i]]); }
+    Deck.plot($('cvSD2'), { x: [0, SDN], y: [-2.4, 2.4], xlabel: 'clock tick', ylabel: 'level', yticks: [-2, 0, 2],
+      series: [{ pts: bs, color: 'blu', width: 1.2 }, { pts: us, color: 'acc', width: 1.2, dash: [3, 3] }] });
+    const m = Math.min(n, d.M); let ones = 0; for (let i = 0; i < m; i++) ones += d.bits[i];
+    let tot = 0; for (let i = 0; i < n; i++) tot += d.bits[i];
+    const str = d.bits.slice(0, Math.min(n, 24)).join('');
+    $('roSD').innerHTML = 'first bits <b>' + str + (n > 24 ? '…' : '') + '</b> &nbsp; ones in first word <b>' + ones + ' of ' + m + '</b> &nbsp; decoded 2n<sub>1</sub>/N − 1 = <b>' + (2 * ones / m - 1).toFixed(3) + '</b>' + (d.mode === 'dc' ? ' &nbsp; ones over ' + n + ' ticks <b>' + (100 * tot / n).toFixed(1) + ' %</b> (theory ' + (50 * (1 + d.xv)).toFixed(1) + ' %)' : '') + ' &nbsp; output words <b>' + Math.floor(n / d.M) + '</b>';
+  }
+  Deck.onShow('sd', () => {
+    const get = Deck.controls('simSD', () => { sdData = sdRun(get()); drawSD(); });
+    sdData = sdRun(get()); sdShow = RM ? SDN : 0;
+    $('sdReplay').addEventListener('click', () => { sdShow = RM ? SDN : 0; drawSD(); });
+    return () => drawSD();
+  });
+  Deck.loop('sd', dt => { if (sdShow < SDN) { sdShow = Math.min(SDN, sdShow + dt * 70); drawSD(); } });
+
+  /* ---------- oversampling / noise shaping ---------- */
+  Deck.onShow('osr', () => {
+    const get = Deck.controls('simOSR', draw);
+    function draw() {
+      const R = +get().R, fB = 1 / (2 * R);
+      Deck.plot($('cvOSR'), { x: [0, 0.5], y: [0, 2.15], xlabel: 'frequency / modulator clock rate  (f / fs)', ylabel: 'noise (relative)',
+        bands: [{ x0: 0, x1: fB, color: 'blu', alpha: .2 }],
+        series: [{ f: () => 1, color: 'muted', width: 2 }, { f: f => 2 * Math.sin(Math.PI * f), color: 'acc', width: 2.4 }],
+        vlines: [{ x: fB, color: 'blu', label: 'f_B' }] });
+      const plain = 1 / R, shaped = (2 * fB - Math.sin(TAU * fB) / Math.PI) / 0.5;
+      const dbp = -10 * Math.log10(plain), dbs = -10 * Math.log10(shaped);
+      $('roOSR').innerHTML = 'band 0 to <b>f<sub>s</sub>/' + (2 * R) + '</b> &nbsp; in-band noise: plain <b>−' + dbp.toFixed(1) + ' dB (+' + (dbp / 6.02).toFixed(1) + ' bits)</b> &nbsp; shaped <b>' + (dbs >= 0 ? '−' : '+') + Math.abs(dbs).toFixed(1) + ' dB (' + (dbs >= 0 ? '+' : '−') + Math.abs(dbs / 6.02).toFixed(1) + ' bits)</b>';
+    }
+    return draw;
+  });
+
+  /* ---------- moving average response ---------- */
+  Deck.onShow('ma', () => () => {
+    const dt = 1e-3, a = dt / (1 / (TAU * 5) + dt);
+    Deck.plot($('cvMA'), { x: [0, 500], y: [0, 1.05], xlabel: 'frequency (Hz)', ylabel: 'magnitude ratio |H|',
+      series: [{ f: f => maMag(f, 20, dt), color: 'acc', width: 2.2, n: 1500 }, { f: f => iirMag(f, a, dt), color: 'blu', width: 2, n: 600 }],
+      points: [50, 100, 150, 200, 250, 300, 350, 400, 450].map(f => ({ x: f, y: 0, color: 'acc', r: 3.5 })).concat([{ x: 50, y: 0, r: 0.1, color: 'acc', label: '50 Hz' }]) });
+  });
+
+  /* ---------- filter playground ---------- */
+  Deck.onShow('play', () => {
+    const fsr = 1000, dt = 1 / fsr, Nn = 1000;
+    const r = rng(2024), noise = [], spk = new Float64Array(Nn);
+    for (let i = 0; i < Nn; i++) noise.push(0.05 * gauss(r));
+    for (let k = 0; k < 18; k++) { const i = 20 + Math.floor(r() * 960); spk[i] = (r() < 0.5 ? -1 : 1) * (1.2 + 1.2 * r()); }
+    const tru = []; for (let i = 0; i < Nn; i++) { const t = i * dt; tru.push(0.5 * Math.sin(TAU * 1.5 * t) + (t >= 0.5 ? 0.8 : 0)); }
+    const get = Deck.controls('simF', draw);
+    function filt(x, v) {
+      const N = Math.max(1, Math.round(v.N)), n = x.length, y = new Array(n);
+      if (v.type === 'none') return x.slice();
+      if (v.type === 'ma') { let s = 0; for (let i = 0; i < n; i++) { s += x[i]; if (i >= N) s -= x[i - N]; y[i] = s / Math.min(i + 1, N); } return y; }
+      if (v.type === 'mac') { const h1 = Math.floor((N - 1) / 2); for (let i = 0; i < n; i++) { let s = 0, c = 0; for (let k = i - h1; k < i - h1 + N; k++) if (k >= 0 && k < n) { s += x[k]; c++; } y[i] = s / c; } return y; }
+      const tau = 1 / (TAU * v.fc), a = dt / (tau + dt);
+      if (v.type === 'iir' || v.type === 'iirfb') {
+        y[0] = x[0]; for (let i = 1; i < n; i++) y[i] = y[i - 1] + a * (x[i] - y[i - 1]);
+        if (v.type === 'iir') return y;
+        const z = new Array(n); z[n - 1] = y[n - 1]; for (let i = n - 2; i >= 0; i--) z[i] = z[i + 1] + a * (y[i] - z[i + 1]); return z;
+      }
+      // median (centred)
+      const h1 = Math.floor((N - 1) / 2);
+      for (let i = 0; i < n; i++) { const w = []; for (let k = i - h1; k < i - h1 + N; k++) if (k >= 0 && k < n) w.push(x[k]); w.sort((p, q) => p - q); const m = w.length; y[i] = m % 2 ? w[(m - 1) / 2] : 0.5 * (w[m / 2 - 1] + w[m / 2]); }
+      return y;
+    }
+    function draw() {
+      const v = get(), fm = v.fm, A = v.hum;
+      const x = []; for (let i = 0; i < Nn; i++) { const t = i * dt; x.push(tru[i] + A * Math.sin(TAU * fm * t + 0.3) + 0.3 * A * Math.sin(TAU * 3 * fm * t + 1.1) + noise[i] + (+v.sp ? spk[i] : 0)); }
+      const y = filt(x, v);
+      const raw = x.map((q, i) => [i * dt, q]), fy = y.map((q, i) => [i * dt, q]), tp = tru.map((q, i) => [i * dt, q]);
+      Deck.plot($('cvF1'), { x: [0, 1], y: [-1.6, 2.4], xlabel: 'time (s)', ylabel: 'signal',
+        series: [{ pts: raw, color: 'muted', width: 1 }, { pts: tp, color: 'ink', width: 1.4, dash: [5, 4] }, { pts: fy, color: 'acc', width: 2.2 }] });
+      const N = Math.max(1, Math.round(v.N)), a = dt / (1 / (TAU * v.fc) + dt);
+      let Hf = null, delay = '';
+      if (v.type === 'ma' || v.type === 'mac') { Hf = f => maMag(f, N, dt); delay = v.type === 'ma' ? ((N - 1) * dt * 500).toFixed(1) + ' ms' : '0 (offline)'; }
+      else if (v.type === 'iir') { Hf = f => iirMag(f, a, dt); delay = '≈ τ = ' + (1000 / (TAU * v.fc)).toFixed(1) + ' ms at low f'; }
+      else if (v.type === 'iirfb') { Hf = f => Math.pow(iirMag(f, a, dt), 2); delay = '0 (offline)'; }
+      else if (v.type === 'none') { Hf = () => 1; delay = '0'; }
+      const opts = { x: [0, 500], y: [0, 1.08], xlabel: 'frequency (Hz)', ylabel: '|H|', yticks: [0, 0.5, 1], yfmt: v => v.toFixed(1),
+        vlines: [{ x: fm, color: 'red', label: fm.toFixed(1) + ' Hz' }, { x: 3 * fm, color: 'red' }], series: [] };
+      if (Hf) opts.series.push({ f: Hf, color: 'acc', width: 2, n: 1200 });
+      const P = Deck.plot($('cvF2'), opts);
+      if (!Hf) { P.ctx.fillStyle = Deck.color('muted'); P.ctx.font = Deck.font(12); P.ctx.textAlign = 'center'; P.ctx.textBaseline = 'middle'; P.ctx.fillText('median: non-linear, so no frequency response', (P.box.x0 + P.box.x1) / 2, (P.box.y0 + P.box.y1) / 2); }
+      let se = 0, c = 0; for (let i = 100; i < Nn; i++) { se += (y[i] - tru[i]) ** 2; c++; }
+      $('roF').innerHTML = 'rms error vs true (t &gt; 0.1 s) <b>' + Math.sqrt(se / c).toFixed(3) + '</b> &nbsp; |H| at mains <b>' + (Hf ? Hf(fm).toFixed(3) : 'n/a') + '</b> &nbsp; delay <b>' + (delay || 'about (N−1)/2 samples smear, no shift') + '</b>' + (v.type === 'iir' || v.type === 'iirfb' ? ' &nbsp; α <b>' + a.toFixed(4) + '</b>' : '');
+    }
+    return draw;
+  });
+
+  /* ---------- alias: identical samples ---------- */
+  Deck.onShow('noalias', () => () => {
+    const pts = []; for (let n = 0; n <= 50; n++) pts.push({ x: n, y: Math.cos(TAU * 980 * n / 1000), color: 'acc', r: 3.6 });
+    Deck.plot($('cvAl'), { x: [0, 50], y: [-1.25, 1.25], xlabel: 'time (ms)', ylabel: 'signal', yticks: [-1, 0, 1],
+      series: [{ f: t => Math.cos(TAU * 0.98 * t), color: 'muted', width: 0.8, n: 4000 }, { f: t => Math.cos(TAU * 0.02 * t), color: 'blu', width: 2.4 }], points: pts });
+  });
+})();
+</script>
+</body>
+</html>

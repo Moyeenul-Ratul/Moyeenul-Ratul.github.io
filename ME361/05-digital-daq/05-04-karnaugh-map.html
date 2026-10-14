@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>05.04 Karnaugh-map simplifier · ME 361</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="../deck.css">
+<style>
+  .tbl.compact th,.tbl.compact td{padding:5px 10px;font-size:.88rem}
+  .tbl.tt th,.tbl.tt td{padding:3px 9px;font-size:.86rem;font-family:var(--f-mono);text-align:center}
+  .readout{display:block;line-height:1.9}
+  svg .w{stroke:var(--ink);stroke-width:1.5;fill:none}
+  svg .gb{fill:var(--panel);stroke:var(--ink);stroke-width:1.6}
+  svg .dot{fill:var(--ink)}
+  svg .g1{fill:none;stroke:var(--acc);stroke-width:2.4} svg .g2{fill:none;stroke:var(--blu);stroke-width:2.4} svg .g3{fill:none;stroke:var(--grn);stroke-width:2.4} svg .g4{fill:none;stroke:var(--ylw);stroke-width:2.4}
+  svg .cellbox{fill:var(--panel);stroke:var(--muted);stroke-width:1}
+  svg .seg-on{fill:var(--acc)} svg .seg-off{fill:var(--grid);stroke:var(--rule)}
+  .ov{text-decoration:overline;margin:0 1px}
+  .btnrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .btnrow .btn{font-size:.82rem;padding:.45em .75em}
+  .cover h1{max-width:24ch}
+  .kexpr{font:600 1.05rem var(--f-mono);color:var(--acc)}
+</style>
+<script>window.DECK = {"mode": "panel", "num": "05.04", "title": "Karnaugh-map simplifier", "home": "index.html", "homeLabel": "Digital Devices & Data Acquisition", "course": "ME 361 · Instrumentation and Measurement"};</script>
+<script src="../deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+<section class="slide" id="ksim" data-title="Karnaugh-map simplifier">
+  <p class="eyebrow">Simulator · Karnaugh map</p>
+  <h2>Fill a map, and let it find the smallest groups</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simK">
+      <div class="simhead"><span>Karnaugh-map simplifier</span></div>
+      <div class="controls">
+        <div class="ctl"><label for="kN">Variables <output data-for="nv"></output></label><input type="range" id="kN" data-key="nv" min="3" max="4" step="1" value="4" data-fmt="0"></div>
+      </div>
+      <canvas id="cvK" data-h="300" aria-label="Karnaugh map; click a cell to cycle it through 0, 1 and don't-care; coloured outlines show the chosen groups"></canvas>
+      <div class="btnrow"><button class="btn" type="button" id="kVote">2-of-3 voting</button><button class="btn" type="button" id="kSeg">Segment a</button><button class="btn" type="button" id="kRand">Random</button><button class="btn" type="button" id="kClr">Clear</button></div>
+      <div class="readout" id="roK"></div>
+    </div>
+    <div>
+      <p><b>Click a cell</b> to cycle it 0 → 1 → X (don't-care) → 0. After every click the simulator lists all the largest possible groups (called <dfn>prime implicants</dfn>), picks the fewest that cover every 1 with the fewest literals, draws them on the map and writes the minimum SOP. It also counts literals before (one term per 1-cell) and after.</p>
+      <p>The search is the same one you do by eye: biggest rectangles first, wrap-round allowed, every 1 covered, don't-cares used only when they help.</p>
+      <div class="try"><p>Press <b>Segment a</b> to load the previous slide, then click cell 10 (row 10, column 10) to make it a 0 instead of X: the corner group can no longer use it and the answer grows. Press <b>2-of-3 voting</b> for the three-variable map. Then make your own: light all four corners of a 4-variable map and see them collapse to \(\overline{B}\,\overline{D}\), or make a checkerboard (XOR) and see that nothing can be grouped at all.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 · Building blocks -->
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const pop = x => { let c = 0; while (x) { c += x & 1; x >>= 1; } return c; };
+
+  /* generic digital-row painter: rows = [{label, color, val(t)->0/1, editable}] over slots or continuous time */
+  function paintRows(ctx, W, H, rows, opt) {
+    const lx = opt.lx || 40, top = 4, bot = opt.bot || 20, rh = (H - top - bot) / rows.length;
+    rows.forEach((r, i) => {
+      const y0 = top + i * rh, yH = y0 + rh * 0.2, yL = y0 + rh * 0.8;
+      ctx.fillStyle = Deck.color(r.color); ctx.font = Deck.font(11, true); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(r.label, 4, (yH + yL) / 2);
+      ctx.strokeStyle = Deck.color(r.color); ctx.lineWidth = r.width || 2; ctx.beginPath();
+      let prev = null;
+      for (let px = lx; px <= W - 8; px++) {
+        const v = r.val(px); if (v === null) { prev = null; continue; }
+        const y = v ? yH : yL;
+        if (prev === null) ctx.moveTo(px, y); else if (prev !== y) { ctx.lineTo(px, prev); ctx.lineTo(px, y); } else ctx.lineTo(px, y);
+        prev = y;
+      }
+      ctx.stroke();
+    });
+    return { lx, top, rh };
+  }
+
+  /* ---------- cover: counter waveforms ---------- */
+  let ct = 0;
+  function drawCover() {
+    const cv = $('coverCnt'), { ctx, W, H } = Deck.sizeCanvas(cv);
+    ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+    const lx = 40, per = Math.max(26, W / 30), s = ct * 1.2;
+    const tAt = px => (px - lx) / per + s;
+    paintRows(ctx, W, H, [
+      { label: 'CLK', color: 'muted', val: px => (tAt(px) % 1) < 0.5 ? 1 : 0, width: 1.6 },
+      { label: 'Q0', color: 'grn', val: px => Math.floor(tAt(px)) & 1 },
+      { label: 'Q1', color: 'grn', val: px => (Math.floor(tAt(px)) >> 1) & 1 },
+      { label: 'Q2', color: 'acc', val: px => (Math.floor(tAt(px)) >> 2) & 1, width: 2.4 }
+    ], { lx, bot: 4 });
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (RM) { if (!ct) { ct = 0.001; drawCover(); } return; } ct += dt; drawCover(); });
+
+  /* ---------- Karnaugh-map simplifier ---------- */
+  Deck.onShow('ksim', () => {
+    const val = new Array(16).fill(0);
+    const nvIn = $('kN');
+    const get = Deck.controls('simK', () => draw());
+    const cv = $('cvK');
+    let geo = null;
+    const LAY = { 4: { rows: [0, 1, 3, 2], cols: [0, 1, 3, 2], rl: 'AB', cl: 'CD', cb: 2 }, 3: { rows: [0, 1, 3, 2], cols: [0, 1], rl: 'AB', cl: 'C', cb: 1 } };
+    const gb = (x, n) => x.toString(2).padStart(n, '0');
+    function minimise(nv) {
+      const N = 1 << nv, ok = m => val[m] > 0, on = [];
+      for (let m = 0; m < N; m++) if (val[m] === 1) on.push(m);
+      if (!on.length) return { terms: [], primes: 0, on };
+      const isImp = (mask, bits) => { for (let m = 0; m < N; m++) if ((m & mask) === bits && !ok(m)) return false; return true; };
+      const primes = [];
+      for (let mask = 0; mask < N; mask++) for (let bits = 0; bits < N; bits++) {
+        if (bits & ~mask) continue;
+        if (!isImp(mask, bits)) continue;
+        let cov = 0, hasOn = false;
+        for (let m = 0; m < N; m++) if ((m & mask) === bits) { cov |= 0; if (val[m] === 1) hasOn = true; }
+        if (!hasOn) continue;
+        let prime = true;
+        for (let b = 0; b < nv && prime; b++) { const bit = 1 << b; if (mask & bit) { const m2 = mask & ~bit; if (isImp(m2, bits & m2)) prime = false; } }
+        if (prime) { const ms = []; for (let m = 0; m < N; m++) if ((m & mask) === bits) ms.push(m); primes.push({ mask, bits, ms, lit: pop(mask) }); }
+      }
+      let best = null;
+      const P = primes.length;
+      for (let k = 1; k <= P && !best; k++) {
+        const idx = Array.from({ length: k }, (_, i) => i);
+        while (true) {
+          const covered = new Set(); idx.forEach(i => primes[i].ms.forEach(m => covered.add(m)));
+          if (on.every(m => covered.has(m))) { const lit = idx.reduce((a, i) => a + primes[i].lit, 0); if (!best || lit < best.lit) best = { idx: idx.slice(), lit }; }
+          let i = k - 1; while (i >= 0 && idx[i] === P - k + i) i--;
+          if (i < 0) break;
+          idx[i]++; for (let j = i + 1; j < k; j++) idx[j] = idx[j - 1] + 1;
+        }
+      }
+      return { terms: best.idx.map(i => primes[i]), primes: P, on, lit: best.lit };
+    }
+    function termHTML(t, nv) {
+      if (!t.mask) return '1';
+      let s = '';
+      for (let i = 0; i < nv; i++) { const b = 1 << (nv - 1 - i), L = 'ABCD'[i]; if (t.mask & b) s += (t.bits & b) ? L : '<span class="ov">' + L + '</span>'; }
+      return s;
+    }
+    function runs(sel, n) { // contiguous runs of selected display indices, with wrap
+      const r = []; let cur = null;
+      for (let i = 0; i < n; i++) { if (sel[i]) { if (!cur) { cur = [i, i]; r.push(cur); } else cur[1] = i; } else cur = null; }
+      return r;
+    }
+    function draw() {
+      const nv = get().nv, L = LAY[nv], { ctx, W, H } = Deck.sizeCanvas(cv);
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const nc = L.cols.length, nr = 4, cw = Math.min(78, (W - 70) / nc), ch = Math.min(56, (H - 44) / nr);
+      const x0 = Math.max(52, (W - nc * cw) / 2 + 10), y0 = 34;
+      geo = { x0, y0, cw, ch, nc, nr, nv };
+      ctx.font = Deck.font(12, true); ctx.fillStyle = Deck.color('muted'); ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(L.rl + '\\' + L.cl, x0 - 6, y0 - 16);
+      ctx.textAlign = 'center'; ctx.fillStyle = Deck.color('ink');
+      L.cols.forEach((c, j) => ctx.fillText(gb(c, L.cb), x0 + (j + 0.5) * cw, y0 - 12));
+      ctx.textAlign = 'right';
+      L.rows.forEach((r, i) => ctx.fillText(gb(r, 2), x0 - 8, y0 + (i + 0.5) * ch));
+      for (let i = 0; i < nr; i++) for (let j = 0; j < nc; j++) {
+        const m = (L.rows[i] << L.cb) | L.cols[j], x = x0 + j * cw, y = y0 + i * ch, v = val[m];
+        ctx.fillStyle = Deck.color(v === 1 ? 'acc-soft' : 'panel'); ctx.fillRect(x, y, cw, ch);
+        ctx.strokeStyle = Deck.color('muted'); ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, cw, ch);
+        ctx.font = Deck.font(18, true); ctx.textAlign = 'center'; ctx.fillStyle = Deck.color(v === 1 ? 'ink' : 'muted');
+        ctx.fillText(v === 2 ? 'X' : String(v), x + cw / 2, y + ch / 2 + 2);
+        ctx.font = Deck.font(9, true); ctx.textAlign = 'right'; ctx.fillStyle = Deck.color('muted'); ctx.fillText(String(m), x + cw - 4, y + 9);
+      }
+      const res = minimise(nv), cols = ['acc', 'blu', 'grn', 'ylw', 'red', 'muted', 'acc', 'blu'];
+      res.terms.forEach((t, gi) => {
+        const rmask = t.mask >> L.cb, rbits = t.bits >> L.cb, cmask = t.mask & ((1 << L.cb) - 1), cbits = t.bits & ((1 << L.cb) - 1);
+        const rs = runs(L.rows.map(r => (r & rmask) === rbits), nr), cs = runs(L.cols.map(c => (c & cmask) === cbits), nc), ins = 5 + (gi % 4) * 3.5;
+        ctx.strokeStyle = Deck.color(cols[gi]); ctx.lineWidth = 2.6;
+        rs.forEach(ra => cs.forEach(ca => {
+          const x = x0 + ca[0] * cw + ins, y = y0 + ra[0] * ch + ins, w = (ca[1] - ca[0] + 1) * cw - 2 * ins, h = (ra[1] - ra[0] + 1) * ch - 2 * ins, r = Math.min(10, w / 2, h / 2);
+          ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); ctx.stroke();
+        }));
+      });
+      let expr;
+      if (!res.on.length) expr = '0';
+      else expr = res.terms.map((t, gi) => '<span style="color:var(--' + cols[gi] + ')">' + termHTML(t, nv) + '</span>').join(' + ');
+      const canon = res.on.length * nv;
+      $('roK').innerHTML = 'X = <span class="kexpr">' + expr + '</span><br>prime implicants found <b>' + res.primes + '</b> &nbsp; groups used <b>' + res.terms.length + '</b> &nbsp; literals <b>' + (res.lit || 0) + '</b> (one minterm per 1-cell would need <b>' + canon + '</b>)';
+    }
+    cv.addEventListener('click', e => {
+      if (!geo) return;
+      const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+      const j = Math.floor((x - geo.x0) / geo.cw), i = Math.floor((y - geo.y0) / geo.ch);
+      if (i < 0 || i >= geo.nr || j < 0 || j >= geo.nc) return;
+      const L = LAY[geo.nv], m = (L.rows[i] << L.cb) | L.cols[j];
+      val[m] = (val[m] + 1) % 3; draw();
+    });
+    function setNv(n) { nvIn.value = n; nvIn.dispatchEvent(new Event('input')); }
+    $('kVote').addEventListener('click', () => { val.fill(0); [3, 5, 6, 7].forEach(m => val[m] = 1); setNv(3); });
+    $('kSeg').addEventListener('click', () => { val.fill(0); [0, 2, 3, 5, 6, 7, 8, 9].forEach(m => val[m] = 1); for (let m = 10; m < 16; m++) val[m] = 2; setNv(4); });
+    $('kRand').addEventListener('click', () => { for (let m = 0; m < 16; m++) { const u = Math.random(); val[m] = u < 0.45 ? 1 : u < 0.55 ? 2 : 0; } draw(); });
+    $('kClr').addEventListener('click', () => { val.fill(0); draw(); });
+    [0, 2, 3, 5, 6, 7, 8, 9].forEach(m => val[m] = 1); for (let m = 10; m < 16; m++) val[m] = 2;
+    return draw;
+  });
+
+  /* ---------- flip-flop timing simulator ---------- */
+  Deck.onShow('ffsim', () => {
+    const L = 48; let clk = [], d = [], k = [], names = { c: 'CLK', d: 'D' }, preset = 'clk';
+    const devSel = $('ffDev');
+    const get = Deck.controls('simFF', () => draw());
+    const regClock = () => { for (let t = 0; t < L; t++) clk[t] = Math.floor(t / 4) % 2; };
+    function pClock() {
+      regClock(); names = { c: 'CLK', d: 'D' }; preset = 'clk';
+      for (let t = 0; t < L; t++) { d[t] = (t >= 6 && t <= 17) || t === 29 || t >= 38 ? 1 : 0; k[t] = t >= 20 && t < 34 ? 1 : 0; }
+      if (devSel.value === 'jk' || devSel.value === 't') { devSel.value = 'dp'; devSel.dispatchEvent(new Event('input')); }
+    }
+    function pEnc() {
+      names = { c: 'B', d: 'A' }; preset = 'enc';
+      for (let t = 0; t < L; t++) {
+        if (t < 24) { d[t] = (t % 8) < 4 ? 1 : 0; clk[t] = ((t + 6) % 8) < 4 ? 1 : 0; }
+        else { clk[t] = (t % 8) < 4 ? 1 : 0; d[t] = ((t + 6) % 8) < 4 ? 1 : 0; }
+        k[t] = 0;
+      }
+      devSel.value = 'dp'; devSel.dispatchEvent(new Event('input'));
+    }
+    function pTog() {
+      regClock(); names = { c: 'CLK', d: 'J' }; preset = 'tog';
+      for (let t = 0; t < L; t++) { d[t] = 1; k[t] = 1; }
+      devSel.value = 'jk'; devSel.dispatchEvent(new Event('input'));
+    }
+    pClock();
+    function compute(dev) {
+      const q = [], edges = []; let s = 0;
+      for (let t = 0; t < L; t++) {
+        if (dev === 'dl') { if (clk[t]) s = d[t]; }
+        else {
+          const rise = t > 0 && !clk[t - 1] && clk[t], fall = t > 0 && clk[t - 1] && !clk[t];
+          const act = dev === 'dn' ? fall : rise;
+          if (act) {
+            edges.push(t);
+            const D = d[t - 1], K = k[t - 1];
+            if (dev === 'dp' || dev === 'dn') s = D;
+            else if (dev === 'jk') { if (D && K) s ^= 1; else if (D) s = 1; else if (K) s = 0; }
+            else if (dev === 't') { if (D) s ^= 1; }
+          }
+        }
+        q.push(s);
+      }
+      return { q, edges };
+    }
+    const cv = $('cvFF'); let geo = null;
+    cv.addEventListener('click', e => {
+      if (!geo) return;
+      const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+      const t = Math.floor((x - geo.lx) / geo.sw), row = Math.floor((y - geo.top) / geo.rh);
+      if (t < 0 || t >= L) return;
+      const arr = geo.rows[row]; if (!arr) return;
+      arr[t] ^= 1; preset = 'custom'; draw();
+    });
+    $('ffClk').addEventListener('click', () => { pClock(); draw(); });
+    $('ffEnc').addEventListener('click', () => { pEnc(); draw(); });
+    $('ffTog').addEventListener('click', () => { pTog(); draw(); });
+    function draw() {
+      const dev = get().dev, { q, edges } = compute(dev);
+      const { ctx, W, H } = Deck.sizeCanvas(cv);
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const dl = dev === 'jk' ? 'J' : dev === 't' ? 'T' : names.d;
+      const rowsDef = [{ label: names.c, color: 'muted', arr: clk }, { label: dl, color: 'blu', arr: d }];
+      if (dev === 'jk') rowsDef.push({ label: 'K', color: 'blu', arr: k });
+      rowsDef.push({ label: 'Q', color: 'acc', arr: q, out: true });
+      const lx = 40, sw = (W - lx - 8) / L, top = 4, bot = 8, rh = (H - top - bot) / rowsDef.length;
+      geo = { lx, sw, top, rh, rows: rowsDef.map(r => r.out ? null : r.arr) };
+      if (dev === 'dl') { ctx.fillStyle = Deck.alpha('ylw', 0.13); for (let t = 0; t < L; t++) if (clk[t]) ctx.fillRect(lx + t * sw, top, sw + 0.5, H - top - bot); }
+      ctx.strokeStyle = Deck.color('rule'); ctx.lineWidth = 1;
+      for (let t = 0; t <= L; t += 4) { ctx.beginPath(); ctx.moveTo(lx + t * sw, top); ctx.lineTo(lx + t * sw, H - bot); ctx.stroke(); }
+      ctx.strokeStyle = Deck.color('acc'); ctx.setLineDash([3, 3]); ctx.lineWidth = 1.2;
+      edges.forEach(t => { ctx.beginPath(); ctx.moveTo(lx + t * sw, top); ctx.lineTo(lx + t * sw, H - bot); ctx.stroke(); });
+      ctx.setLineDash([]);
+      paintRows(ctx, W, H, rowsDef.map(r => ({ label: r.label, color: r.color, width: r.out ? 2.6 : 2, val: px => { const t = Math.floor((px - lx) / sw); return t >= 0 && t < L ? r.arr[t] : null; } })), { lx, bot });
+      ctx.fillStyle = Deck.color('acc');
+      edges.forEach(t => { const x = lx + t * sw, y = top + rh * 0.5; ctx.beginPath(); ctx.moveTo(x, y - 5); ctx.lineTo(x - 4, y + 3); ctx.lineTo(x + 4, y + 3); ctx.closePath(); ctx.fill(); });
+      const devName = { dl: 'gated D latch: Q follows D while the clock is HIGH (shaded)', dp: 'D flip-flop: Q takes D at each rising edge', dn: 'D flip-flop: Q takes D at each falling edge', jk: 'J-K flip-flop: 00 hold, 01 reset, 10 set, 11 toggle', t: 'T flip-flop: toggles at each rising edge while T = 1' }[dev];
+      let extra = '';
+      if (preset === 'enc' && dev === 'dp') extra = ' &nbsp; Q = 1 → <b>forward</b>, Q = 0 → <b>reverse</b>';
+      if (preset === 'tog' && dev === 'jk') { const n = q.reduce((a, v, i) => a + (i && v && !q[i - 1] ? 1 : 0), 0); extra = ' &nbsp; Q rises <b>' + n + '</b> times for <b>' + edges.length + '</b> clock edges: f<sub>Q</sub> = f<sub>CLK</sub>/2'; }
+      $('roFF').innerHTML = '<b>' + devName + '</b> &nbsp; active edges <b>' + (dev === 'dl' ? 'none (level-sensitive)' : edges.length) + '</b>' + extra;
+    }
+    return draw;
+  });
+
+  /* ---------- frequency counter ---------- */
+  Deck.onShow('fcsim', () => {
+    let runT = null;
+    const get = Deck.controls('simFC', () => { runT = null; draw(); });
+    $('fcRun').addEventListener('click', () => { runT = 0; });
+    Deck.loop('fcsim', dt => { if (runT === null) return; runT += RM ? 1 : dt / 3.5; if (runT >= 1) runT = null; draw(); });
+    function draw() {
+      const v = get(), f = v.f, Tg = v.tg, p = v.ph / 360;
+      const span = Tg * 1.25, ts = 0.1 * Tg, te = ts + Tg;
+      const frac = x => x - Math.floor(x);
+      const inp = t => frac(f * (t - ts) + p) < 0.5 ? 1 : 0;
+      const edges = []; for (let kk = Math.ceil(p - f * ts) - 1; ; kk++) { const t = ts + (kk - p) / f; if (t > span) break; if (t >= 0) edges.push(t); }
+      const hi0 = inp(ts); const cnt = t => { let c = t > ts && hi0 ? 1 : 0; for (const e of edges) { if (e > ts && e < te && e < t) c++; } return c; };
+      const { ctx, W, H } = Deck.sizeCanvas($('cvFC'));
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const lx = 44, bot = 22, tAt = px => (px - lx) / (W - 8 - lx) * span, tc = runT === null ? span : runT * span;
+      const gate = t => t >= ts && t < te ? 1 : 0;
+      ctx.fillStyle = Deck.alpha('blu', 0.08); ctx.fillRect(lx + ts / span * (W - 8 - lx), 0, Tg / span * (W - 8 - lx), H - bot);
+      const lim = fn => px => { const t = tAt(px); return t <= tc ? fn(t) : null; };
+      paintRows(ctx, W, H, [
+        { label: 'IN', color: 'blu', val: lim(inp), width: 1.4 },
+        { label: 'GATE', color: 'blu', val: lim(gate) },
+        { label: 'IN·G', color: 'acc', val: lim(t => inp(t) & gate(t)), width: 1.6 },
+        { label: 'Q0', color: 'grn', val: lim(t => cnt(t) & 1), width: 1.6 },
+        { label: 'Q1', color: 'grn', val: lim(t => (cnt(t) >> 1) & 1) },
+        { label: 'Q2', color: 'grn', val: lim(t => (cnt(t) >> 2) & 1) },
+        { label: 'Q3', color: 'grn', val: lim(t => (cnt(t) >> 3) & 1) }
+      ], { lx, bot });
+      ctx.font = Deck.font(10, true); ctx.fillStyle = Deck.color('muted'); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      const st = span > 1.5 ? 0.5 : span > 0.6 ? 0.2 : 0.1;
+      for (let t = 0; t <= span + 1e-9; t += st) ctx.fillText(t.toFixed(1) + (t === 0 ? ' s' : ''), lx + t / span * (W - 8 - lx), H - 6);
+      const N = cnt(Math.min(tc, te) + 1e-12), done = tc >= te;
+      $('roFC').innerHTML = (done ? 'count N = <b>' + N + '</b> &nbsp; reading N/T<sub>g</sub> = <b>' + (N / Tg).toFixed(2) + ' Hz</b> &nbsp; true f = <b>' + f.toFixed(2) + ' Hz</b> &nbsp; error <b>' + (N / Tg - f >= 0 ? '+' : '') + (N / Tg - f).toFixed(2) + ' Hz</b> &nbsp; resolution ±1/T<sub>g</sub> = <b>±' + (1 / Tg).toFixed(2) + ' Hz</b>'
+        : 'counting… N = <b>' + N + '</b>') + ' &nbsp; counter word Q3…Q0 = <b>' + (N & 15).toString(2).padStart(4, '0') + '</b>';
+    }
+    return draw;
+  });
+})();
+</script>
+</body>
+</html>
