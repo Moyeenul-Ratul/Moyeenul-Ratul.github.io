@@ -1,0 +1,912 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sampling and Aliasing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="deck.css">
+<style>
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:640px){.duo{grid-template-columns:1fr}}
+  .tbl.compact th,.tbl.compact td{padding:5px 10px;font-size:.88rem}
+  .presets{display:flex;flex-wrap:wrap;gap:6px}
+  .presets .btn{font-size:.8rem;padding:.4em .7em}
+  .readout{display:block;line-height:1.9}
+  .define{display:block}
+  .define::before{display:block;margin-bottom:4px}
+</style>
+<script>window.DECK = { num: "05c", title: "Sampling and Aliasing" };</script>
+<script src="deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+
+<!-- 1 · Cover -->
+<section class="slide cover center" id="cover" data-title="Cover">
+  <p class="num">TOPIC 05 · PART C OF 6</p>
+  <h1>Sampling and Aliasing</h1>
+  <p class="lead">A computer never sees your signal. It sees a list of numbers taken at fixed instants. Take them too rarely and a fast vibration can masquerade as a slow one, and nothing in the numbers will warn you.</p>
+  <div class="parts"><a href="d05a.html">A · Number systems, codes and logic gates</a><a href="d05b.html">B · Boolean algebra, combinational logic and flip-flops</a><span>C · Sampling and aliasing</span><a href="d05d.html">D · Bits, words and converters</a><a href="d05e.html">E · DAQ systems and communication</a><a href="d05f.html">F · Industrial transmission and digital filtering</a></div>
+  <canvas class="bigtrace" id="coverTrace" data-h="120" aria-label="Animated fast sine wave, its sparse samples, and the slow false wave the samples suggest"></canvas>
+  <ol class="agenda">
+    <li>From a continuous signal to a list of numbers</li>
+    <li>Why two different sines can give the same samples</li>
+    <li>The Nyquist frequency and the folding diagram</li>
+    <li>Computing alias frequencies</li>
+    <li>Anti-alias filters and waveform fidelity</li>
+    <li><span>Frequency resolution, leakage, and choosing f<sub>s</sub> and N</span></li>
+  </ol>
+</section>
+
+<!-- 2 · Where we are -->
+<section class="slide" id="where" data-title="Where we are">
+  <p class="eyebrow">Where we are</p>
+  <h2>From a conditioned voltage to numbers in a computer</h2>
+  <div class="cols">
+    <div>
+      <p>By now a sensor has turned a physical quantity into a voltage, and signal conditioning has amplified and filtered it. That voltage is <b>analog</b>: it exists at every instant and can take any value. The last step of a modern measurement chain is to hand it to a computer, which can only store a finite list of numbers. Parts A and B of this topic supplied the digital vocabulary for that step: bits and codes, gates, flip-flops and counters.</p>
+      <p>Two earlier ideas are needed here, so here they are again in one line each.</p>
+      <p class="define"><dfn>Fourier series</dfn>: any periodic signal can be written as a sum of sines and cosines at the fundamental frequency \(f_1\) and its multiples \(2f_1, 3f_1, \dots\), each with its own amplitude.</p>
+      <p class="define"><dfn>Discrete Fourier transform (DFT)</dfn>: a calculation that takes a list of \(N\) equally spaced samples and returns the amplitude of each sine component at a set of discrete frequencies. The FFT is a fast algorithm for it, usually needing \(N = 2^M\) points.</p>
+    </div>
+    <div>
+      <div class="grid-cards">
+        <div class="card"><span class="tag">Decision 1 · this part</span><h3>How often?</h3><p>The time between samples, \(\delta t\). Too long and frequencies are misread.</p></div>
+        <div class="card"><span class="tag">Decision 2 · this part</span><h3>For how long?</h3><p>The record length \(N\delta t\). It sets how finely the DFT can separate frequencies.</p></div>
+        <div class="card"><span class="tag">Decision 3 · part D</span><h3>How finely?</h3><p>The voltage step of the converter. Too coarse and small signals vanish.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 · Discrete signals -->
+<section class="slide" id="discrete" data-title="Continuous, discrete-time and digital">
+  <p class="eyebrow">Sampling concepts</p>
+  <h2>A sampled record is a list of numbers taken every δt seconds</h2>
+  <div class="cols wide-r">
+    <div>
+      <p class="define"><dfn>Analog</dfn> signals are continuous in time and in amplitude. A <dfn>discrete-time</dfn> signal exists only at instants \(t = r\,\delta t\). A <dfn>digital</dfn> signal is discrete in both time and amplitude: each sample is also rounded to one of a finite set of levels (part D).</p>
+      <p>The <dfn>sample time increment</dfn> \(\delta t\) is the spacing between samples, and the <dfn>sample rate</dfn> is how many samples are taken per second:</p>
+      <div class="eq"><span class="label">Sample rate and the discrete record</span>
+        $$f_s=\frac{1}{\delta t}\qquad \{y(r\,\delta t)\},\quad r=0,1,\dots,N-1$$
+      </div>
+      <div class="symbols">
+        <span>\(f_s\)</span><span>sample rate, Hz (samples per second)</span>
+        <span>\(\delta t\)</span><span>time between samples, s</span>
+        <span>\(N\)</span><span>number of samples in the record</span>
+        <span>\(N\delta t\)</span><span>total record length, s</span>
+      </div>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 228" aria-label="A 0.1 hertz sine of amplitude 10 volts drawn as a continuous curve, with eleven sample points at one-second spacing marked as dots on stems">
+<path d="M52 112 H388" class="ln-thin"/><path d="M52 30 V194" class="ln-thin"/>
+<path d="M48 184.0 H52" class="ln-thin"/><text x="45" y="188.0" text-anchor="end" class="t-mono t-muted" font-size="10">-10</text>
+<path d="M48 148.0 H52" class="ln-thin"/><text x="45" y="152.0" text-anchor="end" class="t-mono t-muted" font-size="10">-5</text>
+<path d="M48 76.0 H52" class="ln-thin"/><text x="45" y="80.0" text-anchor="end" class="t-mono t-muted" font-size="10">5</text>
+<path d="M48 40.0 H52" class="ln-thin"/><text x="45" y="44.0" text-anchor="end" class="t-mono t-muted" font-size="10">10</text>
+<text x="45" y="116" text-anchor="end" class="t-mono t-muted" font-size="10">0</text>
+<text x="52.0" y="208" text-anchor="middle" class="t-mono t-muted" font-size="10">0</text>
+<text x="119.2" y="208" text-anchor="middle" class="t-mono t-muted" font-size="10">2</text>
+<text x="186.4" y="208" text-anchor="middle" class="t-mono t-muted" font-size="10">4</text>
+<text x="253.6" y="208" text-anchor="middle" class="t-mono t-muted" font-size="10">6</text>
+<text x="320.8" y="208" text-anchor="middle" class="t-mono t-muted" font-size="10">8</text>
+<text x="388.0" y="208" text-anchor="middle" class="t-mono t-muted" font-size="10">10</text>
+<text x="220.0" y="222" text-anchor="middle" font-size="11">time t (s)</text>
+<text x="14" y="112" transform="rotate(-90 14 112)" text-anchor="middle" font-size="11">y (V)</text>
+<path d="M52.0 112.0 L52.8 110.9 L53.7 109.7 L54.5 108.6 L55.4 107.5 L56.2 106.4 L57.0 105.2 L57.9 104.1 L58.7 103.0 L59.6 101.9 L60.4 100.7 L61.2 99.6 L62.1 98.5 L62.9 97.4 L63.8 96.3 L64.6 95.2 L65.4 94.1 L66.3 93.0 L67.1 91.9 L68.0 90.8 L68.8 89.8 L69.6 88.7 L70.5 87.6 L71.3 86.5 L72.2 85.5 L73.0 84.4 L73.8 83.4 L74.7 82.4 L75.5 81.3 L76.4 80.3 L77.2 79.3 L78.0 78.3 L78.9 77.3 L79.7 76.3 L80.6 75.3 L81.4 74.4 L82.2 73.4 L83.1 72.5 L83.9 71.5 L84.8 70.6 L85.6 69.7 L86.4 68.8 L87.3 67.9 L88.1 67.0 L89.0 66.1 L89.8 65.2 L90.6 64.4 L91.5 63.5 L92.3 62.7 L93.2 61.9 L94.0 61.1 L94.8 60.3 L95.7 59.5 L96.5 58.7 L97.4 58.0 L98.2 57.3 L99.0 56.5 L99.9 55.8 L100.7 55.1 L101.6 54.4 L102.4 53.8 L103.2 53.1 L104.1 52.5 L104.9 51.8 L105.8 51.2 L106.6 50.6 L107.4 50.0 L108.3 49.5 L109.1 48.9 L110.0 48.4 L110.8 47.8 L111.6 47.3 L112.5 46.9 L113.3 46.4 L114.2 45.9 L115.0 45.5 L115.8 45.1 L116.7 44.6 L117.5 44.3 L118.4 43.9 L119.2 43.5 L120.0 43.2 L120.9 42.9 L121.7 42.6 L122.6 42.3 L123.4 42.0 L124.2 41.7 L125.1 41.5 L125.9 41.3 L126.8 41.1 L127.6 40.9 L128.4 40.7 L129.3 40.6 L130.1 40.4 L131.0 40.3 L131.8 40.2 L132.6 40.1 L133.5 40.1 L134.3 40.0 L135.2 40.0 L136.0 40.0 L136.8 40.0 L137.7 40.0 L138.5 40.1 L139.4 40.1 L140.2 40.2 L141.0 40.3 L141.9 40.4 L142.7 40.6 L143.6 40.7 L144.4 40.9 L145.2 41.1 L146.1 41.3 L146.9 41.5 L147.8 41.7 L148.6 42.0 L149.4 42.3 L150.3 42.6 L151.1 42.9 L152.0 43.2 L152.8 43.5 L153.6 43.9 L154.5 44.3 L155.3 44.6 L156.2 45.1 L157.0 45.5 L157.8 45.9 L158.7 46.4 L159.5 46.9 L160.4 47.3 L161.2 47.8 L162.0 48.4 L162.9 48.9 L163.7 49.5 L164.6 50.0 L165.4 50.6 L166.2 51.2 L167.1 51.8 L167.9 52.5 L168.8 53.1 L169.6 53.8 L170.4 54.4 L171.3 55.1 L172.1 55.8 L173.0 56.5 L173.8 57.3 L174.6 58.0 L175.5 58.7 L176.3 59.5 L177.2 60.3 L178.0 61.1 L178.8 61.9 L179.7 62.7 L180.5 63.5 L181.4 64.4 L182.2 65.2 L183.0 66.1 L183.9 67.0 L184.7 67.9 L185.6 68.8 L186.4 69.7 L187.2 70.6 L188.1 71.5 L188.9 72.5 L189.8 73.4 L190.6 74.4 L191.4 75.3 L192.3 76.3 L193.1 77.3 L194.0 78.3 L194.8 79.3 L195.6 80.3 L196.5 81.3 L197.3 82.4 L198.2 83.4 L199.0 84.4 L199.8 85.5 L200.7 86.5 L201.5 87.6 L202.4 88.7 L203.2 89.8 L204.0 90.8 L204.9 91.9 L205.7 93.0 L206.6 94.1 L207.4 95.2 L208.2 96.3 L209.1 97.4 L209.9 98.5 L210.8 99.6 L211.6 100.7 L212.4 101.9 L213.3 103.0 L214.1 104.1 L215.0 105.2 L215.8 106.4 L216.6 107.5 L217.5 108.6 L218.3 109.7 L219.2 110.9 L220.0 112.0 L220.8 113.1 L221.7 114.3 L222.5 115.4 L223.4 116.5 L224.2 117.6 L225.0 118.8 L225.9 119.9 L226.7 121.0 L227.6 122.1 L228.4 123.3 L229.2 124.4 L230.1 125.5 L230.9 126.6 L231.8 127.7 L232.6 128.8 L233.4 129.9 L234.3 131.0 L235.1 132.1 L236.0 133.2 L236.8 134.2 L237.6 135.3 L238.5 136.4 L239.3 137.5 L240.2 138.5 L241.0 139.6 L241.8 140.6 L242.7 141.6 L243.5 142.7 L244.4 143.7 L245.2 144.7 L246.0 145.7 L246.9 146.7 L247.7 147.7 L248.6 148.7 L249.4 149.6 L250.2 150.6 L251.1 151.5 L251.9 152.5 L252.8 153.4 L253.6 154.3 L254.4 155.2 L255.3 156.1 L256.1 157.0 L257.0 157.9 L257.8 158.8 L258.6 159.6 L259.5 160.5 L260.3 161.3 L261.2 162.1 L262.0 162.9 L262.8 163.7 L263.7 164.5 L264.5 165.3 L265.4 166.0 L266.2 166.7 L267.0 167.5 L267.9 168.2 L268.7 168.9 L269.6 169.6 L270.4 170.2 L271.2 170.9 L272.1 171.5 L272.9 172.2 L273.8 172.8 L274.6 173.4 L275.4 174.0 L276.3 174.5 L277.1 175.1 L278.0 175.6 L278.8 176.2 L279.6 176.7 L280.5 177.1 L281.3 177.6 L282.2 178.1 L283.0 178.5 L283.8 178.9 L284.7 179.4 L285.5 179.7 L286.4 180.1 L287.2 180.5 L288.0 180.8 L288.9 181.1 L289.7 181.4 L290.6 181.7 L291.4 182.0 L292.2 182.3 L293.1 182.5 L293.9 182.7 L294.8 182.9 L295.6 183.1 L296.4 183.3 L297.3 183.4 L298.1 183.6 L299.0 183.7 L299.8 183.8 L300.6 183.9 L301.5 183.9 L302.3 184.0 L303.2 184.0 L304.0 184.0 L304.8 184.0 L305.7 184.0 L306.5 183.9 L307.4 183.9 L308.2 183.8 L309.0 183.7 L309.9 183.6 L310.7 183.4 L311.6 183.3 L312.4 183.1 L313.2 182.9 L314.1 182.7 L314.9 182.5 L315.8 182.3 L316.6 182.0 L317.4 181.7 L318.3 181.4 L319.1 181.1 L320.0 180.8 L320.8 180.5 L321.6 180.1 L322.5 179.7 L323.3 179.4 L324.2 178.9 L325.0 178.5 L325.8 178.1 L326.7 177.6 L327.5 177.1 L328.4 176.7 L329.2 176.2 L330.0 175.6 L330.9 175.1 L331.7 174.5 L332.6 174.0 L333.4 173.4 L334.2 172.8 L335.1 172.2 L335.9 171.5 L336.8 170.9 L337.6 170.2 L338.4 169.6 L339.3 168.9 L340.1 168.2 L341.0 167.5 L341.8 166.7 L342.6 166.0 L343.5 165.3 L344.3 164.5 L345.2 163.7 L346.0 162.9 L346.8 162.1 L347.7 161.3 L348.5 160.5 L349.4 159.6 L350.2 158.8 L351.0 157.9 L351.9 157.0 L352.7 156.1 L353.6 155.2 L354.4 154.3 L355.2 153.4 L356.1 152.5 L356.9 151.5 L357.8 150.6 L358.6 149.6 L359.4 148.7 L360.3 147.7 L361.1 146.7 L362.0 145.7 L362.8 144.7 L363.6 143.7 L364.5 142.7 L365.3 141.6 L366.2 140.6 L367.0 139.6 L367.8 138.5 L368.7 137.5 L369.5 136.4 L370.4 135.3 L371.2 134.2 L372.0 133.2 L372.9 132.1 L373.7 131.0 L374.6 129.9 L375.4 128.8 L376.2 127.7 L377.1 126.6 L377.9 125.5 L378.8 124.4 L379.6 123.3 L380.4 122.1 L381.3 121.0 L382.1 119.9 L383.0 118.8 L383.8 117.6 L384.6 116.5 L385.5 115.4 L386.3 114.3 L387.2 113.1 L388.0 112.0" class="ln-thin" style="stroke-width:1.6"/>
+<path d="M52.0 112 V112.0" class="ln-acc" style="stroke-width:1.5"/><circle cx="52.0" cy="112.0" r="4" class="fill-acc"/>
+<path d="M85.6 112 V69.7" class="ln-acc" style="stroke-width:1.5"/><circle cx="85.6" cy="69.7" r="4" class="fill-acc"/>
+<path d="M119.2 112 V43.5" class="ln-acc" style="stroke-width:1.5"/><circle cx="119.2" cy="43.5" r="4" class="fill-acc"/>
+<path d="M152.8 112 V43.5" class="ln-acc" style="stroke-width:1.5"/><circle cx="152.8" cy="43.5" r="4" class="fill-acc"/>
+<path d="M186.4 112 V69.7" class="ln-acc" style="stroke-width:1.5"/><circle cx="186.4" cy="69.7" r="4" class="fill-acc"/>
+<path d="M220.0 112 V112.0" class="ln-acc" style="stroke-width:1.5"/><circle cx="220.0" cy="112.0" r="4" class="fill-acc"/>
+<path d="M253.6 112 V154.3" class="ln-acc" style="stroke-width:1.5"/><circle cx="253.6" cy="154.3" r="4" class="fill-acc"/>
+<path d="M287.2 112 V180.5" class="ln-acc" style="stroke-width:1.5"/><circle cx="287.2" cy="180.5" r="4" class="fill-acc"/>
+<path d="M320.8 112 V180.5" class="ln-acc" style="stroke-width:1.5"/><circle cx="320.8" cy="180.5" r="4" class="fill-acc"/>
+<path d="M354.4 112 V154.3" class="ln-acc" style="stroke-width:1.5"/><circle cx="354.4" cy="154.3" r="4" class="fill-acc"/>
+<path d="M388.0 112 V112.0" class="ln-acc" style="stroke-width:1.5"/><circle cx="388.0" cy="112.0" r="4" class="fill-acc"/>
+<path d="M85.6 26 H119.2" class="ln-blu"/><path d="M85.6 21 V31 M119.2 21 V31" class="ln-blu"/><text x="102.4" y="18" text-anchor="middle" class="t-blu t-mono" font-size="11">δt = 1 s</text>
+<text x="160.8" y="37.5" class="t-acc t-mono" font-size="11">y₃ = 9.51 V</text>
+        </svg>
+        <figcaption><i>y</i>(<i>t</i>) = 10 sin(2π · 0.1 <i>t</i>) V sampled every δ<i>t</i> = 1 s (<i>f</i><sub>s</sub> = 1 Hz). The computer keeps only the dots: 0, 5.88, 9.51, 9.51, 5.88, 0, −5.88, −9.51, −9.51, −5.88 V.</figcaption>
+      </figure>
+      <p>How well those dots represent the curve depends on three things: the frequency content of the signal, the increment \(\delta t\), and the record length \(N\delta t\).</p>
+    </div>
+  </div>
+</section>
+
+<!-- 4 · Effect of sample rate -->
+<section class="slide" id="rate" data-title="What a slow sample rate does">
+  <p class="eyebrow">Sampling concepts</p>
+  <h2>Sample too slowly and a sine changes its identity</h2>
+  <div class="cols wide-l">
+    <figure>
+      <svg viewBox="0 0 400 262" aria-label="Four panels over one second: a 10 hertz sine; the same sine sampled at 100 hertz, which traces it well; at 27 hertz, which keeps the frequency but the peaks wobble; and at 12 hertz, where the samples trace a slow 2 hertz wave">
+<text x="8" y="18" class="t-mono" font-size="11">(a) the 10 Hz sine itself</text>
+<path d="M8 71.0 H188" class="ln-thin"/>
+<path d="M8.0 71.0 L8.4 65.7 L8.9 60.5 L9.3 55.6 L9.8 51.0 L10.2 47.0 L10.7 43.5 L11.2 40.7 L11.6 38.7 L12.1 37.4 L12.5 37.0 L12.9 37.4 L13.4 38.7 L13.9 40.7 L14.3 43.5 L14.8 47.0 L15.2 51.0 L15.7 55.6 L16.1 60.5 L16.6 65.7 L17.0 71.0 L17.4 76.3 L17.9 81.5 L18.4 86.4 L18.8 91.0 L19.2 95.0 L19.7 98.5 L20.1 101.3 L20.6 103.3 L21.0 104.6 L21.5 105.0 L21.9 104.6 L22.4 103.3 L22.9 101.3 L23.3 98.5 L23.8 95.0 L24.2 91.0 L24.6 86.4 L25.1 81.5 L25.6 76.3 L26.0 71.0 L26.4 65.7 L26.9 60.5 L27.4 55.6 L27.8 51.0 L28.2 47.0 L28.7 43.5 L29.1 40.7 L29.6 38.7 L30.1 37.4 L30.5 37.0 L30.9 37.4 L31.4 38.7 L31.9 40.7 L32.3 43.5 L32.8 47.0 L33.2 51.0 L33.6 55.6 L34.1 60.5 L34.5 65.7 L35.0 71.0 L35.5 76.3 L35.9 81.5 L36.4 86.4 L36.8 91.0 L37.2 95.0 L37.7 98.5 L38.2 101.3 L38.6 103.3 L39.0 104.6 L39.5 105.0 L40.0 104.6 L40.4 103.3 L40.9 101.3 L41.3 98.5 L41.8 95.0 L42.2 91.0 L42.6 86.4 L43.1 81.5 L43.6 76.3 L44.0 71.0 L44.5 65.7 L44.9 60.5 L45.4 55.6 L45.8 51.0 L46.2 47.0 L46.7 43.5 L47.1 40.7 L47.6 38.7 L48.0 37.4 L48.5 37.0 L49.0 37.4 L49.4 38.7 L49.9 40.7 L50.3 43.5 L50.8 47.0 L51.2 51.0 L51.6 55.6 L52.1 60.5 L52.5 65.7 L53.0 71.0 L53.5 76.3 L53.9 81.5 L54.4 86.4 L54.8 91.0 L55.2 95.0 L55.7 98.5 L56.2 101.3 L56.6 103.3 L57.1 104.6 L57.5 105.0 L58.0 104.6 L58.4 103.3 L58.8 101.3 L59.3 98.5 L59.7 95.0 L60.2 91.0 L60.6 86.4 L61.1 81.5 L61.5 76.3 L62.0 71.0 L62.4 65.7 L62.9 60.5 L63.4 55.6 L63.8 51.0 L64.2 47.0 L64.7 43.5 L65.2 40.7 L65.6 38.7 L66.1 37.4 L66.5 37.0 L67.0 37.4 L67.4 38.7 L67.8 40.7 L68.3 43.5 L68.8 47.0 L69.2 51.0 L69.7 55.6 L70.1 60.5 L70.5 65.7 L71.0 71.0 L71.4 76.3 L71.9 81.5 L72.3 86.4 L72.8 91.0 L73.2 95.0 L73.7 98.5 L74.2 101.3 L74.6 103.3 L75.0 104.6 L75.5 105.0 L76.0 104.6 L76.4 103.3 L76.8 101.3 L77.3 98.5 L77.8 95.0 L78.2 91.0 L78.7 86.4 L79.1 81.5 L79.5 76.3 L80.0 71.0 L80.5 65.7 L80.9 60.5 L81.3 55.6 L81.8 51.0 L82.2 47.0 L82.7 43.5 L83.1 40.7 L83.6 38.7 L84.0 37.4 L84.5 37.0 L85.0 37.4 L85.4 38.7 L85.8 40.7 L86.3 43.5 L86.8 47.0 L87.2 51.0 L87.7 55.6 L88.1 60.5 L88.5 65.7 L89.0 71.0 L89.5 76.3 L89.9 81.5 L90.4 86.4 L90.8 91.0 L91.2 95.0 L91.7 98.5 L92.2 101.3 L92.6 103.3 L93.0 104.6 L93.5 105.0 L94.0 104.6 L94.4 103.3 L94.8 101.3 L95.3 98.5 L95.8 95.0 L96.2 91.0 L96.7 86.4 L97.1 81.5 L97.5 76.3 L98.0 71.0 L98.4 65.7 L98.9 60.5 L99.3 55.6 L99.8 51.0 L100.2 47.0 L100.7 43.5 L101.1 40.7 L101.6 38.7 L102.0 37.4 L102.5 37.0 L102.9 37.4 L103.4 38.7 L103.8 40.7 L104.3 43.5 L104.8 47.0 L105.2 51.0 L105.6 55.6 L106.1 60.5 L106.5 65.7 L107.0 71.0 L107.5 76.3 L107.9 81.5 L108.3 86.4 L108.8 91.0 L109.2 95.0 L109.7 98.5 L110.2 101.3 L110.6 103.3 L111.0 104.6 L111.5 105.0 L112.0 104.6 L112.4 103.3 L112.9 101.3 L113.3 98.5 L113.8 95.0 L114.2 91.0 L114.7 86.4 L115.1 81.5 L115.6 76.3 L116.0 71.0 L116.5 65.7 L116.9 60.5 L117.4 55.6 L117.8 51.0 L118.3 47.0 L118.7 43.5 L119.2 40.7 L119.6 38.7 L120.1 37.4 L120.5 37.0 L120.9 37.4 L121.4 38.7 L121.8 40.7 L122.3 43.5 L122.7 47.0 L123.2 51.0 L123.6 55.6 L124.1 60.5 L124.5 65.7 L125.0 71.0 L125.4 76.3 L125.9 81.5 L126.3 86.4 L126.8 91.0 L127.2 95.0 L127.7 98.5 L128.1 101.3 L128.6 103.3 L129.1 104.6 L129.5 105.0 L129.9 104.6 L130.4 103.3 L130.8 101.3 L131.3 98.5 L131.8 95.0 L132.2 91.0 L132.7 86.4 L133.1 81.5 L133.6 76.3 L134.0 71.0 L134.4 65.7 L134.9 60.5 L135.4 55.6 L135.8 51.0 L136.2 47.0 L136.7 43.5 L137.2 40.7 L137.6 38.7 L138.1 37.4 L138.5 37.0 L139.0 37.4 L139.4 38.7 L139.8 40.7 L140.3 43.5 L140.8 47.0 L141.2 51.0 L141.7 55.6 L142.1 60.5 L142.6 65.7 L143.0 71.0 L143.4 76.3 L143.9 81.5 L144.3 86.4 L144.8 91.0 L145.2 95.0 L145.7 98.5 L146.2 101.3 L146.6 103.3 L147.0 104.6 L147.5 105.0 L147.9 104.6 L148.4 103.3 L148.8 101.3 L149.3 98.5 L149.8 95.0 L150.2 91.0 L150.7 86.4 L151.1 81.5 L151.6 76.3 L152.0 71.0 L152.4 65.7 L152.9 60.5 L153.3 55.6 L153.8 51.0 L154.2 47.0 L154.7 43.5 L155.2 40.7 L155.6 38.7 L156.1 37.4 L156.5 37.0 L156.9 37.4 L157.4 38.7 L157.8 40.7 L158.3 43.5 L158.8 47.0 L159.2 51.0 L159.7 55.6 L160.1 60.5 L160.6 65.7 L161.0 71.0 L161.5 76.3 L161.9 81.5 L162.3 86.4 L162.8 91.0 L163.2 95.0 L163.7 98.5 L164.2 101.3 L164.6 103.3 L165.1 104.6 L165.5 105.0 L165.9 104.6 L166.4 103.3 L166.8 101.3 L167.3 98.5 L167.8 95.0 L168.2 91.0 L168.7 86.4 L169.1 81.5 L169.5 76.3 L170.0 71.0 L170.4 65.7 L170.9 60.5 L171.3 55.6 L171.8 51.0 L172.2 47.0 L172.7 43.5 L173.2 40.7 L173.6 38.7 L174.1 37.4 L174.5 37.0 L174.9 37.4 L175.4 38.7 L175.8 40.7 L176.3 43.5 L176.8 47.0 L177.2 51.0 L177.7 55.6 L178.1 60.5 L178.6 65.7 L179.0 71.0 L179.4 76.3 L179.9 81.5 L180.3 86.4 L180.8 91.0 L181.2 95.0 L181.7 98.5 L182.2 101.3 L182.6 103.3 L183.1 104.6 L183.5 105.0 L184.0 104.6 L184.4 103.3 L184.8 101.3 L185.3 98.5 L185.8 95.0 L186.2 91.0 L186.7 86.4 L187.1 81.5 L187.6 76.3 L188.0 71.0" class="ln-thin" style="stroke-width:1.6"/>
+<text x="8" y="126.0" class="t-mono t-muted" font-size="9.5">0</text><text x="188" y="126.0" text-anchor="end" class="t-mono t-muted" font-size="9.5">1 s</text>
+<text x="208" y="18" class="t-mono" font-size="11">(b) fs = 100 Hz</text>
+<path d="M208 71.0 H388" class="ln-thin"/>
+<path d="M208.0 71.0 L208.4 65.7 L208.9 60.5 L209.3 55.6 L209.8 51.0 L210.2 47.0 L210.7 43.5 L211.2 40.7 L211.6 38.7 L212.1 37.4 L212.5 37.0 L212.9 37.4 L213.4 38.7 L213.8 40.7 L214.3 43.5 L214.8 47.0 L215.2 51.0 L215.7 55.6 L216.1 60.5 L216.6 65.7 L217.0 71.0 L217.4 76.3 L217.9 81.5 L218.3 86.4 L218.8 91.0 L219.2 95.0 L219.7 98.5 L220.2 101.3 L220.6 103.3 L221.1 104.6 L221.5 105.0 L221.9 104.6 L222.4 103.3 L222.8 101.3 L223.3 98.5 L223.8 95.0 L224.2 91.0 L224.7 86.4 L225.1 81.5 L225.6 76.3 L226.0 71.0 L226.4 65.7 L226.9 60.5 L227.3 55.6 L227.8 51.0 L228.2 47.0 L228.7 43.5 L229.2 40.7 L229.6 38.7 L230.1 37.4 L230.5 37.0 L230.9 37.4 L231.4 38.7 L231.8 40.7 L232.3 43.5 L232.8 47.0 L233.2 51.0 L233.7 55.6 L234.1 60.5 L234.6 65.7 L235.0 71.0 L235.4 76.3 L235.9 81.5 L236.3 86.4 L236.8 91.0 L237.2 95.0 L237.7 98.5 L238.2 101.3 L238.6 103.3 L239.1 104.6 L239.5 105.0 L239.9 104.6 L240.4 103.3 L240.8 101.3 L241.3 98.5 L241.8 95.0 L242.2 91.0 L242.7 86.4 L243.1 81.5 L243.6 76.3 L244.0 71.0 L244.4 65.7 L244.9 60.5 L245.3 55.6 L245.8 51.0 L246.2 47.0 L246.7 43.5 L247.2 40.7 L247.6 38.7 L248.1 37.4 L248.5 37.0 L248.9 37.4 L249.4 38.7 L249.8 40.7 L250.3 43.5 L250.8 47.0 L251.2 51.0 L251.7 55.6 L252.1 60.5 L252.6 65.7 L253.0 71.0 L253.4 76.3 L253.9 81.5 L254.3 86.4 L254.8 91.0 L255.2 95.0 L255.7 98.5 L256.1 101.3 L256.6 103.3 L257.1 104.6 L257.5 105.0 L257.9 104.6 L258.4 103.3 L258.9 101.3 L259.3 98.5 L259.8 95.0 L260.2 91.0 L260.6 86.4 L261.1 81.5 L261.6 76.3 L262.0 71.0 L262.4 65.7 L262.9 60.5 L263.4 55.6 L263.8 51.0 L264.2 47.0 L264.7 43.5 L265.1 40.7 L265.6 38.7 L266.1 37.4 L266.5 37.0 L266.9 37.4 L267.4 38.7 L267.9 40.7 L268.3 43.5 L268.8 47.0 L269.2 51.0 L269.6 55.6 L270.1 60.5 L270.6 65.7 L271.0 71.0 L271.4 76.3 L271.9 81.5 L272.4 86.4 L272.8 91.0 L273.2 95.0 L273.7 98.5 L274.1 101.3 L274.6 103.3 L275.1 104.6 L275.5 105.0 L275.9 104.6 L276.4 103.3 L276.9 101.3 L277.3 98.5 L277.8 95.0 L278.2 91.0 L278.6 86.4 L279.1 81.5 L279.6 76.3 L280.0 71.0 L280.4 65.7 L280.9 60.5 L281.4 55.6 L281.8 51.0 L282.2 47.0 L282.7 43.5 L283.1 40.7 L283.6 38.7 L284.1 37.4 L284.5 37.0 L284.9 37.4 L285.4 38.7 L285.9 40.7 L286.3 43.5 L286.8 47.0 L287.2 51.0 L287.6 55.6 L288.1 60.5 L288.6 65.7 L289.0 71.0 L289.4 76.3 L289.9 81.5 L290.4 86.4 L290.8 91.0 L291.2 95.0 L291.7 98.5 L292.1 101.3 L292.6 103.3 L293.1 104.6 L293.5 105.0 L293.9 104.6 L294.4 103.3 L294.9 101.3 L295.3 98.5 L295.8 95.0 L296.2 91.0 L296.6 86.4 L297.1 81.5 L297.6 76.3 L298.0 71.0 L298.4 65.7 L298.9 60.5 L299.4 55.6 L299.8 51.0 L300.2 47.0 L300.7 43.5 L301.1 40.7 L301.6 38.7 L302.1 37.4 L302.5 37.0 L302.9 37.4 L303.4 38.7 L303.9 40.7 L304.3 43.5 L304.8 47.0 L305.2 51.0 L305.6 55.6 L306.1 60.5 L306.6 65.7 L307.0 71.0 L307.4 76.3 L307.9 81.5 L308.4 86.4 L308.8 91.0 L309.2 95.0 L309.7 98.5 L310.1 101.3 L310.6 103.3 L311.1 104.6 L311.5 105.0 L311.9 104.6 L312.4 103.3 L312.9 101.3 L313.3 98.5 L313.8 95.0 L314.2 91.0 L314.6 86.4 L315.1 81.5 L315.6 76.3 L316.0 71.0 L316.4 65.7 L316.9 60.5 L317.4 55.6 L317.8 51.0 L318.2 47.0 L318.7 43.5 L319.1 40.7 L319.6 38.7 L320.1 37.4 L320.5 37.0 L320.9 37.4 L321.4 38.7 L321.9 40.7 L322.3 43.5 L322.8 47.0 L323.2 51.0 L323.6 55.6 L324.1 60.5 L324.6 65.7 L325.0 71.0 L325.4 76.3 L325.9 81.5 L326.4 86.4 L326.8 91.0 L327.2 95.0 L327.7 98.5 L328.1 101.3 L328.6 103.3 L329.1 104.6 L329.5 105.0 L329.9 104.6 L330.4 103.3 L330.9 101.3 L331.3 98.5 L331.8 95.0 L332.2 91.0 L332.6 86.4 L333.1 81.5 L333.6 76.3 L334.0 71.0 L334.4 65.7 L334.9 60.5 L335.4 55.6 L335.8 51.0 L336.2 47.0 L336.7 43.5 L337.1 40.7 L337.6 38.7 L338.1 37.4 L338.5 37.0 L339.0 37.4 L339.4 38.7 L339.9 40.7 L340.3 43.5 L340.8 47.0 L341.2 51.0 L341.6 55.6 L342.1 60.5 L342.6 65.7 L343.0 71.0 L343.4 76.3 L343.9 81.5 L344.4 86.4 L344.8 91.0 L345.2 95.0 L345.7 98.5 L346.1 101.3 L346.6 103.3 L347.0 104.6 L347.5 105.0 L347.9 104.6 L348.4 103.3 L348.9 101.3 L349.3 98.5 L349.8 95.0 L350.2 91.0 L350.6 86.4 L351.1 81.5 L351.6 76.3 L352.0 71.0 L352.4 65.7 L352.9 60.5 L353.4 55.6 L353.8 51.0 L354.2 47.0 L354.7 43.5 L355.1 40.7 L355.6 38.7 L356.1 37.4 L356.5 37.0 L356.9 37.4 L357.4 38.7 L357.9 40.7 L358.3 43.5 L358.8 47.0 L359.2 51.0 L359.6 55.6 L360.1 60.5 L360.6 65.7 L361.0 71.0 L361.5 76.3 L361.9 81.5 L362.4 86.4 L362.8 91.0 L363.2 95.0 L363.7 98.5 L364.1 101.3 L364.6 103.3 L365.1 104.6 L365.5 105.0 L365.9 104.6 L366.4 103.3 L366.9 101.3 L367.3 98.5 L367.8 95.0 L368.2 91.0 L368.6 86.4 L369.1 81.5 L369.5 76.3 L370.0 71.0 L370.4 65.7 L370.9 60.5 L371.4 55.6 L371.8 51.0 L372.2 47.0 L372.7 43.5 L373.1 40.7 L373.6 38.7 L374.1 37.4 L374.5 37.0 L374.9 37.4 L375.4 38.7 L375.9 40.7 L376.3 43.5 L376.8 47.0 L377.2 51.0 L377.6 55.6 L378.1 60.5 L378.6 65.7 L379.0 71.0 L379.4 76.3 L379.9 81.5 L380.4 86.4 L380.8 91.0 L381.2 95.0 L381.7 98.5 L382.1 101.3 L382.6 103.3 L383.1 104.6 L383.5 105.0 L384.0 104.6 L384.4 103.3 L384.9 101.3 L385.3 98.5 L385.8 95.0 L386.2 91.0 L386.6 86.4 L387.1 81.5 L387.6 76.3 L388.0 71.0" class="ln-thin" style="stroke-width:1"/>
+<path d="M208.0 71.0 L209.8 51.0 L211.6 38.7 L213.4 38.7 L215.2 51.0 L217.0 71.0 L218.8 91.0 L220.6 103.3 L222.4 103.3 L224.2 91.0 L226.0 71.0 L227.8 51.0 L229.6 38.7 L231.4 38.7 L233.2 51.0 L235.0 71.0 L236.8 91.0 L238.6 103.3 L240.4 103.3 L242.2 91.0 L244.0 71.0 L245.8 51.0 L247.6 38.7 L249.4 38.7 L251.2 51.0 L253.0 71.0 L254.8 91.0 L256.6 103.3 L258.4 103.3 L260.2 91.0 L262.0 71.0 L263.8 51.0 L265.6 38.7 L267.4 38.7 L269.2 51.0 L271.0 71.0 L272.8 91.0 L274.6 103.3 L276.4 103.3 L278.2 91.0 L280.0 71.0 L281.8 51.0 L283.6 38.7 L285.4 38.7 L287.2 51.0 L289.0 71.0 L290.8 91.0 L292.6 103.3 L294.4 103.3 L296.2 91.0 L298.0 71.0 L299.8 51.0 L301.6 38.7 L303.4 38.7 L305.2 51.0 L307.0 71.0 L308.8 91.0 L310.6 103.3 L312.4 103.3 L314.2 91.0 L316.0 71.0 L317.8 51.0 L319.6 38.7 L321.4 38.7 L323.2 51.0 L325.0 71.0 L326.8 91.0 L328.6 103.3 L330.4 103.3 L332.2 91.0 L334.0 71.0 L335.8 51.0 L337.6 38.7 L339.4 38.7 L341.2 51.0 L343.0 71.0 L344.8 91.0 L346.6 103.3 L348.4 103.3 L350.2 91.0 L352.0 71.0 L353.8 51.0 L355.6 38.7 L357.4 38.7 L359.2 51.0 L361.0 71.0 L362.8 91.0 L364.6 103.3 L366.4 103.3 L368.2 91.0 L370.0 71.0 L371.8 51.0 L373.6 38.7 L375.4 38.7 L377.2 51.0 L379.0 71.0 L380.8 91.0 L382.6 103.3 L384.4 103.3 L386.2 91.0 L388.0 71.0" class="ln-acc" style="stroke-width:1.6"/>
+<circle cx="208.0" cy="71.0" r="1.8" class="fill-acc"/>
+<circle cx="209.8" cy="51.0" r="1.8" class="fill-acc"/>
+<circle cx="211.6" cy="38.7" r="1.8" class="fill-acc"/>
+<circle cx="213.4" cy="38.7" r="1.8" class="fill-acc"/>
+<circle cx="215.2" cy="51.0" r="1.8" class="fill-acc"/>
+<circle cx="217.0" cy="71.0" r="1.8" class="fill-acc"/>
+<circle cx="218.8" cy="91.0" r="1.8" class="fill-acc"/>
+<circle cx="220.6" cy="103.3" r="1.8" class="fill-acc"/>
+<circle cx="222.4" cy="103.3" r="1.8" class="fill-acc"/>
+<circle cx="224.2" cy="91.0" r="1.8" class="fill-acc"/>
+<circle cx="226.0" cy="71.0" r="1.8" class="fill-acc"/>
+<circle cx="227.8" cy="51.0" r="1.8" class="fill-acc"/>
+<circle cx="229.6" cy="38.7" r="1.8" class="fill-acc"/>
+<circle cx="231.4" cy="38.7" r="1.8" class="fill-acc"/>
+<circle cx="233.2" cy="51.0" r="1.8" class="fill-acc"/>
+<circle cx="235.0" cy="71.0" r="1.8" class="fill-acc"/>
+<circle cx="236.8" cy="91.0" r="1.8" class="fill-acc"/>
+<circle cx="238.6" cy="103.3" r="1.8" class="fill-acc"/>
+<circle cx="240.4" cy="103.3" r="1.8" class="fill-acc"/>
+<circle cx="242.2" cy="91.0" r="1.8" class="fill-acc"/>
+<circle cx="244.0" cy="71.0" r="1.8" class="fill-acc"/>
+<circle cx="245.8" cy="51.0" r="1.8" class="fill-acc"/>
+<circle cx="247.6" cy="38.7" r="1.8" class="fill-acc"/>
+<circle cx="249.4" cy="38.7" r="1.8" class="fill-acc"/>
+<circle cx="251.2" cy="51.0" r="1.8" class="fill-acc"/>
+<circle cx="253.0" cy="71.0" r="1.8" class="fill-acc"/>
+<circle cx="254.8" cy="91.0" r="1.8" class="fill-acc"/>
+<circle cx="256.6" cy="103.3" r="1.8" class="fill-acc"/>
+<circle cx="258.4" cy="103.3" r="1.8" class="fill-acc"/>
+<circle cx="260.2" cy="91.0" r="1.8" class="fill-acc"/>
+<circle cx="262.0" cy="71.0" r="1.8" class="fill-acc"/>
+<circle cx="263.8" cy="51.0" r="1.8" class="fill-acc"/>
+<circle cx="265.6" cy="38.7" r="1.8" class="fill-acc"/>
+<circle cx="267.4" cy="38.7" r="1.8" class="fill-acc"/>
+<circle cx="269.2" cy="51.0" r="1.8" class="fill-acc"/>
+<circle cx="271.0" cy="71.0" r="1.8" class="fill-acc"/>
+<circle cx="272.8" cy="91.0" r="1.8" class="fill-acc"/>
+<circle cx="274.6" cy="103.3" r="1.8" class="fill-acc"/>
+<circle cx="276.4" cy="103.3" r="1.8" class="fill-acc"/>
+<circle cx="278.2" cy="91.0" r="1.8" class="fill-acc"/>
+<circle cx="280.0" cy="71.0" r="1.8" class="fill-acc"/>
+<circle cx="281.8" cy="51.0" r="1.8" class="fill-acc"/>
+<circle cx="283.6" cy="38.7" r="1.8" class="fill-acc"/>
+<circle cx="285.4" cy="38.7" r="1.8" class="fill-acc"/>
+<circle cx="287.2" cy="51.0" r="1.8" class="fill-acc"/>
+<circle cx="289.0" cy="71.0" r="1.8" class="fill-acc"/>
+<circle cx="290.8" cy="91.0" r="1.8" class="fill-acc"/>
+<circle cx="292.6" cy="103.3" r="1.8" class="fill-acc"/>
+<circle cx="294.4" cy="103.3" r="1.8" class="fill-acc"/>
+<circle cx="296.2" cy="91.0" r="1.8" class="fill-acc"/>
+<circle cx="298.0" cy="71.0" r="1.8" class="fill-acc"/>
+<circle cx="299.8" cy="51.0" r="1.8" class="fill-acc"/>
+<circle cx="301.6" cy="38.7" r="1.8" class="fill-acc"/>
+<circle cx="303.4" cy="38.7" r="1.8" class="fill-acc"/>
+<circle cx="305.2" cy="51.0" r="1.8" class="fill-acc"/>
+<circle cx="307.0" cy="71.0" r="1.8" class="fill-acc"/>
+<circle cx="308.8" cy="91.0" r="1.8" class="fill-acc"/>
+<circle cx="310.6" cy="103.3" r="1.8" class="fill-acc"/>
+<circle cx="312.4" cy="103.3" r="1.8" class="fill-acc"/>
+<circle cx="314.2" cy="91.0" r="1.8" class="fill-acc"/>
+<circle cx="316.0" cy="71.0" r="1.8" class="fill-acc"/>
+<circle cx="317.8" cy="51.0" r="1.8" class="fill-acc"/>
+<circle cx="319.6" cy="38.7" r="1.8" class="fill-acc"/>
+<circle cx="321.4" cy="38.7" r="1.8" class="fill-acc"/>
+<circle cx="323.2" cy="51.0" r="1.8" class="fill-acc"/>
+<circle cx="325.0" cy="71.0" r="1.8" class="fill-acc"/>
+<circle cx="326.8" cy="91.0" r="1.8" class="fill-acc"/>
+<circle cx="328.6" cy="103.3" r="1.8" class="fill-acc"/>
+<circle cx="330.4" cy="103.3" r="1.8" class="fill-acc"/>
+<circle cx="332.2" cy="91.0" r="1.8" class="fill-acc"/>
+<circle cx="334.0" cy="71.0" r="1.8" class="fill-acc"/>
+<circle cx="335.8" cy="51.0" r="1.8" class="fill-acc"/>
+<circle cx="337.6" cy="38.7" r="1.8" class="fill-acc"/>
+<circle cx="339.4" cy="38.7" r="1.8" class="fill-acc"/>
+<circle cx="341.2" cy="51.0" r="1.8" class="fill-acc"/>
+<circle cx="343.0" cy="71.0" r="1.8" class="fill-acc"/>
+<circle cx="344.8" cy="91.0" r="1.8" class="fill-acc"/>
+<circle cx="346.6" cy="103.3" r="1.8" class="fill-acc"/>
+<circle cx="348.4" cy="103.3" r="1.8" class="fill-acc"/>
+<circle cx="350.2" cy="91.0" r="1.8" class="fill-acc"/>
+<circle cx="352.0" cy="71.0" r="1.8" class="fill-acc"/>
+<circle cx="353.8" cy="51.0" r="1.8" class="fill-acc"/>
+<circle cx="355.6" cy="38.7" r="1.8" class="fill-acc"/>
+<circle cx="357.4" cy="38.7" r="1.8" class="fill-acc"/>
+<circle cx="359.2" cy="51.0" r="1.8" class="fill-acc"/>
+<circle cx="361.0" cy="71.0" r="1.8" class="fill-acc"/>
+<circle cx="362.8" cy="91.0" r="1.8" class="fill-acc"/>
+<circle cx="364.6" cy="103.3" r="1.8" class="fill-acc"/>
+<circle cx="366.4" cy="103.3" r="1.8" class="fill-acc"/>
+<circle cx="368.2" cy="91.0" r="1.8" class="fill-acc"/>
+<circle cx="370.0" cy="71.0" r="1.8" class="fill-acc"/>
+<circle cx="371.8" cy="51.0" r="1.8" class="fill-acc"/>
+<circle cx="373.6" cy="38.7" r="1.8" class="fill-acc"/>
+<circle cx="375.4" cy="38.7" r="1.8" class="fill-acc"/>
+<circle cx="377.2" cy="51.0" r="1.8" class="fill-acc"/>
+<circle cx="379.0" cy="71.0" r="1.8" class="fill-acc"/>
+<circle cx="380.8" cy="91.0" r="1.8" class="fill-acc"/>
+<circle cx="382.6" cy="103.3" r="1.8" class="fill-acc"/>
+<circle cx="384.4" cy="103.3" r="1.8" class="fill-acc"/>
+<circle cx="386.2" cy="91.0" r="1.8" class="fill-acc"/>
+<circle cx="388.0" cy="71.0" r="1.8" class="fill-acc"/>
+<text x="208" y="126.0" class="t-mono t-muted" font-size="9.5">0</text><text x="388" y="126.0" text-anchor="end" class="t-mono t-muted" font-size="9.5">1 s</text>
+<text x="8" y="146" class="t-mono" font-size="11">(c) fs = 27 Hz</text>
+<path d="M8 199.0 H188" class="ln-thin"/>
+<path d="M8.0 199.0 L8.4 193.7 L8.9 188.5 L9.3 183.6 L9.8 179.0 L10.2 175.0 L10.7 171.5 L11.2 168.7 L11.6 166.7 L12.1 165.4 L12.5 165.0 L12.9 165.4 L13.4 166.7 L13.9 168.7 L14.3 171.5 L14.8 175.0 L15.2 179.0 L15.7 183.6 L16.1 188.5 L16.6 193.7 L17.0 199.0 L17.4 204.3 L17.9 209.5 L18.4 214.4 L18.8 219.0 L19.2 223.0 L19.7 226.5 L20.1 229.3 L20.6 231.3 L21.0 232.6 L21.5 233.0 L21.9 232.6 L22.4 231.3 L22.9 229.3 L23.3 226.5 L23.8 223.0 L24.2 219.0 L24.6 214.4 L25.1 209.5 L25.6 204.3 L26.0 199.0 L26.4 193.7 L26.9 188.5 L27.4 183.6 L27.8 179.0 L28.2 175.0 L28.7 171.5 L29.1 168.7 L29.6 166.7 L30.1 165.4 L30.5 165.0 L30.9 165.4 L31.4 166.7 L31.9 168.7 L32.3 171.5 L32.8 175.0 L33.2 179.0 L33.6 183.6 L34.1 188.5 L34.5 193.7 L35.0 199.0 L35.5 204.3 L35.9 209.5 L36.4 214.4 L36.8 219.0 L37.2 223.0 L37.7 226.5 L38.2 229.3 L38.6 231.3 L39.0 232.6 L39.5 233.0 L40.0 232.6 L40.4 231.3 L40.9 229.3 L41.3 226.5 L41.8 223.0 L42.2 219.0 L42.6 214.4 L43.1 209.5 L43.6 204.3 L44.0 199.0 L44.5 193.7 L44.9 188.5 L45.4 183.6 L45.8 179.0 L46.2 175.0 L46.7 171.5 L47.1 168.7 L47.6 166.7 L48.0 165.4 L48.5 165.0 L49.0 165.4 L49.4 166.7 L49.9 168.7 L50.3 171.5 L50.8 175.0 L51.2 179.0 L51.6 183.6 L52.1 188.5 L52.5 193.7 L53.0 199.0 L53.5 204.3 L53.9 209.5 L54.4 214.4 L54.8 219.0 L55.2 223.0 L55.7 226.5 L56.2 229.3 L56.6 231.3 L57.1 232.6 L57.5 233.0 L58.0 232.6 L58.4 231.3 L58.8 229.3 L59.3 226.5 L59.7 223.0 L60.2 219.0 L60.6 214.4 L61.1 209.5 L61.5 204.3 L62.0 199.0 L62.4 193.7 L62.9 188.5 L63.4 183.6 L63.8 179.0 L64.2 175.0 L64.7 171.5 L65.2 168.7 L65.6 166.7 L66.1 165.4 L66.5 165.0 L67.0 165.4 L67.4 166.7 L67.8 168.7 L68.3 171.5 L68.8 175.0 L69.2 179.0 L69.7 183.6 L70.1 188.5 L70.5 193.7 L71.0 199.0 L71.4 204.3 L71.9 209.5 L72.3 214.4 L72.8 219.0 L73.2 223.0 L73.7 226.5 L74.2 229.3 L74.6 231.3 L75.0 232.6 L75.5 233.0 L76.0 232.6 L76.4 231.3 L76.8 229.3 L77.3 226.5 L77.8 223.0 L78.2 219.0 L78.7 214.4 L79.1 209.5 L79.5 204.3 L80.0 199.0 L80.5 193.7 L80.9 188.5 L81.3 183.6 L81.8 179.0 L82.2 175.0 L82.7 171.5 L83.1 168.7 L83.6 166.7 L84.0 165.4 L84.5 165.0 L85.0 165.4 L85.4 166.7 L85.8 168.7 L86.3 171.5 L86.8 175.0 L87.2 179.0 L87.7 183.6 L88.1 188.5 L88.5 193.7 L89.0 199.0 L89.5 204.3 L89.9 209.5 L90.4 214.4 L90.8 219.0 L91.2 223.0 L91.7 226.5 L92.2 229.3 L92.6 231.3 L93.0 232.6 L93.5 233.0 L94.0 232.6 L94.4 231.3 L94.8 229.3 L95.3 226.5 L95.8 223.0 L96.2 219.0 L96.7 214.4 L97.1 209.5 L97.5 204.3 L98.0 199.0 L98.4 193.7 L98.9 188.5 L99.3 183.6 L99.8 179.0 L100.2 175.0 L100.7 171.5 L101.1 168.7 L101.6 166.7 L102.0 165.4 L102.5 165.0 L102.9 165.4 L103.4 166.7 L103.8 168.7 L104.3 171.5 L104.8 175.0 L105.2 179.0 L105.6 183.6 L106.1 188.5 L106.5 193.7 L107.0 199.0 L107.5 204.3 L107.9 209.5 L108.3 214.4 L108.8 219.0 L109.2 223.0 L109.7 226.5 L110.2 229.3 L110.6 231.3 L111.0 232.6 L111.5 233.0 L112.0 232.6 L112.4 231.3 L112.9 229.3 L113.3 226.5 L113.8 223.0 L114.2 219.0 L114.7 214.4 L115.1 209.5 L115.6 204.3 L116.0 199.0 L116.5 193.7 L116.9 188.5 L117.4 183.6 L117.8 179.0 L118.3 175.0 L118.7 171.5 L119.2 168.7 L119.6 166.7 L120.1 165.4 L120.5 165.0 L120.9 165.4 L121.4 166.7 L121.8 168.7 L122.3 171.5 L122.7 175.0 L123.2 179.0 L123.6 183.6 L124.1 188.5 L124.5 193.7 L125.0 199.0 L125.4 204.3 L125.9 209.5 L126.3 214.4 L126.8 219.0 L127.2 223.0 L127.7 226.5 L128.1 229.3 L128.6 231.3 L129.1 232.6 L129.5 233.0 L129.9 232.6 L130.4 231.3 L130.8 229.3 L131.3 226.5 L131.8 223.0 L132.2 219.0 L132.7 214.4 L133.1 209.5 L133.6 204.3 L134.0 199.0 L134.4 193.7 L134.9 188.5 L135.4 183.6 L135.8 179.0 L136.2 175.0 L136.7 171.5 L137.2 168.7 L137.6 166.7 L138.1 165.4 L138.5 165.0 L139.0 165.4 L139.4 166.7 L139.8 168.7 L140.3 171.5 L140.8 175.0 L141.2 179.0 L141.7 183.6 L142.1 188.5 L142.6 193.7 L143.0 199.0 L143.4 204.3 L143.9 209.5 L144.3 214.4 L144.8 219.0 L145.2 223.0 L145.7 226.5 L146.2 229.3 L146.6 231.3 L147.0 232.6 L147.5 233.0 L147.9 232.6 L148.4 231.3 L148.8 229.3 L149.3 226.5 L149.8 223.0 L150.2 219.0 L150.7 214.4 L151.1 209.5 L151.6 204.3 L152.0 199.0 L152.4 193.7 L152.9 188.5 L153.3 183.6 L153.8 179.0 L154.2 175.0 L154.7 171.5 L155.2 168.7 L155.6 166.7 L156.1 165.4 L156.5 165.0 L156.9 165.4 L157.4 166.7 L157.8 168.7 L158.3 171.5 L158.8 175.0 L159.2 179.0 L159.7 183.6 L160.1 188.5 L160.6 193.7 L161.0 199.0 L161.5 204.3 L161.9 209.5 L162.3 214.4 L162.8 219.0 L163.2 223.0 L163.7 226.5 L164.2 229.3 L164.6 231.3 L165.1 232.6 L165.5 233.0 L165.9 232.6 L166.4 231.3 L166.8 229.3 L167.3 226.5 L167.8 223.0 L168.2 219.0 L168.7 214.4 L169.1 209.5 L169.5 204.3 L170.0 199.0 L170.4 193.7 L170.9 188.5 L171.3 183.6 L171.8 179.0 L172.2 175.0 L172.7 171.5 L173.2 168.7 L173.6 166.7 L174.1 165.4 L174.5 165.0 L174.9 165.4 L175.4 166.7 L175.8 168.7 L176.3 171.5 L176.8 175.0 L177.2 179.0 L177.7 183.6 L178.1 188.5 L178.6 193.7 L179.0 199.0 L179.4 204.3 L179.9 209.5 L180.3 214.4 L180.8 219.0 L181.2 223.0 L181.7 226.5 L182.2 229.3 L182.6 231.3 L183.1 232.6 L183.5 233.0 L184.0 232.6 L184.4 231.3 L184.8 229.3 L185.3 226.5 L185.8 223.0 L186.2 219.0 L186.7 214.4 L187.1 209.5 L187.6 204.3 L188.0 199.0" class="ln-thin" style="stroke-width:1"/>
+<path d="M8.0 199.0 L14.7 174.3 L21.3 232.9 L28.0 177.1 L34.7 195.1 L41.3 226.3 L48.0 165.5 L54.7 217.7 L61.3 206.8 L68.0 169.6 L74.7 231.6 L81.3 183.7 L88.0 187.4 L94.7 230.2 L101.3 167.8 L108.0 210.6 L114.7 214.3 L121.3 166.4 L128.0 228.4 L134.7 191.2 L141.3 180.3 L148.0 232.5 L154.7 171.7 L161.3 202.9 L168.0 220.9 L174.7 165.1 L181.3 223.7 L188.0 199.0" class="ln-acc" style="stroke-width:1.6"/>
+<circle cx="8.0" cy="199.0" r="2.8" class="fill-acc"/>
+<circle cx="14.7" cy="174.3" r="2.8" class="fill-acc"/>
+<circle cx="21.3" cy="232.9" r="2.8" class="fill-acc"/>
+<circle cx="28.0" cy="177.1" r="2.8" class="fill-acc"/>
+<circle cx="34.7" cy="195.1" r="2.8" class="fill-acc"/>
+<circle cx="41.3" cy="226.3" r="2.8" class="fill-acc"/>
+<circle cx="48.0" cy="165.5" r="2.8" class="fill-acc"/>
+<circle cx="54.7" cy="217.7" r="2.8" class="fill-acc"/>
+<circle cx="61.3" cy="206.8" r="2.8" class="fill-acc"/>
+<circle cx="68.0" cy="169.6" r="2.8" class="fill-acc"/>
+<circle cx="74.7" cy="231.6" r="2.8" class="fill-acc"/>
+<circle cx="81.3" cy="183.7" r="2.8" class="fill-acc"/>
+<circle cx="88.0" cy="187.4" r="2.8" class="fill-acc"/>
+<circle cx="94.7" cy="230.2" r="2.8" class="fill-acc"/>
+<circle cx="101.3" cy="167.8" r="2.8" class="fill-acc"/>
+<circle cx="108.0" cy="210.6" r="2.8" class="fill-acc"/>
+<circle cx="114.7" cy="214.3" r="2.8" class="fill-acc"/>
+<circle cx="121.3" cy="166.4" r="2.8" class="fill-acc"/>
+<circle cx="128.0" cy="228.4" r="2.8" class="fill-acc"/>
+<circle cx="134.7" cy="191.2" r="2.8" class="fill-acc"/>
+<circle cx="141.3" cy="180.3" r="2.8" class="fill-acc"/>
+<circle cx="148.0" cy="232.5" r="2.8" class="fill-acc"/>
+<circle cx="154.7" cy="171.7" r="2.8" class="fill-acc"/>
+<circle cx="161.3" cy="202.9" r="2.8" class="fill-acc"/>
+<circle cx="168.0" cy="220.9" r="2.8" class="fill-acc"/>
+<circle cx="174.7" cy="165.1" r="2.8" class="fill-acc"/>
+<circle cx="181.3" cy="223.7" r="2.8" class="fill-acc"/>
+<circle cx="188.0" cy="199.0" r="2.8" class="fill-acc"/>
+<text x="8" y="254.0" class="t-mono t-muted" font-size="9.5">0</text><text x="188" y="254.0" text-anchor="end" class="t-mono t-muted" font-size="9.5">1 s</text>
+<text x="208" y="146" class="t-mono" font-size="11">(d) fs = 12 Hz</text>
+<path d="M208 199.0 H388" class="ln-thin"/>
+<path d="M208.0 199.0 L208.4 193.7 L208.9 188.5 L209.3 183.6 L209.8 179.0 L210.2 175.0 L210.7 171.5 L211.2 168.7 L211.6 166.7 L212.1 165.4 L212.5 165.0 L212.9 165.4 L213.4 166.7 L213.8 168.7 L214.3 171.5 L214.8 175.0 L215.2 179.0 L215.7 183.6 L216.1 188.5 L216.6 193.7 L217.0 199.0 L217.4 204.3 L217.9 209.5 L218.3 214.4 L218.8 219.0 L219.2 223.0 L219.7 226.5 L220.2 229.3 L220.6 231.3 L221.1 232.6 L221.5 233.0 L221.9 232.6 L222.4 231.3 L222.8 229.3 L223.3 226.5 L223.8 223.0 L224.2 219.0 L224.7 214.4 L225.1 209.5 L225.6 204.3 L226.0 199.0 L226.4 193.7 L226.9 188.5 L227.3 183.6 L227.8 179.0 L228.2 175.0 L228.7 171.5 L229.2 168.7 L229.6 166.7 L230.1 165.4 L230.5 165.0 L230.9 165.4 L231.4 166.7 L231.8 168.7 L232.3 171.5 L232.8 175.0 L233.2 179.0 L233.7 183.6 L234.1 188.5 L234.6 193.7 L235.0 199.0 L235.4 204.3 L235.9 209.5 L236.3 214.4 L236.8 219.0 L237.2 223.0 L237.7 226.5 L238.2 229.3 L238.6 231.3 L239.1 232.6 L239.5 233.0 L239.9 232.6 L240.4 231.3 L240.8 229.3 L241.3 226.5 L241.8 223.0 L242.2 219.0 L242.7 214.4 L243.1 209.5 L243.6 204.3 L244.0 199.0 L244.4 193.7 L244.9 188.5 L245.3 183.6 L245.8 179.0 L246.2 175.0 L246.7 171.5 L247.2 168.7 L247.6 166.7 L248.1 165.4 L248.5 165.0 L248.9 165.4 L249.4 166.7 L249.8 168.7 L250.3 171.5 L250.8 175.0 L251.2 179.0 L251.7 183.6 L252.1 188.5 L252.6 193.7 L253.0 199.0 L253.4 204.3 L253.9 209.5 L254.3 214.4 L254.8 219.0 L255.2 223.0 L255.7 226.5 L256.1 229.3 L256.6 231.3 L257.1 232.6 L257.5 233.0 L257.9 232.6 L258.4 231.3 L258.9 229.3 L259.3 226.5 L259.8 223.0 L260.2 219.0 L260.6 214.4 L261.1 209.5 L261.6 204.3 L262.0 199.0 L262.4 193.7 L262.9 188.5 L263.4 183.6 L263.8 179.0 L264.2 175.0 L264.7 171.5 L265.1 168.7 L265.6 166.7 L266.1 165.4 L266.5 165.0 L266.9 165.4 L267.4 166.7 L267.9 168.7 L268.3 171.5 L268.8 175.0 L269.2 179.0 L269.6 183.6 L270.1 188.5 L270.6 193.7 L271.0 199.0 L271.4 204.3 L271.9 209.5 L272.4 214.4 L272.8 219.0 L273.2 223.0 L273.7 226.5 L274.1 229.3 L274.6 231.3 L275.1 232.6 L275.5 233.0 L275.9 232.6 L276.4 231.3 L276.9 229.3 L277.3 226.5 L277.8 223.0 L278.2 219.0 L278.6 214.4 L279.1 209.5 L279.6 204.3 L280.0 199.0 L280.4 193.7 L280.9 188.5 L281.4 183.6 L281.8 179.0 L282.2 175.0 L282.7 171.5 L283.1 168.7 L283.6 166.7 L284.1 165.4 L284.5 165.0 L284.9 165.4 L285.4 166.7 L285.9 168.7 L286.3 171.5 L286.8 175.0 L287.2 179.0 L287.6 183.6 L288.1 188.5 L288.6 193.7 L289.0 199.0 L289.4 204.3 L289.9 209.5 L290.4 214.4 L290.8 219.0 L291.2 223.0 L291.7 226.5 L292.1 229.3 L292.6 231.3 L293.1 232.6 L293.5 233.0 L293.9 232.6 L294.4 231.3 L294.9 229.3 L295.3 226.5 L295.8 223.0 L296.2 219.0 L296.6 214.4 L297.1 209.5 L297.6 204.3 L298.0 199.0 L298.4 193.7 L298.9 188.5 L299.4 183.6 L299.8 179.0 L300.2 175.0 L300.7 171.5 L301.1 168.7 L301.6 166.7 L302.1 165.4 L302.5 165.0 L302.9 165.4 L303.4 166.7 L303.9 168.7 L304.3 171.5 L304.8 175.0 L305.2 179.0 L305.6 183.6 L306.1 188.5 L306.6 193.7 L307.0 199.0 L307.4 204.3 L307.9 209.5 L308.4 214.4 L308.8 219.0 L309.2 223.0 L309.7 226.5 L310.1 229.3 L310.6 231.3 L311.1 232.6 L311.5 233.0 L311.9 232.6 L312.4 231.3 L312.9 229.3 L313.3 226.5 L313.8 223.0 L314.2 219.0 L314.6 214.4 L315.1 209.5 L315.6 204.3 L316.0 199.0 L316.4 193.7 L316.9 188.5 L317.4 183.6 L317.8 179.0 L318.2 175.0 L318.7 171.5 L319.1 168.7 L319.6 166.7 L320.1 165.4 L320.5 165.0 L320.9 165.4 L321.4 166.7 L321.9 168.7 L322.3 171.5 L322.8 175.0 L323.2 179.0 L323.6 183.6 L324.1 188.5 L324.6 193.7 L325.0 199.0 L325.4 204.3 L325.9 209.5 L326.4 214.4 L326.8 219.0 L327.2 223.0 L327.7 226.5 L328.1 229.3 L328.6 231.3 L329.1 232.6 L329.5 233.0 L329.9 232.6 L330.4 231.3 L330.9 229.3 L331.3 226.5 L331.8 223.0 L332.2 219.0 L332.6 214.4 L333.1 209.5 L333.6 204.3 L334.0 199.0 L334.4 193.7 L334.9 188.5 L335.4 183.6 L335.8 179.0 L336.2 175.0 L336.7 171.5 L337.1 168.7 L337.6 166.7 L338.1 165.4 L338.5 165.0 L339.0 165.4 L339.4 166.7 L339.9 168.7 L340.3 171.5 L340.8 175.0 L341.2 179.0 L341.6 183.6 L342.1 188.5 L342.6 193.7 L343.0 199.0 L343.4 204.3 L343.9 209.5 L344.4 214.4 L344.8 219.0 L345.2 223.0 L345.7 226.5 L346.1 229.3 L346.6 231.3 L347.0 232.6 L347.5 233.0 L347.9 232.6 L348.4 231.3 L348.9 229.3 L349.3 226.5 L349.8 223.0 L350.2 219.0 L350.6 214.4 L351.1 209.5 L351.6 204.3 L352.0 199.0 L352.4 193.7 L352.9 188.5 L353.4 183.6 L353.8 179.0 L354.2 175.0 L354.7 171.5 L355.1 168.7 L355.6 166.7 L356.1 165.4 L356.5 165.0 L356.9 165.4 L357.4 166.7 L357.9 168.7 L358.3 171.5 L358.8 175.0 L359.2 179.0 L359.6 183.6 L360.1 188.5 L360.6 193.7 L361.0 199.0 L361.5 204.3 L361.9 209.5 L362.4 214.4 L362.8 219.0 L363.2 223.0 L363.7 226.5 L364.1 229.3 L364.6 231.3 L365.1 232.6 L365.5 233.0 L365.9 232.6 L366.4 231.3 L366.9 229.3 L367.3 226.5 L367.8 223.0 L368.2 219.0 L368.6 214.4 L369.1 209.5 L369.5 204.3 L370.0 199.0 L370.4 193.7 L370.9 188.5 L371.4 183.6 L371.8 179.0 L372.2 175.0 L372.7 171.5 L373.1 168.7 L373.6 166.7 L374.1 165.4 L374.5 165.0 L374.9 165.4 L375.4 166.7 L375.9 168.7 L376.3 171.5 L376.8 175.0 L377.2 179.0 L377.6 183.6 L378.1 188.5 L378.6 193.7 L379.0 199.0 L379.4 204.3 L379.9 209.5 L380.4 214.4 L380.8 219.0 L381.2 223.0 L381.7 226.5 L382.1 229.3 L382.6 231.3 L383.1 232.6 L383.5 233.0 L384.0 232.6 L384.4 231.3 L384.9 229.3 L385.3 226.5 L385.8 223.0 L386.2 219.0 L386.6 214.4 L387.1 209.5 L387.6 204.3 L388.0 199.0" class="ln-thin" style="stroke-width:1"/>
+<path d="M208.0 199.0 L223.0 228.4 L238.0 228.4 L253.0 199.0 L268.0 169.6 L283.0 169.6 L298.0 199.0 L313.0 228.4 L328.0 228.4 L343.0 199.0 L358.0 169.6 L373.0 169.6 L388.0 199.0" class="ln-acc" style="stroke-width:1.6"/>
+<circle cx="208.0" cy="199.0" r="2.8" class="fill-acc"/>
+<circle cx="223.0" cy="228.4" r="2.8" class="fill-acc"/>
+<circle cx="238.0" cy="228.4" r="2.8" class="fill-acc"/>
+<circle cx="253.0" cy="199.0" r="2.8" class="fill-acc"/>
+<circle cx="268.0" cy="169.6" r="2.8" class="fill-acc"/>
+<circle cx="283.0" cy="169.6" r="2.8" class="fill-acc"/>
+<circle cx="298.0" cy="199.0" r="2.8" class="fill-acc"/>
+<circle cx="313.0" cy="228.4" r="2.8" class="fill-acc"/>
+<circle cx="328.0" cy="228.4" r="2.8" class="fill-acc"/>
+<circle cx="343.0" cy="199.0" r="2.8" class="fill-acc"/>
+<circle cx="358.0" cy="169.6" r="2.8" class="fill-acc"/>
+<circle cx="373.0" cy="169.6" r="2.8" class="fill-acc"/>
+<circle cx="388.0" cy="199.0" r="2.8" class="fill-acc"/>
+<text x="208" y="254.0" class="t-mono t-muted" font-size="9.5">0</text><text x="388" y="254.0" text-anchor="end" class="t-mono t-muted" font-size="9.5">1 s</text>
+      </svg>
+      <figcaption>A 10 Hz sine (grey) and the samples a computer would store (orange dots, joined in order), over one second.</figcaption>
+    </figure>
+    <div>
+      <p><b>(b) 100 Hz</b>: ten samples per cycle. Join the dots and you see the 10 Hz sine clearly.</p>
+      <p><b>(c) 27 Hz</b>: 2.7 samples per cycle. You can still count ten cycles in one second, so the frequency is right, but the samples rarely land on a peak and the apparent amplitude wobbles from cycle to cycle.</p>
+      <p><b>(d) 12 Hz</b>: 1.2 samples per cycle. The dots trace a smooth wave with only <i>two</i> cycles per second. A 10 Hz signal has taken on the false identity of a 2 Hz signal.</p>
+      <div class="analogy"><p>A film camera takes 24 pictures a second. A walking person looks smooth on screen, but a fast-spinning car wheel can appear to crawl, stop or turn backwards. The camera did not malfunction; it simply took too few pictures to follow the motion.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 · Derivation -->
+<section class="slide" id="derive" data-title="Why different sines give the same samples">
+  <p class="eyebrow">The mechanism</p>
+  <h2>Two different sines can produce exactly the same samples</h2>
+  <div class="cols">
+    <div>
+      <p>Take a single sine of frequency \(f\), amplitude \(C\) and phase \(\phi\), and sample it every \(\delta t\). Reveal the argument one line at a time.</p>
+      <ol class="steps">
+        <li>Continuous signal: \(y(t) = C\sin(2\pi f t+\phi)\). Samples at \(t=r\,\delta t\): \(\;y_r = C\sin(2\pi f\,r\,\delta t+\phi)\).</li>
+        <li>A sine does not change if you add whole turns: \(\sin x=\sin(x+2\pi q)\) for any integer \(q\).</li>
+        <li>Choose \(q = m r\), with \(m\) any integer. Since \(r\) is an integer, so is \(q\):
+          $$y_r = C\sin\!\Big[2\pi\Big(f+\frac{m}{\delta t}\Big)r\,\delta t+\phi\Big]$$</li>
+        <li>So a sine at \(f + m f_s\) (\(m = \pm1, \pm2, \dots\)) gives <b>the same list of numbers</b> as the sine at \(f\). The samples cannot tell them apart.</li>
+        <li>Negative \(m\) can give a negative frequency, and \(\sin(-x) = -\sin x\). A component at \(f - f_s < 0\) therefore looks like a sine at \(|f-f_s|\) turned upside down.</li>
+      </ol>
+    </div>
+    <div>
+      <p>Check with the case from the previous slide, \(f = 10\) Hz, \(f_s=12\) Hz, so \(\delta t = 1/12\) s. With \(m = -1\), \(f - f_s = -2\) Hz:</p>
+      <div class="tbl compact"><table>
+        <tr><th>r</th><th>\(\sin(2\pi\,10\,r/12)\)</th><th>\(-\sin(2\pi\,2\,r/12)\)</th></tr>
+        <tr><td>0</td><td>0</td><td>0</td></tr>
+        <tr><td>1</td><td>−0.866</td><td>−0.866</td></tr>
+        <tr><td>2</td><td>−0.866</td><td>−0.866</td></tr>
+        <tr><td>3</td><td>0</td><td>0</td></tr>
+        <tr><td>4</td><td>+0.866</td><td>+0.866</td></tr>
+        <tr><td>5</td><td>+0.866</td><td>+0.866</td></tr>
+      </table></div>
+      <div class="why"><p>Between two samples the 10 Hz sine turns through 10/12 of a cycle. That is the same as turning <i>back</i> by 2/12 of a cycle. The samples record only where the wave is, not how many whole turns it made in between.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · Nyquist & folding -->
+<section class="slide" id="fold" data-title="Nyquist frequency and the folding diagram">
+  <p class="eyebrow">The sampling theorem</p>
+  <h2>The Nyquist frequency is a fold line</h2>
+  <div class="cols wide-r">
+    <div>
+      <p>Every real frequency has a family of look-alikes \(|f + m f_s|\). Among them exactly one lies between 0 and \(f_s/2\), and that is the one your data will show. This half-rate is called the <dfn>Nyquist frequency</dfn>:</p>
+      <div class="eq"><span class="label">Nyquist (folding) frequency</span>
+        $$f_N=\frac{f_s}{2}=\frac{1}{2\,\delta t}$$
+      </div>
+      <p>If the highest frequency in the signal, \(f_m\), is below \(f_N\), the lowest look-alike is the true one and nothing is lost. That gives the <dfn>sampling theorem</dfn>:</p>
+      <div class="eq"><span class="label">Sampling theorem</span>
+        $$f_s>2f_m\qquad\Longleftrightarrow\qquad \delta t<\frac{1}{2f_m}$$
+      </div>
+      <p>Anything above \(f_N\) appears at a false <dfn>alias frequency</dfn> \(f_a\) below \(f_N\):</p>
+      <div class="eq"><span class="label">Alias frequency</span>
+        $$f_a=\big|\,f-n f_s\,\big|,\quad n=\text{the integer nearest to } f/f_s$$
+      </div>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 252" aria-label="Folding diagram: the frequency axis drawn as a zigzag strip, folded back at f N, 2 f N and 3 f N. Points stacked vertically share the same alias. Arrows show 0.5, 1.5 and 2.5 f N all landing on 0.5 f N; a dashed line drops from 1.67 f N to 0.33 f N.">
+<path d="M40 210 H360 L40 140 L360 70 L296 56" class="ln" style="stroke-width:1.6"/>
+<path d="M72.0 206.0 V214.0" class="ln-thin"/>
+<path d="M104.0 206.0 V214.0" class="ln-thin"/>
+<text x="104.0" y="226.0" text-anchor="middle" class="t-mono t-muted" font-size="10">0.2</text>
+<path d="M136.0 206.0 V214.0" class="ln-thin"/>
+<path d="M168.0 206.0 V214.0" class="ln-thin"/>
+<text x="168.0" y="226.0" text-anchor="middle" class="t-mono t-muted" font-size="10">0.4</text>
+<path d="M200.0 206.0 V214.0" class="ln-thin"/>
+<path d="M232.0 206.0 V214.0" class="ln-thin"/>
+<text x="232.0" y="226.0" text-anchor="middle" class="t-mono t-muted" font-size="10">0.6</text>
+<path d="M264.0 206.0 V214.0" class="ln-thin"/>
+<path d="M296.0 206.0 V214.0" class="ln-thin"/>
+<text x="296.0" y="226.0" text-anchor="middle" class="t-mono t-muted" font-size="10">0.8</text>
+<path d="M328.0 206.0 V214.0" class="ln-thin"/>
+<path d="M328.0 199.0 V207.0" class="ln-thin"/>
+<path d="M296.0 192.0 V200.0" class="ln-thin"/>
+<text x="296.0" y="211.0" text-anchor="middle" class="t-mono t-muted" font-size="10">1.2</text>
+<path d="M264.0 185.0 V193.0" class="ln-thin"/>
+<path d="M232.0 178.0 V186.0" class="ln-thin"/>
+<text x="232.0" y="197.0" text-anchor="middle" class="t-mono t-muted" font-size="10">1.4</text>
+<path d="M200.0 171.0 V179.0" class="ln-thin"/>
+<path d="M168.0 164.0 V172.0" class="ln-thin"/>
+<text x="168.0" y="183.0" text-anchor="middle" class="t-mono t-muted" font-size="10">1.6</text>
+<path d="M136.0 157.0 V165.0" class="ln-thin"/>
+<path d="M104.0 150.0 V158.0" class="ln-thin"/>
+<text x="104.0" y="169.0" text-anchor="middle" class="t-mono t-muted" font-size="10">1.8</text>
+<path d="M72.0 143.0 V151.0" class="ln-thin"/>
+<path d="M72.0 129.0 V137.0" class="ln-thin"/>
+<path d="M104.0 122.0 V130.0" class="ln-thin"/>
+<text x="104.0" y="118.0" text-anchor="middle" class="t-mono t-muted" font-size="10">2.2</text>
+<path d="M136.0 115.0 V123.0" class="ln-thin"/>
+<path d="M168.0 108.0 V116.0" class="ln-thin"/>
+<text x="168.0" y="104.0" text-anchor="middle" class="t-mono t-muted" font-size="10">2.4</text>
+<path d="M200.0 101.0 V109.0" class="ln-thin"/>
+<path d="M232.0 94.0 V102.0" class="ln-thin"/>
+<text x="232.0" y="90.0" text-anchor="middle" class="t-mono t-muted" font-size="10">2.6</text>
+<path d="M264.0 87.0 V95.0" class="ln-thin"/>
+<path d="M296.0 80.0 V88.0" class="ln-thin"/>
+<text x="296.0" y="76.0" text-anchor="middle" class="t-mono t-muted" font-size="10">2.8</text>
+<path d="M328.0 73.0 V81.0" class="ln-thin"/>
+<text x="40.0" y="226.0" text-anchor="middle" class="t-mono t-muted" font-size="10">0</text>
+<text x="360.0" y="226.0" text-anchor="middle" class="t-mono" font-size="10">fN</text>
+<text x="34.0" y="144.0" text-anchor="end" class="t-mono" font-size="10">2fN</text>
+<text x="366.0" y="74.0" text-anchor="start" class="t-mono" font-size="10">3fN</text>
+<text x="366.0" y="214.0" text-anchor="start" class="t-mono t-muted" font-size="10">= 1.0</text>
+<text x="200.0" y="242.0" text-anchor="middle" class="" font-size="11">input frequency f (in units of fN)</text>
+<path d="M200.0 83.0 V99.0" class="ln-acc"/><path d="M196.0 93.0 L200.0 100.0 L204.0 93.0" class="ln-acc"/>
+<path d="M200.0 153.0 V169.0" class="ln-acc"/><path d="M196.0 163.0 L200.0 170.0 L204.0 163.0" class="ln-acc"/>
+<path d="M200.0 188 V204" class="ln-acc"/><path d="M196.0 198 L200.0 205 L204.0 198" class="ln-acc"/>
+<circle cx="146.7" cy="163.3" r="3.5" class="fill-blu"/><path d="M146.7 167.3 V206" class="ln-blu dash"/><circle cx="146.7" cy="210" r="3.5" class="fill-blu"/>
+<text x="142.7" y="155.3" text-anchor="end" class="t-mono t-blu" font-size="11">1.67</text>
+<text x="292" y="185.1" text-anchor="middle" class="t-acc" font-size="11" transform="rotate(12.3 292 185.1)">inverted (out of phase)</text>
+<text x="292" y="102.9" text-anchor="middle" class="t-blu" font-size="11" transform="rotate(-12.3 292 102.9)">in phase</text>
+<text x="286.0" y="52.0" text-anchor="middle" class="t-mono t-muted" font-size="12">…</text>
+        </svg>
+        <figcaption>The folding diagram. Fold the frequency axis like a paper strip at <i>f</i><sub>N</sub>, 2<i>f</i><sub>N</sub>, 3<i>f</i><sub>N</sub>, … Any input frequency maps straight down to its alias on the bottom leg. Arrows: 0.5, 1.5 and 2.5 <i>f</i><sub>N</sub> all appear as 0.5 <i>f</i><sub>N</sub>.</figcaption>
+      </figure>
+      <div class="analogy"><p>A paper ruler folded like a fan. Look down through it and the marks 0.5, 1.5 and 2.5 sit on top of each other. Sampling looks at frequency the same way: from above, through the folds.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 · Alias sim -->
+<section class="slide" id="alias-sim" data-title="Aliasing simulator">
+  <p class="eyebrow">Simulator · aliasing and folding</p>
+  <h2>Sample a sine and see what the samples claim</h2>
+  <div class="sim" id="simAlias">
+    <div class="simhead"><span>Sampler</span><span class="legend"><span><i style="background:var(--muted)"></i>true signal</span><span><i style="background:var(--acc)"></i>samples</span><span><i style="background:var(--blu)"></i>slowest sine through the samples</span></span></div>
+    <div class="duo">
+      <canvas id="cvAliasT" data-h="240" aria-label="True sine, sample points and the slowest sine passing through them, against time"></canvas>
+      <canvas id="cvAliasF" data-h="240" aria-label="Folding diagram unfolded as a zigzag: apparent frequency against input frequency"></canvas>
+    </div>
+    <div class="controls">
+      <div class="ctl"><label for="af">Signal frequency f <output data-for="f"></output></label>
+        <input type="range" id="af" data-key="f" min="0.5" max="50" step="0.1" value="10" data-fmt="1" data-unit=" Hz"></div>
+      <div class="ctl"><label for="afs"><span>Sample rate f<sub>s</sub> </span><output data-for="fs"></output></label>
+        <input type="range" id="afs" data-key="fs" min="2" max="100" step="0.5" value="12" data-fmt="1" data-unit=" Hz"></div>
+      <div class="ctl"><label>Presets (f = 10 Hz)</label><div class="presets">
+        <button class="btn" type="button" data-f="10" data-fs="100"><span>f<sub>s</sub> = 100</span></button>
+        <button class="btn" type="button" data-f="10" data-fs="27"><span>f<sub>s</sub> = 27</span></button>
+        <button class="btn" type="button" data-f="10" data-fs="12"><span>f<sub>s</sub> = 12</span></button>
+        <button class="btn" type="button" data-f="10" data-fs="20"><span>f<sub>s</sub> = 20</span></button></div></div>
+    </div>
+    <div class="readout" id="roAlias"></div>
+  </div>
+  <div class="try"><p>Keep f = 10 Hz and drag f<sub>s</sub> slowly down from 100 Hz. Above 20 Hz the blue curve sits on the grey one. Below 20 Hz they part: on the right panel the black dot moves onto a falling (red) leg, the blue wave is inverted, and its frequency f<sub>s</sub> − 10 keeps dropping as you lower f<sub>s</sub>. At f<sub>s</sub> = 12 Hz you get the 2 Hz alias; at f<sub>s</sub> = 10 Hz every sample lands on the same point of the cycle and the sine looks like a constant. In the right panel the zigzag is the folding diagram straightened out: rising legs (green) are in phase, falling legs (red) are inverted.</p></div>
+</section>
+
+<!-- 8 · Worked example 1 -->
+<section class="slide" id="ex-alias1" data-title="Worked example: one alias">
+  <p class="eyebrow">Worked example</p>
+  <h2>A 10 Hz sine sampled at 12 Hz</h2>
+  <div class="cols wide-l">
+    <div class="example">
+      <p class="given">A 10 Hz sine wave is sampled at 12 Hz. What is the highest frequency the sampled record can represent correctly, and at what frequency will the 10 Hz signal appear?</p>
+      <p><b>Known</b> \(f=10\) Hz, \(f_s=12\) Hz. <b>Find</b> \(f_N\) and \(f_a\). <b>Assumptions</b> constant sample rate; a pure sine.</p>
+      <ol class="steps">
+        <li>Nyquist frequency: \(f_N = f_s/2 = 12/2 = 6\) Hz. No frequency above 6 Hz can be represented correctly.</li>
+        <li>Compare: \(f/f_N = 10/6 = 1.67\). The signal is above \(f_N\), so it will fold.</li>
+        <li>Folding diagram: 1.67 \(f_N\) lies on the first falling leg, directly above 0.33 \(f_N\). So \(f_a = 0.33\times 6 = 2\) Hz.</li>
+        <li>Same answer by formula: the integer nearest to \(f/f_s = 0.83\) is \(n=1\), so \(f_a=|10-1\times12| = 2\) Hz.</li>
+        <li>Because it lies on a falling leg, the 2 Hz alias is inverted: the samples equal those of \(-\sin(2\pi\,2\,t)\).</li>
+      </ol>
+      <p><b>What this means:</b> the record is identical to that of a genuine 2 Hz signal. No later calculation can recover the 10 Hz.</p>
+    </div>
+    <div>
+      <div class="quiz" data-correct="1">
+        <p class="q">A 60 Hz mains hum is sampled at 90 Hz. What frequency shows up in the record?</p>
+        <div class="opts">
+          <button class="opt" data-why="That is only true if 60 Hz is below \(f_N = 90/2 = 45\) Hz. It is not.">60 Hz</button>
+          <button class="opt" data-why="\(f_N = 45\) Hz. The integer nearest to 60/90 is 1, so \(f_a = |60-90| = 30\) Hz, which is below 45 Hz as it must be.">30 Hz</button>
+          <button class="opt" data-why="45 Hz is the Nyquist frequency, the fold line itself, not the alias.">45 Hz</button>
+          <button class="opt" data-why="150 Hz is \(60+90\), another look-alike, but it is above \(f_N\). The record always shows the one look-alike below \(f_N\).">150 Hz</button>
+        </div>
+      </div>
+      <div class="quiz" data-correct="0">
+        <p class="q">A 16 Hz signal is sampled at 8 Hz. What does the record show?</p>
+        <div class="opts">
+          <button class="opt" data-why="\(f/f_s = 2\), so \(n=2\) and \(f_a = |16-16| = 0\). Every sample is taken at the same point of the cycle, so the record is a constant.">A constant (0 Hz)</button>
+          <button class="opt" data-why="8 Hz is the sample rate. An alias is always at or below \(f_N = 4\) Hz.">An 8 Hz sine</button>
+          <button class="opt" data-why="4 Hz is \(f_N\). Use \(f_a=|f-nf_s|\) with \(n = 2\).">A 4 Hz sine</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 · Worked example 2 -->
+<section class="slide" id="ex-alias2" data-title="Worked example: three components">
+  <p class="eyebrow">Worked example</p>
+  <h2>Three different tones that collapse into one</h2>
+  <div class="cols wide-l">
+    <div class="example">
+      <p class="given">A signal \(y(t)=A_1\sin 2\pi(25)t+A_2\sin 2\pi(75)t+A_3\sin 2\pi(125)t\) is sampled at 100 Hz. What frequencies and amplitudes appear in the sampled record?</p>
+      <p><b>Known</b> \(f_s = 100\) Hz; \(f_1=25\), \(f_2=75\), \(f_3=125\) Hz. <b>Find</b> the alias of each component and the sampled series. <b>Assumptions</b> constant sample rate.</p>
+      <ol class="steps">
+        <li>\(f_N = 100/2 = 50\) Hz. In units of \(f_N\) the components sit at 0.5, 1.5 and 2.5 \(f_N\).</li>
+        <li>On the folding diagram all three lie directly above 0.5 \(f_N\) = 25 Hz. By formula: \(|25-0|=25\), \(|75-100|=25\), \(|125-100|=25\) Hz.</li>
+        <li>Phase: 0.5 \(f_N\) is on the bottom (in-phase) leg, 1.5 \(f_N\) on a falling leg (inverted), 2.5 \(f_N\) on a rising leg (in phase).</li>
+        <li>Check the sign of the 75 Hz term at \(t = r/100\): \(\sin(1.5\pi r)=\sin(1.5\pi r-2\pi r)=-\sin(0.5\pi r)\). Inverted, as the diagram says.</li>
+        <li>The record is therefore \(y_r = (A_1 - A_2 + A_3)\sin 2\pi(25)\,r\,\delta t\), with \(\delta t = 0.01\) s.</li>
+      </ol>
+      <p><b>What this means:</b> both the frequency content and the amplitude are wrong. With \(A_1=A_3=1\) and \(A_2=2\), the record would even be identically zero.</p>
+    </div>
+    <div>
+      <div class="note" data-label="When the frequency content is unknown">
+        <p>Sample the signal at several increasing rates while keeping the total record time fixed. Plot each record and compute its amplitude spectrum. If the waveform shape or the spectral peaks move as \(f_s\) rises, something was aliased at the lower rates. Settle on a rate above which nothing changes, and always fit an analog low-pass filter at \(f_N\).</p>
+      </div>
+      <div class="pitfall"><p>“I will just sample fast and filter digitally afterwards.” If the sample rate is fast enough that nothing reaches \(f_N\), fine. But if anything above \(f_N\) is present when you sample, it has already folded onto real frequencies, and a digital filter cannot separate it from genuine content.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 · Wagon wheel -->
+<section class="slide" id="wheel" data-title="Wagon-wheel effect">
+  <p class="eyebrow">Animation · aliasing you can see</p>
+  <h2>The wagon wheel that turns backwards</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simWheel">
+      <div class="simhead"><span>Camera and wheel</span><span class="legend"><span><i style="background:var(--muted)"></i>4 identical spokes</span><span><i style="background:var(--acc)"></i>one marked spot</span></span></div>
+      <canvas id="cvWheel" data-h="230" aria-label="Two wheels: the true continuous rotation and the same wheel seen through a camera with a finite frame rate"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="wf">Wheel speed <output data-for="f"></output></label>
+          <input type="range" id="wf" data-key="f" min="0" max="6" step="0.05" value="2.2" data-fmt="2" data-unit=" rev/s"></div>
+        <div class="ctl"><label for="wfs">Camera frame rate <output data-for="fs"></output></label>
+          <input type="range" id="wfs" data-key="fs" min="2" max="24" step="0.5" value="9" data-fmt="1" data-unit=" frames/s"></div>
+      </div>
+      <div class="readout" id="roWheel"></div>
+    </div>
+    <div>
+      <p>Each camera frame is one sample of the wheel's angle. Between frames the marked spot turns \(f/f_s\) of a revolution, but a single frame cannot show how many whole turns happened. Only the leftover fraction is visible, and a leftover of, say, 0.9 turn forwards looks exactly like 0.1 turn backwards.</p>
+      <p>The four identical spokes are worse: the pattern repeats every quarter turn, so it behaves like a signal at \(4f\) and aliases at a quarter of the wheel speed. Strobe lights used to measure shaft speed rely on this, which is why the shaft is given a single, non-symmetric mark.</p>
+      <div class="try"><p>Set the frame rate to 9 frames/s. Raise the wheel speed from 0 to 4.5 rev/s. The marked spot turns forward up to 4.5 rev/s (f<sub>N</sub>), then appears to reverse. At exactly 9 rev/s it would freeze. The spokes reverse much earlier, near 1.1 rev/s.</p></div>
+      <div class="analogy"><p>Photograph a clock once every 55 minutes. In each photo the minute hand stands 5 minutes <i>earlier</i> than in the one before, so the clock seems to run backwards.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 11 · Anti-alias & fidelity -->
+<section class="slide" id="antialias" data-title="Anti-alias filters and fidelity">
+  <p class="eyebrow">Preventing aliasing</p>
+  <h2>Filter before you sample; afterwards it is too late</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 236" aria-label="Block diagram: signal into an analog low-pass filter with cutoff near f N, then sampler and ADC at rate f s, then computer. Below, a spectrum: bars above f N are shrunk by the falling filter curve.">
+<text x="6.0" y="30.0" text-anchor="start" class="t-mono" font-size="11">y(t)</text>
+<path d="M4 42 H38" class="ln"/><path d="M32 37 L40 42 L32 47" class="ln"/>
+<rect x="40" y="16" width="112" height="52" rx="6" class="box-acc"/>
+<text x="96.0" y="38.0" text-anchor="middle" class="" font-size="11.5">analog low-pass</text>
+<text x="96.0" y="56.0" text-anchor="middle" class="t-mono" font-size="11">cutoff fc ≈ fN</text>
+<path d="M152 42 H180" class="ln"/><path d="M174 37 L182 42 L174 47" class="ln"/>
+<rect x="182" y="16" width="112" height="52" rx="6" class="box"/>
+<text x="238.0" y="38.0" text-anchor="middle" class="" font-size="11.5">sampler + ADC</text>
+<text x="238.0" y="56.0" text-anchor="middle" class="t-mono" font-size="11">rate fs = 2fN</text>
+<path d="M294 42 H320" class="ln"/><path d="M314 37 L322 42 L314 47" class="ln"/>
+<rect x="322" y="16" width="72" height="52" rx="6" class="box-blu"/>
+<text x="358.0" y="46.0" text-anchor="middle" class="" font-size="11.5">computer</text>
+<path d="M34 214 H392" class="ln-thin"/><path d="M34 214 V96" class="ln-thin"/>
+<text x="14" y="160" transform="rotate(-90 14 160)" text-anchor="middle" font-size="11">amplitude</text>
+<text x="212.0" y="229.0" text-anchor="start" class="" font-size="11">frequency f</text>
+<path d="M204 92 V214" class="ln-thin dash"/>
+<text x="204.0" y="88.0" text-anchor="middle" class="t-mono" font-size="11">fN = fs/2</text>
+<path d="M34.0 114.0 L35.7 114.0 L37.4 114.0 L39.1 114.0 L40.8 114.0 L42.5 114.0 L44.2 114.0 L45.9 114.0 L47.6 114.0 L49.3 114.0 L51.0 114.0 L52.7 114.0 L54.4 114.0 L56.1 114.0 L57.8 114.0 L59.5 114.0 L61.2 114.0 L62.9 114.0 L64.6 114.0 L66.3 114.0 L68.0 114.0 L69.7 114.0 L71.4 114.0 L73.1 114.0 L74.8 114.0 L76.5 114.0 L78.2 114.0 L79.9 114.0 L81.6 114.0 L83.3 114.0 L85.0 114.0 L86.7 114.0 L88.4 114.0 L90.1 114.0 L91.8 114.0 L93.5 114.0 L95.2 114.0 L96.9 114.0 L98.6 114.0 L100.3 114.0 L102.0 114.0 L103.7 114.0 L105.4 114.0 L107.1 114.1 L108.8 114.1 L110.5 114.1 L112.2 114.1 L113.9 114.1 L115.6 114.1 L117.3 114.2 L119.0 114.2 L120.7 114.2 L122.4 114.3 L124.1 114.3 L125.8 114.4 L127.5 114.4 L129.2 114.5 L130.9 114.6 L132.6 114.6 L134.3 114.7 L136.0 114.8 L137.7 114.9 L139.4 115.1 L141.1 115.2 L142.8 115.4 L144.5 115.6 L146.2 115.8 L147.9 116.0 L149.6 116.2 L151.3 116.5 L153.0 116.8 L154.7 117.1 L156.4 117.4 L158.1 117.8 L159.8 118.2 L161.5 118.7 L163.2 119.1 L164.9 119.7 L166.6 120.2 L168.3 120.8 L170.0 121.5 L171.7 122.1 L173.4 122.9 L175.1 123.7 L176.8 124.5 L178.5 125.4 L180.2 126.3 L181.9 127.2 L183.6 128.2 L185.3 129.3 L187.0 130.4 L188.7 131.5 L190.4 132.7 L192.1 133.9 L193.8 135.2 L195.5 136.5 L197.2 137.8 L198.9 139.1 L200.6 140.5 L202.3 141.9 L204.0 143.3 L205.7 144.7 L207.4 146.1 L209.1 147.6 L210.8 149.0 L212.5 150.5 L214.2 151.9 L215.9 153.3 L217.6 154.8 L219.3 156.2 L221.0 157.6 L222.7 159.0 L224.4 160.4 L226.1 161.7 L227.8 163.1 L229.5 164.4 L231.2 165.7 L232.9 166.9 L234.6 168.2 L236.3 169.4 L238.0 170.6 L239.7 171.7 L241.4 172.9 L243.1 174.0 L244.8 175.0 L246.5 176.1 L248.2 177.1 L249.9 178.1 L251.6 179.1 L253.3 180.0 L255.0 181.0 L256.7 181.8 L258.4 182.7 L260.1 183.6 L261.8 184.4 L263.5 185.2 L265.2 185.9 L266.9 186.7 L268.6 187.4 L270.3 188.1 L272.0 188.8 L273.7 189.5 L275.4 190.1 L277.1 190.7 L278.8 191.3 L280.5 191.9 L282.2 192.5 L283.9 193.1 L285.6 193.6 L287.3 194.1 L289.0 194.6 L290.7 195.1 L292.4 195.6 L294.1 196.0 L295.8 196.5 L297.5 196.9 L299.2 197.4 L300.9 197.8 L302.6 198.2 L304.3 198.5 L306.0 198.9 L307.7 199.3 L309.4 199.6 L311.1 200.0 L312.8 200.3 L314.5 200.6 L316.2 200.9 L317.9 201.2 L319.6 201.5 L321.3 201.8 L323.0 202.1 L324.7 202.4 L326.4 202.6 L328.1 202.9 L329.8 203.2 L331.5 203.4 L333.2 203.6 L334.9 203.9 L336.6 204.1 L338.3 204.3 L340.0 204.5 L341.7 204.7 L343.4 204.9 L345.1 205.1 L346.8 205.3 L348.5 205.5 L350.2 205.7 L351.9 205.8 L353.6 206.0 L355.3 206.2 L357.0 206.3 L358.7 206.5 L360.4 206.7 L362.1 206.8 L363.8 207.0 L365.5 207.1 L367.2 207.2 L368.9 207.4 L370.6 207.5 L372.3 207.6 L374.0 207.8 L375.7 207.9 L377.4 208.0 L379.1 208.1 L380.8 208.2 L382.5 208.3 L384.2 208.5 L385.9 208.6 L387.6 208.7 L389.3 208.8 L391.0 208.9" class="ln-acc"/>
+<text x="252.5" y="174.1" text-anchor="start" class="t-acc" font-size="11">filter M(f)</text>
+<rect x="80.0" y="134" width="10" height="80" fill="none" stroke="var(--muted)" stroke-dasharray="3 3"/>
+<rect x="80.0" y="134.0" width="10" height="80.0" class="fill-blu"/>
+<rect x="131.0" y="154" width="10" height="60" fill="none" stroke="var(--muted)" stroke-dasharray="3 3"/>
+<rect x="131.0" y="154.5" width="10" height="59.5" class="fill-blu"/>
+<rect x="173.5" y="169" width="10" height="45" fill="none" stroke="var(--muted)" stroke-dasharray="3 3"/>
+<rect x="173.5" y="174.1" width="10" height="39.9" class="fill-blu"/>
+<rect x="267.0" y="159" width="10" height="55" fill="none" stroke="var(--muted)" stroke-dasharray="3 3"/>
+<rect x="267.0" y="200.1" width="10" height="13.9" class="fill-blu"/>
+<rect x="335.0" y="174" width="10" height="40" fill="none" stroke="var(--muted)" stroke-dasharray="3 3"/>
+<rect x="335.0" y="210.2" width="10" height="3.8" class="fill-blu"/>
+<text x="300.0" y="150.0" text-anchor="middle" class="t-blu" font-size="11">cut before</text>
+<text x="300.0" y="164.0" text-anchor="middle" class="t-blu" font-size="11">they can fold</text>
+        </svg>
+        <figcaption>Dashed bars: spectrum arriving at the filter. Blue bars: what reaches the sampler.</figcaption>
+      </figure>
+      <p>An <dfn>anti-alias filter</dfn> is an analog low-pass filter placed <i>before</i> the sampler, with its cutoff near \(f_N\). It shrinks everything above \(f_N\) until any alias it could create is smaller than the converter can resolve. Choose \(f_s\) from the highest frequency you care about, then set the filter from \(f_s\).</p>
+    </div>
+    <div>
+      <div class="analogy"><p>The filter is a bouncer at the door. Once an impostor is inside the party (sampled), he looks like every other guest and no one can pick him out. The only place to stop him is at the entrance.</p></div>
+      <p><b>Waveform fidelity.</b> \(f_s > 2f_m\) gets the <i>frequencies</i> right but not the <i>shape</i>: two or three points per cycle do not look like a sine. For a recognisable waveform a common rule is</p>
+      <div class="eq"><span class="label">Rule for waveform shape</span>
+        $$f_s\approx 5f_m \text{ to } 10f_m$$
+      </div>
+      <p>The audio compact disc samples at 44.1 kHz so that 20 kHz, the limit of hearing, is not aliased. Near 22 kHz that is only two points per cycle, which drew criticism. The later Super Audio CD format samples at 2822.4 kHz, about 141 points per cycle at 20 kHz.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 12 · Resolution & leakage concept -->
+<section class="slide" id="leak-idea" data-title="Frequency resolution and leakage">
+  <p class="eyebrow">Amplitude ambiguity</p>
+  <h2>The DFT sees only whole cycles: frequency resolution and leakage</h2>
+  <div class="cols">
+    <div>
+      <p>The DFT treats your \(N\) samples as one period of a signal that repeats forever. The only sines that fit such a signal are those with a whole number of cycles in the record length \(N\delta t\). So the DFT reports amplitudes only at multiples of</p>
+      <div class="eq"><span class="label">DFT frequency resolution</span>
+        $$\delta f=\frac{1}{N\,\delta t}=\frac{f_s}{N}$$
+      </div>
+      <div class="symbols">
+        <span>\(\delta f\)</span><span>spacing between DFT frequencies (bins), Hz</span>
+        <span>\(N\delta t\)</span><span>record length, s; longer record, finer resolution</span>
+      </div>
+      <p>If the signal frequency falls between two bins, the record holds a fractional number of cycles. Repeat it and there is a jump at every splice. Building that jump needs many extra sines, so the amplitude spreads into neighbouring bins and the main peak comes out too low. This is <dfn>leakage</dfn>, and the error in the peak is called <dfn>amplitude ambiguity</dfn>.</p>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 128" aria-label="A cosine record holding 2.56 periods, followed by the same record repeated; at the join there is a sudden jump.">
+<path d="M20 60 H380" class="ln-thin"/>
+<path d="M20.0 30.0 L20.6 30.0 L21.1 30.2 L21.7 30.4 L22.3 30.7 L22.8 31.1 L23.4 31.5 L24.0 32.1 L24.5 32.7 L25.1 33.4 L25.7 34.2 L26.2 35.1 L26.8 36.0 L27.4 37.0 L27.9 38.1 L28.5 39.2 L29.1 40.4 L29.6 41.6 L30.2 42.9 L30.8 44.3 L31.3 45.7 L31.9 47.1 L32.5 48.6 L33.0 50.1 L33.6 51.6 L34.2 53.1 L34.7 54.7 L35.3 56.3 L35.9 57.9 L36.4 59.5 L37.0 61.1 L37.6 62.7 L38.1 64.3 L38.7 65.9 L39.3 67.5 L39.8 69.0 L40.4 70.6 L41.0 72.0 L41.5 73.5 L42.1 74.9 L42.7 76.3 L43.2 77.6 L43.8 78.9 L44.4 80.1 L44.9 81.3 L45.5 82.4 L46.1 83.4 L46.6 84.4 L47.2 85.3 L47.8 86.1 L48.3 86.9 L48.9 87.5 L49.5 88.1 L50.0 88.7 L50.6 89.1 L51.2 89.4 L51.7 89.7 L52.3 89.9 L52.9 90.0 L53.4 90.0 L54.0 89.9 L54.6 89.8 L55.1 89.5 L55.7 89.2 L56.3 88.7 L56.8 88.2 L57.4 87.7 L58.0 87.0 L58.5 86.3 L59.1 85.5 L59.7 84.6 L60.2 83.6 L60.8 82.6 L61.4 81.5 L61.9 80.3 L62.5 79.1 L63.1 77.9 L63.6 76.5 L64.2 75.2 L64.8 73.8 L65.3 72.3 L65.9 70.8 L66.5 69.3 L67.0 67.8 L67.6 66.2 L68.2 64.6 L68.7 63.0 L69.3 61.4 L69.9 59.8 L70.4 58.2 L71.0 56.6 L71.6 55.0 L72.1 53.4 L72.7 51.9 L73.3 50.3 L73.8 48.8 L74.4 47.4 L75.0 45.9 L75.5 44.5 L76.1 43.2 L76.7 41.9 L77.2 40.6 L77.8 39.4 L78.4 38.3 L78.9 37.2 L79.5 36.2 L80.1 35.2 L80.6 34.4 L81.2 33.6 L81.8 32.8 L82.3 32.2 L82.9 31.6 L83.5 31.2 L84.0 30.8 L84.6 30.4 L85.2 30.2 L85.7 30.1 L86.3 30.0 L86.9 30.0 L87.4 30.1 L88.0 30.3 L88.6 30.6 L89.1 31.0 L89.7 31.4 L90.3 32.0 L90.8 32.6 L91.4 33.3 L92.0 34.1 L92.5 34.9 L93.1 35.8 L93.7 36.8 L94.2 37.9 L94.8 39.0 L95.4 40.2 L95.9 41.4 L96.5 42.7 L97.1 44.0 L97.6 45.4 L98.2 46.8 L98.8 48.3 L99.3 49.8 L99.9 51.3 L100.5 52.9 L101.0 54.4 L101.6 56.0 L102.2 57.6 L102.7 59.2 L103.3 60.8 L103.9 62.4 L104.4 64.0 L105.0 65.6 L105.6 67.2 L106.1 68.7 L106.7 70.3 L107.3 71.8 L107.8 73.2 L108.4 74.7 L109.0 76.0 L109.5 77.4 L110.1 78.7 L110.7 79.9 L111.2 81.1 L111.8 82.2 L112.4 83.2 L112.9 84.2 L113.5 85.1 L114.1 86.0 L114.6 86.7 L115.2 87.4 L115.8 88.0 L116.3 88.6 L116.9 89.0 L117.5 89.4 L118.0 89.7 L118.6 89.9 L119.2 90.0 L119.7 90.0 L120.3 89.9 L120.9 89.8 L121.4 89.6 L122.0 89.2 L122.6 88.8 L123.1 88.3 L123.7 87.8 L124.3 87.1 L124.8 86.4 L125.4 85.6 L126.0 84.7 L126.5 83.8 L127.1 82.8 L127.7 81.7 L128.2 80.6 L128.8 79.4 L129.4 78.1 L129.9 76.8 L130.5 75.4 L131.1 74.0 L131.6 72.6 L132.2 71.1 L132.8 69.6 L133.3 68.1 L133.9 66.5 L134.5 64.9 L135.0 63.3 L135.6 61.7 L136.2 60.1 L136.7 58.5 L137.3 56.9 L137.9 55.3 L138.4 53.7 L139.0 52.2 L139.6 50.6 L140.1 49.1 L140.7 47.6 L141.3 46.2 L141.8 44.8 L142.4 43.4 L143.0 42.1 L143.5 40.8 L144.1 39.6 L144.7 38.5 L145.2 37.4 L145.8 36.4 L146.4 35.4 L146.9 34.5 L147.5 33.7 L148.1 33.0 L148.6 32.3 L149.2 31.7 L149.8 31.2 L150.3 30.8 L150.9 30.5 L151.5 30.2 L152.0 30.1 L152.6 30.0 L153.2 30.0 L153.7 30.1 L154.3 30.3 L154.9 30.6 L155.4 30.9 L156.0 31.4 L156.6 31.9 L157.1 32.5 L157.7 33.2 L158.3 33.9 L158.8 34.7 L159.4 35.6 L160.0 36.6 L160.5 37.7 L161.1 38.8 L161.7 39.9 L162.2 41.1 L162.8 42.4 L163.4 43.8 L163.9 45.1 L164.5 46.5 L165.1 48.0 L165.6 49.5 L166.2 51.0 L166.8 52.6 L167.3 54.1 L167.9 55.7 L168.5 57.3 L169.0 58.9 L169.6 60.5 L170.2 62.1 L170.7 63.7 L171.3 65.3 L171.9 66.9 L172.4 68.5 L173.0 70.0 L173.6 71.5 L174.1 73.0 L174.7 74.4 L175.3 75.8 L175.8 77.1 L176.4 78.4 L177.0 79.7 L177.5 80.8 L178.1 82.0 L178.7 83.0 L179.2 84.0 L179.8 85.0 L180.4 85.8 L180.9 86.6 L181.5 87.3 L182.1 87.9 L182.6 88.5 L183.2 88.9 L183.8 89.3 L184.3 89.6 L184.9 89.8 L185.5 90.0 L186.0 90.0 L186.6 90.0 L187.2 89.8 L187.7 89.6 L188.3 89.3 L188.9 88.9 L189.4 88.4 L190.0 87.9" class="ln-acc"/>
+<path d="M190.0 30.0 L190.6 30.0 L191.1 30.2 L191.7 30.4 L192.3 30.7 L192.8 31.1 L193.4 31.5 L194.0 32.1 L194.5 32.7 L195.1 33.4 L195.7 34.2 L196.2 35.1 L196.8 36.0 L197.4 37.0 L197.9 38.1 L198.5 39.2 L199.1 40.4 L199.6 41.6 L200.2 42.9 L200.8 44.3 L201.3 45.7 L201.9 47.1 L202.5 48.6 L203.0 50.1 L203.6 51.6 L204.2 53.1 L204.7 54.7 L205.3 56.3 L205.9 57.9 L206.4 59.5 L207.0 61.1 L207.6 62.7 L208.1 64.3 L208.7 65.9 L209.3 67.5 L209.8 69.0 L210.4 70.6 L211.0 72.0 L211.5 73.5 L212.1 74.9 L212.7 76.3 L213.2 77.6 L213.8 78.9 L214.4 80.1 L214.9 81.3 L215.5 82.4 L216.1 83.4 L216.6 84.4 L217.2 85.3 L217.8 86.1 L218.3 86.9 L218.9 87.5 L219.5 88.1 L220.0 88.7 L220.6 89.1 L221.2 89.4 L221.7 89.7 L222.3 89.9 L222.9 90.0 L223.4 90.0 L224.0 89.9 L224.6 89.8 L225.1 89.5 L225.7 89.2 L226.3 88.7 L226.8 88.2 L227.4 87.7 L228.0 87.0 L228.5 86.3 L229.1 85.5 L229.7 84.6 L230.2 83.6 L230.8 82.6 L231.4 81.5 L231.9 80.3 L232.5 79.1 L233.1 77.9 L233.6 76.5 L234.2 75.2 L234.8 73.8 L235.3 72.3 L235.9 70.8 L236.5 69.3 L237.0 67.8 L237.6 66.2 L238.2 64.6 L238.7 63.0 L239.3 61.4 L239.9 59.8 L240.4 58.2 L241.0 56.6 L241.6 55.0 L242.1 53.4 L242.7 51.9 L243.3 50.3 L243.8 48.8 L244.4 47.4 L245.0 45.9 L245.5 44.5 L246.1 43.2 L246.7 41.9 L247.2 40.6 L247.8 39.4 L248.4 38.3 L248.9 37.2 L249.5 36.2 L250.1 35.2 L250.6 34.4 L251.2 33.6 L251.8 32.8 L252.3 32.2 L252.9 31.6 L253.5 31.2 L254.0 30.8 L254.6 30.4 L255.2 30.2 L255.7 30.1 L256.3 30.0 L256.9 30.0 L257.4 30.1 L258.0 30.3 L258.6 30.6 L259.1 31.0 L259.7 31.4 L260.3 32.0 L260.8 32.6 L261.4 33.3 L262.0 34.1 L262.5 34.9 L263.1 35.8 L263.7 36.8 L264.2 37.9 L264.8 39.0 L265.4 40.2 L265.9 41.4 L266.5 42.7 L267.1 44.0 L267.6 45.4 L268.2 46.8 L268.8 48.3 L269.3 49.8 L269.9 51.3 L270.5 52.9 L271.0 54.4 L271.6 56.0 L272.2 57.6 L272.7 59.2 L273.3 60.8 L273.9 62.4 L274.4 64.0 L275.0 65.6 L275.6 67.2 L276.1 68.7 L276.7 70.3 L277.3 71.8 L277.8 73.2 L278.4 74.7 L279.0 76.0 L279.5 77.4 L280.1 78.7 L280.7 79.9 L281.2 81.1 L281.8 82.2 L282.4 83.2 L282.9 84.2 L283.5 85.1 L284.1 86.0 L284.6 86.7 L285.2 87.4 L285.8 88.0 L286.3 88.6 L286.9 89.0 L287.5 89.4 L288.0 89.7 L288.6 89.9 L289.2 90.0 L289.7 90.0 L290.3 89.9 L290.9 89.8 L291.4 89.6 L292.0 89.2 L292.6 88.8 L293.1 88.3 L293.7 87.8 L294.3 87.1 L294.8 86.4 L295.4 85.6 L296.0 84.7 L296.5 83.8 L297.1 82.8 L297.7 81.7 L298.2 80.6 L298.8 79.4 L299.4 78.1 L299.9 76.8 L300.5 75.4 L301.1 74.0 L301.6 72.6 L302.2 71.1 L302.8 69.6 L303.3 68.1 L303.9 66.5 L304.5 64.9 L305.0 63.3 L305.6 61.7 L306.2 60.1 L306.7 58.5 L307.3 56.9 L307.9 55.3 L308.4 53.7 L309.0 52.2 L309.6 50.6 L310.1 49.1 L310.7 47.6 L311.3 46.2 L311.8 44.8 L312.4 43.4 L313.0 42.1 L313.5 40.8 L314.1 39.6 L314.7 38.5 L315.2 37.4 L315.8 36.4 L316.4 35.4 L316.9 34.5 L317.5 33.7 L318.1 33.0 L318.6 32.3 L319.2 31.7 L319.8 31.2 L320.3 30.8 L320.9 30.5 L321.5 30.2 L322.0 30.1 L322.6 30.0 L323.2 30.0 L323.7 30.1 L324.3 30.3 L324.9 30.6 L325.4 30.9 L326.0 31.4 L326.6 31.9 L327.1 32.5 L327.7 33.2 L328.3 33.9 L328.8 34.7 L329.4 35.6 L330.0 36.6 L330.5 37.7 L331.1 38.8 L331.7 39.9 L332.2 41.1 L332.8 42.4 L333.4 43.8 L333.9 45.1 L334.5 46.5 L335.1 48.0 L335.6 49.5 L336.2 51.0 L336.8 52.6 L337.3 54.1 L337.9 55.7 L338.5 57.3 L339.0 58.9 L339.6 60.5 L340.2 62.1 L340.7 63.7 L341.3 65.3 L341.9 66.9 L342.4 68.5 L343.0 70.0 L343.6 71.5 L344.1 73.0 L344.7 74.4 L345.3 75.8 L345.8 77.1 L346.4 78.4 L347.0 79.7 L347.5 80.8 L348.1 82.0 L348.7 83.0 L349.2 84.0 L349.8 85.0 L350.4 85.8 L350.9 86.6 L351.5 87.3 L352.1 87.9 L352.6 88.5 L353.2 88.9 L353.8 89.3 L354.3 89.6 L354.9 89.8 L355.5 90.0 L356.0 90.0 L356.6 90.0 L357.2 89.8 L357.7 89.6 L358.3 89.3 L358.9 88.9 L359.4 88.4 L360.0 87.9" class="ln-acc dash"/>
+<circle cx="190" cy="87.9" r="3" class="fill-ink"/><circle cx="190" cy="30.0" r="3" class="fill-ink"/>
+<path d="M196 87.9 Q230 58.9 196 30.0" class="ln-blu"/>
+<text x="234.0" y="62.9" text-anchor="start" class="t-blu" font-size="11">jump at the splice</text>
+<path d="M20 104 H190" class="ln-thin"/><path d="M20 99 V109 M190 99 V109" class="ln-thin"/>
+<text x="105.0" y="120.0" text-anchor="middle" class="t-mono" font-size="11">recorded: N δt = 2.56 periods</text>
+<text x="275.0" y="120.0" text-anchor="middle" class="t-mono t-muted" font-size="11">what the DFT assumes comes next</text>
+        </svg>
+      </figure>
+      <div class="takeaway"><p>Spectral amplitudes come out exact when both conditions hold: (1) \(f_s > 2f_m\), and (2) the record holds a whole number of periods, \(N\delta t = m\,T_1\) with \(m\) an integer and \(T_1\) the fundamental period. Condition (1) fixes the largest \(\delta t\); condition (2) fixes \(N\delta t\), and hence \(N\).</p></div>
+      <div class="analogy"><p>A tape loop of music spliced at a random point clicks once per loop. The click is not in the music; it was made by the splice. Leakage is the DFT hearing that click.</p></div>
+      <p class="small muted">For signals with no fundamental period (random or transient), make \(\delta f\) small with a long record; leakage then shrinks.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 13 · Leakage sim -->
+<section class="slide" id="leakage" data-title="Leakage simulator">
+  <p class="eyebrow">Simulator · DFT bench</p>
+  <h2>Leakage: when the record does not hold whole cycles</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simLeak">
+      <div class="simhead"><span>DFT of y = 10 cos 2πf₀t</span></div>
+      <canvas id="cvLeakT" data-h="130" aria-label="The sampled record of the cosine over the full record length"></canvas>
+      <canvas id="cvLeakF" data-h="220" aria-label="Amplitude spectrum from the DFT of the record"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="lf0">Signal f₀ <output data-for="f0"></output></label>
+          <input type="range" id="lf0" data-key="f0" min="50" max="150" step="0.5" value="100" data-fmt="1" data-unit=" Hz"></div>
+        <div class="ctl"><label for="lfs"><span>Sample rate f<sub>s</sub> </span><output data-for="fs"></output></label>
+          <input type="range" id="lfs" data-key="fs" min="400" max="12800" step="50" value="10000" data-fmt="0" data-unit=" Hz"></div>
+        <div class="ctl"><label for="lN">Points N</label>
+          <select id="lN" data-key="N"><option>64</option><option>128</option><option selected>256</option><option>512</option><option>1024</option></select></div>
+        <div class="ctl"><label>Three test cases</label><div class="presets">
+          <button class="btn" type="button" data-fs="10000" data-n="256">(a) 10 kHz, 256</button>
+          <button class="btn" type="button" data-fs="10000" data-n="1024">(b) 10 kHz, 1024</button>
+          <button class="btn" type="button" data-fs="3200" data-n="256">(c) 3.2 kHz, 256</button></div></div>
+      </div>
+      <div class="readout" id="roLeak"></div>
+    </div>
+    <div>
+      <div class="tbl compact"><table>
+        <tr><th>Case</th><th>δt</th><th>N</th><th>Nδt</th><th>δf</th><th>Peak</th></tr>
+        <tr><td>(a)</td><td>0.1 ms</td><td>256</td><td>25.6 ms</td><td>39.1 Hz</td><td>7.64</td></tr>
+        <tr><td>(b)</td><td>0.1 ms</td><td>1024</td><td>102.4 ms</td><td>9.77 Hz</td><td>9.09</td></tr>
+        <tr><td>(c)</td><td>0.3125 ms</td><td>256</td><td>80 ms</td><td>12.5 Hz</td><td>10.00</td></tr>
+      </table></div>
+      <div class="try"><p>Press (a), (b) and (c) in turn. Case (a) holds 2.56 cycles: the peak is 7.6 instead of 10 and lands at 117 Hz. Case (b) holds 10.24 cycles: better, but still leaky. Case (c) samples <i>slower</i> and uses <i>fewer</i> points, yet it is the only exact one: 80 ms holds exactly 8 cycles and 100 Hz falls on bin 8. Then nudge f₀ to 101 Hz in case (c) and watch leakage return.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 · Worked example: choose fs, N -->
+<section class="slide" id="ex-choose" data-title="Worked example: choosing fs and N">
+  <p class="eyebrow">Worked example</p>
+  <h2>Choosing f<sub>s</sub> and N for an exact spectrum</h2>
+  <div class="cols wide-l">
+    <div class="example">
+      <p class="given">The signal \(y(t)=10\cos 628t\) (V, t in s) is to be sampled and its amplitude spectrum computed with an FFT of \(N=256\) points. Choose a sample rate that avoids aliasing, gives a recognisable waveform and produces no leakage.</p>
+      <p><b>Known</b> \(\omega = 628\) rad/s, amplitude 10 V, \(N=256\). <b>Find</b> \(\delta t\), \(f_s\), \(\delta f\). <b>Assumptions</b> \(628\) rad/s is \(2\pi\times100\) Hz rounded (exactly 99.95 Hz); treat it as 100 Hz.</p>
+      <ol class="steps">
+        <li>Frequency and period: \(f = 628/2\pi \approx 100\) Hz, so \(T_1 = 0.01\) s and \(f_m = 100\) Hz.</li>
+        <li>Sampling theorem: \(f_s>200\) Hz. For waveform shape aim for \(5f_m\)–\(10f_m\), i.e. 500–1000 Hz or more.</li>
+        <li>No leakage: \(N\delta t = m T_1\). With \(N=256\), choose \(m=8\) cycles: \(N\delta t = 8(0.01)=0.08\) s.</li>
+        <li>\(\delta t = 0.08/256 = 0.3125\) ms, so \(f_s = 1/\delta t = 3200\) Hz: well above 1000 Hz, so shape is fine too.</li>
+        <li>Resolution: \(\delta f = 1/0.08 = 12.5\) Hz. 100 Hz is exactly bin 8, and the DFT returns amplitude 10.00 V with no leakage.</li>
+      </ol>
+      <p><b>What this means:</b> pick the record length first from whole periods, then let \(N\) fix \(\delta t\). Sampling faster with the same \(N\) (for example \(\delta t=0.1\) ms) would shorten the record to 2.56 periods and spoil the spectrum.</p>
+    </div>
+    <div>
+      <div class="quiz" data-correct="0">
+        <p class="q">An aircraft wing vibrates at about 2 Hz. Strain is recorded for 10 s at \(f_s = 20\) Hz. What are the frequency resolution and the Nyquist frequency?</p>
+        <div class="opts">
+          <button class="opt" data-why="\(N = 20\times10 = 200\) samples. \(\delta f = 1/(N\delta t) = 1/10\ \text{s} = 0.1\) Hz, and \(f_N=f_s/2=10\) Hz. Record length sets resolution; sample rate sets the top frequency. Note \(f_s = 10f_m\), good for shape.">δf = 0.1 Hz, f<sub>N</sub> = 10 Hz</button>
+          <button class="opt" data-why="δf depends on the whole record length \(N\delta t\), not on \(f_s\) alone.">δf = 20 Hz, f<sub>N</sub> = 10 Hz</button>
+          <button class="opt" data-why="The Nyquist frequency is half the sample rate.">δf = 0.1 Hz, f<sub>N</sub> = 20 Hz</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 15 · Worked example: three tones -->
+<section class="slide" id="ex-three" data-title="Worked example: several tones">
+  <p class="eyebrow">Worked example</p>
+  <h2>A record that suits several tones at once</h2>
+  <div class="cols wide-l">
+    <div class="example">
+      <p class="given">A signal \(y(t) = 4\sin 8\pi t + 2\sin 20\pi t + 3\sin 42\pi t\) (V) is to be sampled with \(N = 2^M\) points so that its spectrum shows all three components with minimal leakage. Choose \(f_s\) and \(N\).</p>
+      <p><b>Known</b> the three angular frequencies. <b>Find</b> \(f_s\), \(N\), \(\delta f\), \(f_N\). <b>Assumptions</b> \(N\) must be a power of 2 for the FFT.</p>
+      <ol class="steps">
+        <li>Frequencies: \(8\pi/2\pi = 4\) Hz, \(20\pi/2\pi=10\) Hz, \(42\pi/2\pi=21\) Hz. So \(f_m = 21\) Hz.</li>
+        <li>Each component must fit a whole number of cycles in \(N\delta t\). A record of 1 s holds 4, 10 and 21 cycles. Any whole number of seconds works, so \(\delta f = 1/(N\delta t)\) must be 1 Hz or 1/2, 1/3 … Hz.</li>
+        <li>Sample rate: at least \(2f_m = 42\) Hz; for shape, \(5f_m\)–\(10f_m\) = 105–210 Hz.</li>
+        <li>Take \(N\delta t = 1\) s and \(N = 128\): \(\delta t = 1/128\) s, \(f_s = 128\) Hz (between 105 and 210 Hz). Then \(f_N = 64\) Hz and \(\delta f = 1\) Hz.</li>
+        <li>Result: the DFT shows exactly 4.00 V at 4 Hz, 2.00 V at 10 Hz and 3.00 V at 21 Hz, and zero elsewhere. An anti-alias filter with cutoff near 64 Hz protects the record from any noise above \(f_N\).</li>
+      </ol>
+      <p><b>What this means:</b> for several tones, make the record a common multiple of all the periods (here 1 s), then choose \(N\) to give a suitable \(f_s\).</p>
+    </div>
+    <div>
+      <div class="quiz" data-correct="2">
+        <p class="q">Same signal, but you keep \(f_s=128\) Hz and use \(N = 64\). What happens?</p>
+        <div class="opts">
+          <button class="opt" data-why="Aliasing depends on \(f_s\), which has not changed; 21 Hz is still below \(f_N = 64\) Hz.">The 21 Hz tone aliases</button>
+          <button class="opt" data-why="Check the cycles: a 0.5 s record holds 2 cycles of 4 Hz and 5 of 10 Hz, but 10.5 cycles of 21 Hz.">All three peaks stay exact</button>
+          <button class="opt" data-why="\(N\delta t = 64/128 = 0.5\) s and \(\delta f = 2\) Hz. 4 Hz and 10 Hz are on bins, but 21 Hz falls halfway between 20 and 22 Hz and leaks.">The 21 Hz peak leaks; the others stay exact</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 16 · Check yourself -->
+<section class="slide" id="check" data-title="Check yourself">
+  <p class="eyebrow">Self-test</p>
+  <h2>Check yourself</h2>
+  <div class="cols c3">
+    <div class="quiz" data-correct="2">
+      <p class="q">A signal has content up to 400 Hz and you also want to see its waveform shape. A sensible sample rate is…</p>
+      <div class="opts">
+        <button class="opt" data-why="The theorem needs \(f_s\) strictly greater than \(2f_m\); exactly 800 Hz is not enough, and the shape would be poor anyway.">800 Hz</button>
+        <button class="opt" data-why="This avoids aliasing but gives only 2.5 samples per cycle at 400 Hz, so the shape is poor.">1 kHz</button>
+        <button class="opt" data-why="\(5f_m\)–\(10f_m\) = 2–4 kHz meets the theorem with margin and draws a recognisable waveform. Add an anti-alias filter.">2–4 kHz</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="1">
+      <p class="q">A 1.2 kHz tone is sampled at 2 kHz. Where does it appear?</p>
+      <div class="opts">
+        <button class="opt" data-why="1.2 kHz is above \(f_N = 1\) kHz, so it cannot appear at its true frequency.">1.2 kHz</button>
+        <button class="opt" data-why="\(f_a = |1200-1\times2000| = 800\) Hz, below \(f_N = 1000\) Hz, on a falling (inverted) leg.">800 Hz</button>
+        <button class="opt" data-why="200 Hz is \(1200-1000\): the distance past \(f_N\), not the alias. The alias is the mirror image about \(f_N\): \(1000-200\).">200 Hz</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="0">
+      <p class="q">You double N while keeping \(f_s\) fixed. What changes?</p>
+      <div class="opts">
+        <button class="opt" data-why="\(\delta f = f_s/N\) halves (finer resolution) because the record is twice as long. \(f_N=f_s/2\) does not change.">δf halves; f<sub>N</sub> stays the same</button>
+        <button class="opt" data-why="\(f_N\) depends only on \(f_s\).">f<sub>N</sub> doubles</button>
+        <button class="opt" data-why="Resolution depends on the record length \(N\delta t\), which doubled.">Nothing</button>
+      </div>
+    </div>
+  </div>
+  <div class="reveal-box" data-label="One more: reveal the answer">
+    <p>Why can a digital filter, however sharp, not do the job of the analog anti-alias filter?</p>
+    <div class="answer"><p>Because after sampling, a component above \(f_N\) already sits at its alias frequency, mixed with any genuine content there. The numbers carry no label saying which part is false, so no calculation can remove it without removing real data too.</p></div>
+  </div>
+</section>
+
+<!-- 17 · Summary -->
+<section class="slide" id="summary" data-title="Summary">
+  <p class="eyebrow">Summary</p>
+  <h2>Sampling on one page</h2>
+  <div class="tbl compact"><table>
+    <tr><th>Idea</th><th>Relation</th><th>Remember</th></tr>
+    <tr><td>Sample rate</td><td>\(f_s = 1/\delta t\)</td><td>Need \(f_s > 2f_m\); shape needs \(5\)–\(10f_m\)</td></tr>
+    <tr><td>Nyquist frequency</td><td>\(f_N = f_s/2\)</td><td>The fold line; set the anti-alias filter here</td></tr>
+    <tr><td>Alias</td><td>\(f_a = |f - nf_s|\), \(n\) = nearest integer to \(f/f_s\)</td><td>Falling legs of the fold give inverted aliases</td></tr>
+    <tr><td>Look-alikes</td><td>\(f\) and \(f + mf_s\) give identical samples</td><td>Sampling cannot count whole turns</td></tr>
+    <tr><td>DFT resolution</td><td>\(\delta f = 1/(N\delta t) = f_s/N\)</td><td>Longer record, finer resolution</td></tr>
+    <tr><td>No leakage</td><td>\(N\delta t = mT_1\)</td><td>Whole periods in the record</td></tr>
+  </table></div>
+  <div class="cols">
+    <div>
+      <h3>You should now be able to…</h3>
+      <ul>
+        <li>explain why sampling makes \(f\) and \(f+mf_s\) indistinguishable;</li>
+        <li>find an alias frequency, and its phase, from the folding diagram or the formula;</li>
+        <li>specify \(f_s\) and an anti-alias filter for a given signal;</li>
+        <li>choose \(N\) and \(\delta t\) so the DFT gives exact amplitudes.</li>
+      </ul>
+    </div>
+    <div class="watch">
+      <h3>Watch next</h3>
+      <a href="https://www.youtube.com/results?search_query=aliasing+nyquist+sampling+theorem+explained" target="_blank" rel="noopener">Aliasing and the Nyquist rate <small>YouTube search</small></a>
+      <a href="https://www.youtube.com/results?search_query=wagon+wheel+effect+aliasing+helicopter+rotor" target="_blank" rel="noopener">Wagon-wheel effect on camera <small>YouTube search</small></a>
+      <a href="https://www.youtube.com/results?search_query=spectral+leakage+FFT+explained" target="_blank" rel="noopener">Spectral leakage in the FFT <small>YouTube search</small></a>
+    </div>
+  </div>
+  <p class="further">Further reading: Figliola &amp; Beasley, §7.1–7.2</p>
+  <div class="row"><a class="btn" href="d05b.html">&larr; Part B · Boolean algebra, combinational logic and flip-flops</a><a class="btn primary" href="d05d.html">Part D · Bits, words and converters &rarr;</a></div>
+</section>
+
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const TAU = 2 * Math.PI;
+  function aliasOf(f, fs) { return f - fs * Math.round(f / fs); } // signed alias in [-fs/2, fs/2]
+  function presetButtons(root, map) {
+    root.querySelectorAll('.presets .btn').forEach(b => b.addEventListener('click', () => {
+      Object.keys(map).forEach(attr => { if (b.dataset[attr] !== undefined) { const el = $(map[attr]); el.value = b.dataset[attr]; el.dispatchEvent(new Event('input')); } });
+    }));
+  }
+
+  /* ---- cover: fast sine, samples, slow alias ---- */
+  let coverT = 0;
+  function drawCover() {
+    const tEnd = 14, tt = Math.min(coverT, tEnd), a = [], s = [], al = [];
+    for (let i = 0; i <= 900; i++) { const t = tEnd * i / 900; if (t > tt) break; a.push([t, Math.sin(TAU * 0.92 * t)]); }
+    for (let r = 0; r <= tEnd; r++) { if (r > tt) break; s.push([r, Math.sin(TAU * 0.92 * r)]); }
+    for (let i = 0; i <= 300; i++) { const t = tEnd * i / 300; if (t > tt) break; al.push([t, -Math.sin(TAU * 0.08 * t)]); }
+    Deck.plot($('coverTrace'), { x: [0, tEnd], y: [-1.3, 1.3], pad: { l: 8, r: 8, t: 6, b: 6 }, xticks: [], yticks: [],
+      series: [{ pts: a, color: 'muted', width: 1.2 }, { pts: al, color: 'blu', width: 2.4, dash: [6, 4] }, { pts: s, color: 'acc', dotsOnly: true, r: 4.5 }] });
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (coverT < 15) { coverT += RM ? 15 : dt * 2.5; drawCover(); } });
+
+  /* ---- aliasing simulator ---- */
+  Deck.onShow('alias-sim', () => {
+    const get = Deck.controls('simAlias', draw);
+    presetButtons($('simAlias'), { f: 'af', fs: 'afs' });
+    function draw() {
+      const { f, fs } = get(), fN = fs / 2, sa = aliasOf(f, fs), fa = Math.abs(sa);
+      const sgn = sa >= 0 ? 1 : -1, T = 1;
+      const samples = []; for (let r = 0; r / fs <= T + 1e-9; r++) samples.push([r / fs, Math.sin(TAU * f * r / fs)]);
+      Deck.plot($('cvAliasT'), { x: [0, T], y: [-1.35, 1.35], xlabel: 'time t (s)', ylabel: 'y(t)',
+        series: [{ f: t => Math.sin(TAU * f * t), color: 'muted', width: 1.1, n: 1600 },
+          { f: t => sgn * Math.sin(TAU * fa * t), color: 'blu', width: 2.2, dash: [6, 4], n: 600 },
+          { pts: samples, color: 'acc', dotsOnly: true, r: fs > 60 ? 2.5 : 3.8 }] });
+      const xmax = Math.max(f * 1.2, 4 * fN), segs = [];
+      for (let m = 0; m * fN < xmax; m++) {
+        const up = m % 2 === 0;
+        segs.push({ pts: [[m * fN, up ? 0 : fN], [(m + 1) * fN, up ? fN : 0]], color: up ? 'grn' : 'red', width: 2.2 });
+      }
+      const vl = []; for (let m = 1; m * fN <= xmax; m++) vl.push({ x: m * fN, color: 'rule', dash: [2, 4], label: m === 1 ? 'fN' : m + 'fN' });
+      vl.push({ x: f, color: 'acc', dash: [4, 3] });
+      Deck.plot($('cvAliasF'), { x: [0, xmax], y: [0, fN * 1.18], xlabel: 'input frequency f (Hz)', ylabel: 'apparent frequency (Hz)',
+        vlines: vl, hlines: [{ y: fa, color: 'blu', dash: [4, 3], label: 'fa = ' + fa.toFixed(2) + ' Hz' }],
+        series: segs, points: [{ x: f, y: fa, color: 'ink', r: 5 }] });
+      const ok = fs > 2 * f;
+      const leg = (fa < 1e-9 || Math.abs(fa - fN) < 1e-9) ? 'at a fold point' : (sa > 0 ? 'in phase' : 'inverted');
+      $('roAlias').innerHTML = 'f<sub>N</sub> = <b>' + fN.toFixed(2) + ' Hz</b> &nbsp; f/f<sub>N</sub> = <b>' + (f / fN).toFixed(2) + '</b> &nbsp; apparent f<sub>a</sub> = <b>' + fa.toFixed(2) + ' Hz</b> (' + leg + ') &nbsp; samples per cycle <b>' + (fs / f).toFixed(2) + '</b> &nbsp; ' + (ok ? '<b>OK: f<sub>s</sub> &gt; 2f</b>' : '<b>ALIASED: f<sub>s</sub> &le; 2f</b>');
+    }
+    return draw;
+  });
+
+  /* ---- wagon wheel ---- */
+  let wT = 0, drawW = null, getW = null;
+  Deck.onShow('wheel', () => {
+    getW = Deck.controls('simWheel', () => { if (drawW) drawW(); });
+    function wheel(ctx, cx, cy, R, ang, title) {
+      ctx.strokeStyle = Deck.color('ink'); ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.stroke();
+      ctx.strokeStyle = Deck.color('muted'); ctx.lineWidth = 3;
+      for (let k = 0; k < 4; k++) { const a = ang + k * Math.PI / 2; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + R * Math.cos(a), cy + R * Math.sin(a)); ctx.stroke(); }
+      ctx.fillStyle = Deck.color('acc'); ctx.beginPath(); ctx.arc(cx + R * 0.72 * Math.cos(ang + Math.PI / 4), cy + R * 0.72 * Math.sin(ang + Math.PI / 4), Math.max(5, R * 0.1), 0, 7); ctx.fill();
+      ctx.fillStyle = Deck.color('ink'); ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 7); ctx.fill();
+      ctx.fillStyle = Deck.color('muted'); ctx.font = Deck.font(12); ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(title, cx, 6);
+    }
+    function draw() {
+      const { f, fs } = getW(), cv = $('cvWheel'); const { ctx, W, H } = Deck.sizeCanvas(cv);
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const R = Math.min(W * 0.2, (H - 40) / 2);
+      const angTrue = -TAU * f * wT, tFrame = Math.floor(wT * fs) / fs, angCam = -TAU * f * tFrame;
+      wheel(ctx, W * 0.26, H / 2 + 12, R, angTrue, 'true motion');
+      wheel(ctx, W * 0.74, H / 2 + 12, R, angCam, 'camera, ' + fs.toFixed(1) + ' frames/s');
+      const am = aliasOf(f, fs), ap = aliasOf(4 * f, fs) / 4;
+      const dir = v => Math.abs(v) < 1e-3 ? 'frozen' : (v > 0 ? 'forwards' : 'backwards');
+      $('roWheel').innerHTML = 'turn per frame <b>' + (f / fs).toFixed(3) + ' rev</b> &nbsp; marked spot appears: <b>' + Math.abs(am).toFixed(2) + ' rev/s ' + dir(am) + '</b> &nbsp; spoke pattern appears: <b>' + Math.abs(ap).toFixed(2) + ' rev/s ' + dir(ap) + '</b>';
+    }
+    drawW = draw;
+    return draw;
+  });
+  Deck.loop('wheel', dt => { if (!drawW) return; if (!RM) wT += dt; drawW(); });
+
+  /* ---- leakage simulator ---- */
+  Deck.onShow('leakage', () => {
+    const root = $('simLeak');
+    const get = Deck.controls(root, draw);
+    root.querySelectorAll('.presets .btn').forEach(b => b.addEventListener('click', () => {
+      const fsEl = $('lfs'); fsEl.value = b.dataset.fs; $('lN').value = b.dataset.n; $('lf0').value = 100;
+      fsEl.dispatchEvent(new Event('input'));
+    }));
+    function draw() {
+      const v = get(), f0 = v.f0, N = +v.N, fs = v.fs, dt = 1 / fs, df = fs / N, Tn = N * dt;
+      const y = new Float64Array(N); for (let r = 0; r < N; r++) y[r] = 10 * Math.cos(TAU * f0 * r * dt);
+      const kmax = Math.min(Math.floor(N / 2), Math.ceil(205 / df)), spec = [];
+      let peak = 0, pk = 0;
+      for (let k = 0; k <= kmax; k++) {
+        let re = 0, im = 0; const w = TAU * k / N;
+        for (let r = 0; r < N; r++) { re += y[r] * Math.cos(w * r); im -= y[r] * Math.sin(w * r); }
+        const a = (k === 0 || k === N / 2 ? 1 : 2) * Math.hypot(re, im) / N;
+        spec.push([k * df, a]); if (a > peak) { peak = a; pk = k; }
+      }
+      const tp = []; const step = Math.max(1, Math.floor(N / 400));
+      for (let r = 0; r < N; r += step) tp.push([r * dt, y[r]]);
+      Deck.plot($('cvLeakT'), { x: [0, Tn], y: [-12, 12], ylabel: 'y (V)', yticks: [-10, 0, 10], xfmt: t => (t * 1000).toFixed(0) + ' ms',
+        series: [{ pts: tp, color: 'acc', width: 1.4, dots: N <= 256, r: 1.8 }], pad: { b: 22 } });
+      Deck.plot($('cvLeakF'), { x: [0, 200], y: [0, 11], xlabel: 'frequency (Hz)', ylabel: 'amplitude (V)',
+        hlines: [{ y: 10, color: 'muted', dash: [3, 4], label: 'true amplitude 10' }], vlines: [{ x: f0, color: 'grn', dash: [2, 4] }].concat(fs / 2 < 200 ? [{ x: fs / 2, color: 'red', dash: [4, 3], label: 'fN' }] : []),
+        series: [spec.length < 90 ? { pts: spec.filter(p => p[0] <= 200), color: 'blu', stem: true } : { pts: spec.filter(p => p[0] <= 200), color: 'blu', width: 1.6 }] });
+      const per = f0 * Tn;
+      $('roLeak').innerHTML = 'δf = <b>' + df.toPrecision(3) + ' Hz</b> &nbsp; Nδt = <b>' + (Tn * 1000).toPrecision(4) + ' ms</b> &nbsp; cycles in record <b>' + per.toFixed(2) + '</b> &nbsp; f₀/δf = <b>' + (f0 / df).toFixed(2) + '</b> &nbsp; peak <b>' + peak.toFixed(2) + '</b> at <b>' + (pk * df).toFixed(1) + ' Hz</b>' + (Math.abs(per - Math.round(per)) < 1e-6 ? ' &nbsp; <b>whole cycles: no leakage</b>' : '');
+    }
+    return draw;
+  });
+})();
+</script>
+</body>
+</html>

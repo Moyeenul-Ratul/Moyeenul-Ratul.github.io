@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Resistive, Capacitive, Inductive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="deck.css">
+<style>
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:640px){.duo{grid-template-columns:1fr}}
+  .tbl.compact th,.tbl.compact td{padding:6px 10px;font-size:.86rem}
+  .card p{max-width:none}
+</style>
+<script>window.DECK = { num: "03a", title: "Resistive, Capacitive and Inductive Transducers" };</script>
+<script src="deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+
+<!-- 1 · Cover -->
+<section class="slide cover center" id="cover" data-title="Cover">
+  <p class="num">TOPIC 03 · PART A OF 2</p>
+  <h1>Resistive, Capacitive and Inductive Transducers</h1>
+  <p class="lead">A sliding contact, a moving plate and an iron core: three simple mechanical changes that turn a displacement into a change of resistance, capacitance or magnetic coupling. This part builds each one, derives its output, and shows where it bends away from a straight line.</p>
+  <div class="parts"><span>A · Resistive, capacitive and inductive</span><a href="d03b.html">B · Piezoelectric, optical, Hall and digital</a></div>
+  <canvas class="bigtrace" id="coverTrace" data-h="120" aria-label="Animated trace: a displacement and the transducer voltage that follows it"></canvas>
+  <ol class="agenda">
+    <li>The measurement chain and what a transducer is</li>
+    <li>The potentiometer and its loading error</li>
+    <li>Strain gauges, RTDs and the ballast circuit</li>
+    <li>Inductive sensors and the LVDT</li>
+    <li>Capacitive sensors: gap, area, dielectric, differential</li>
+    <li>A side-by-side comparison</li>
+  </ol>
+</section>
+
+<!-- 2 · Where we are -->
+<section class="slide" id="where" data-title="Where we are: the measurement chain">
+  <p class="eyebrow">Where we are</p>
+  <h2>Every instrument starts with a piece of physics</h2>
+  <div class="cols wide-r">
+    <div>
+      <p>Topics 01 and 02 treated an instrument as a black box with a sensitivity and a dynamic response. Now we open the box. Almost every electrical instrument is a chain of three stages: a <b>sensor</b> that responds to the quantity, <b>signal conditioning</b> that makes the response larger and cleaner, and an <b>output</b> stage that shows or stores it.</p>
+      <div class="define"><p>The <dfn>measurand</dfn> is the quantity you want (a position, a force, a light level). A <dfn>transducer</dfn> is a device that converts the measurand into an equivalent electrical signal. A <dfn>passive</dfn> (modulating) transducer only changes an electrical property, such as R, C or L, so you must supply an excitation voltage to read it. An <dfn>active</dfn> (self-generating) transducer produces its own voltage or charge from the measurand’s energy.</p></div>
+      <p>Parts A and B of this topic go through the main transducer families. Part A covers the three passive ones, which mostly measure displacement. Part B covers the self-generating, optical, magnetic and digital ones. Topic 04 then covers the instruments and circuits that read them.</p>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 230" aria-label="Measurement chain: measurand, transducer, signal conditioning, output">
+          <rect x="6" y="20" width="88" height="44" rx="6" class="box"/><text x="50" y="47" text-anchor="middle">Measurand</text>
+          <path d="M94 42 H112" class="ln"/><path d="M104 36 L114 42 L104 48" class="ln"/>
+          <rect x="114" y="20" width="88" height="44" rx="6" class="box-acc"/><text x="158" y="47" text-anchor="middle">Transducer</text>
+          <path d="M202 42 H220" class="ln"/><path d="M212 36 L222 42 L212 48" class="ln"/>
+          <rect x="222" y="20" width="88" height="44" rx="6" class="box"/><text x="266" y="39" text-anchor="middle">Signal</text><text x="266" y="55" text-anchor="middle">conditioning</text>
+          <path d="M310 42 H328" class="ln"/><path d="M320 36 L330 42 L320 48" class="ln"/>
+          <rect x="330" y="20" width="64" height="44" rx="6" class="box-blu"/><text x="362" y="47" text-anchor="middle">Output</text>
+          <g font-size="11" class="t-muted"><text x="50" y="82" text-anchor="middle">position,</text><text x="50" y="96" text-anchor="middle">force, light</text>
+          <text x="158" y="82" text-anchor="middle">ΔR, ΔC, ΔL,</text><text x="158" y="96" text-anchor="middle">q, emf, pulses</text>
+          <text x="266" y="82" text-anchor="middle">bridge, amplifier,</text><text x="266" y="96" text-anchor="middle">filter</text>
+          <text x="362" y="82" text-anchor="middle">meter, scope,</text><text x="362" y="96" text-anchor="middle">computer</text></g>
+          <rect x="6" y="122" width="388" height="96" rx="6" class="fill-grid"/>
+          <text x="16" y="142" class="t-acc" font-size="12">Part A (here): resistive, inductive, capacitive</text>
+          <text x="16" y="162" font-size="12">Part B: piezoelectric, optical, Hall, digital</text>
+          <text x="16" y="182" font-size="12">Topic 04: meters, oscilloscopes, counters</text>
+          <text x="16" y="202" font-size="12">Topic 04: bridges, loading, amplifiers, filters</text>
+        </svg>
+        <figcaption>The measurement chain and where this topic and the next one sit in it.</figcaption>
+      </figure>
+      <div class="analogy"><p>A transducer is an interpreter at a meeting. The measurand speaks “millimetres” or “newtons”; the rest of the instrument only understands volts. A passive transducer is an interpreter who needs to be paid (an excitation supply) before saying anything; an active one works for free, powered by the speaker’s own words.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 · Potentiometer -->
+<section class="slide" id="pot" data-title="The potentiometer">
+  <p class="eyebrow">Resistive transducers · 1</p>
+  <h2>The potentiometer turns position into a fraction of a voltage</h2>
+  <div class="cols">
+    <div>
+      <p>A <dfn>resistance potentiometer</dfn> is a resistive track with a sliding contact, the <dfn>wiper</dfn>, fixed to the moving object. The track is either fine wire wound on a former or a continuous film of conductive plastic or carbon. It may be straight (linear displacement) or curved (angle).</p>
+      <p>Put a steady voltage \(E_i\) across the whole track of resistance \(R_p\). A uniform track drops voltage evenly along its length, so the wiper at fraction \(x\) of the travel sees</p>
+      <div class="eq"><span class="label">Unloaded potentiometer</span>$$\frac{E_o}{E_i}=\frac{R_x}{R_p}=x=\frac{s}{L}\quad\text{or}\quad\frac{\theta}{\theta_{max}}$$</div>
+      <div class="symbols"><span>\(s,\ L\)</span><span>wiper position and full travel, m</span><span>\(\theta\)</span><span>angle turned, of a maximum \(\theta_{max}\)</span><span>\(R_x\)</span><span>track resistance between one end and the wiper, Ω</span></div>
+      <p><b>Resolution.</b> On a wire-wound track the wiper steps from one turn to the next, so the output moves in steps of \(E_i/N\) for N turns. 500 turns give steps of 0.2 % of full scale. Film tracks are continuous, so they have no such steps.</p>
+      <p class="small"><b>Limits</b>: the wiper rubs, so it wears, adds friction and produces contact noise, and its mass limits general-purpose units to slow motion (a few hertz). The excitation is limited by heating, \(P=E_i^2/R_p\). Typical uses: position feedback, throttle and valve position, float-type level gauges, and pressure or force once a bellows or spring turns them into a displacement.</p>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 290" aria-label="Linear wire-wound potentiometer with wiper and circuit, and rotary potentiometer with angle theta">
+          <text x="8" y="16" class="t-muted" font-size="12">(a) linear, wire-wound track</text>
+          <path d="M60 48 H220" class="ln-acc"/><path d="M212 42 L222 48 L212 54" class="ln-acc"/><text x="70" y="40" class="t-acc">object moves, s</text>
+          <rect x="30" y="76" width="240" height="22" class="box"/>
+          <g class="ln-thin"><path d="M38 76 V98 M46 76 V98 M54 76 V98 M62 76 V98 M70 76 V98 M78 76 V98 M86 76 V98 M94 76 V98 M102 76 V98 M110 76 V98 M118 76 V98 M126 76 V98 M134 76 V98 M142 76 V98 M150 76 V98 M158 76 V98 M166 76 V98 M174 76 V98 M182 76 V98 M190 76 V98 M198 76 V98 M206 76 V98 M214 76 V98 M222 76 V98 M230 76 V98 M238 76 V98 M246 76 V98 M254 76 V98 M262 76 V98"/></g>
+          <path d="M150 48 V72" class="ln-acc"/><path d="M144 64 L150 74 L156 64" class="ln-acc"/><text x="158" y="68" font-size="12">wiper</text>
+          <path d="M30 87 H14 V150 H118 M134 150 H286 V87 H270" class="ln"/>
+          <path d="M120 138 V162 M132 144 V156" class="ln"/><text x="126" y="178" text-anchor="middle">Eᵢ</text>
+          <path d="M150 48 H330 V112" class="ln-thin"/><circle cx="330" cy="116" r="3.5" class="fill-ink"/>
+          <circle cx="14" cy="120" r="3.5" class="fill-ink"/><path d="M14 120 H330" class="ln-thin dash"/>
+          <text x="338" y="112" class="t-blu" font-size="12">Eₒ</text><text x="300" y="134" class="t-blu" font-size="12">= Eᵢ s/L</text>
+          <path d="M30 106 H150" class="ln-thin"/><path d="M30 101 V111 M150 101 V111" class="ln-thin"/><text x="90" y="118" text-anchor="middle" font-size="11" class="t-muted">s</text>
+          <text x="8" y="206" class="t-muted" font-size="12">(b) rotary</text>
+          <path d="M120 270 A55 55 0 1 1 196 270" class="ln" style="stroke-width:7;stroke:var(--muted);opacity:.5"/>
+          <circle cx="158" cy="232" r="6" class="fill-ink"/>
+          <path d="M158 232 L198 212" class="ln-acc" style="stroke-width:3"/>
+          <path d="M120 270 L158 232" class="ln-thin dash"/>
+          <path d="M140 250 A26 26 0 0 1 178 222" class="ln-thin"/><text x="164" y="252" class="t-acc">θ</text>
+          <text x="214" y="214" font-size="12">wiper on shaft</text>
+          <text x="214" y="246" font-size="12" class="t-muted">track ends at the two</text><text x="214" y="262" font-size="12" class="t-muted">terminals; Eₒ/Eᵢ = θ/θ<tspan baseline-shift="sub" font-size="9">max</tspan></text>
+        </svg>
+        <figcaption>(a) The wiper picks off a fraction of the supply proportional to its travel. (b) A rotary track does the same for an angle.</figcaption>
+      </figure>
+      <div class="analogy"><p>A potentiometer is a ruler that answers in volts. Walk a fraction \(x\) of the way down a hill of height \(E_i\) on an even slope and your height has dropped by \(xE_i\). The wiper reports its height on that electrical hill.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 · Potentiometer loading + sim -->
+<section class="slide" id="potload" data-title="Potentiometer loading">
+  <p class="eyebrow">Resistive transducers · loading</p>
+  <h2>Reading the wiper bends the straight line</h2>
+  <div class="cols wide-r">
+    <div>
+      <p>The straight line \(E_o=xE_i\) holds only if the meter across the output draws no current. A real meter of resistance \(R_m\) sits in parallel with the lower part of the track, \(xR_p\):</p>
+      <ol class="steps">
+        <li>Lower part in parallel with the meter: \(R_{low}=\dfrac{xR_p\,R_m}{xR_p+R_m}\). Upper part: \((1-x)R_p\).</li>
+        <li>Divider: \(\dfrac{E_o}{E_i}=\dfrac{R_{low}}{R_{low}+(1-x)R_p}\).</li>
+        <li>Divide top and bottom by \(R_{low}\) and simplify:
+          $$\frac{E_o}{E_i}=\frac{x}{1+x(1-x)\,R_p/R_m}$$</li>
+        <li>Error as a fraction of the ideal reading: \(\dfrac{E_o-xE_i}{xE_i}\approx-x(1-x)\dfrac{R_p}{R_m}\) when \(R_m\gg R_p\). Expressed as a fraction of full scale, \(-x^2(1-x)R_p/R_m\), which peaks at \(x=2/3\).</li>
+      </ol>
+      <div class="why"><p>At \(x=0\) the output is zero anyway and at \(x=1\) the meter sits straight across the supply, so the error vanishes at both ends. In between, the meter steals current through the upper part of the track and drags the wiper voltage down.</p></div>
+    </div>
+    <div class="sim" id="simPot">
+      <div class="simhead"><span>Potentiometer loading</span><span class="legend"><span><i style="background:var(--muted)"></i>ideal x</span><span><i style="background:var(--acc)"></i>loaded</span><span><i style="background:var(--blu)"></i>error</span></span></div>
+      <canvas id="cvPotA" data-h="210" aria-label="Output ratio against wiper position for ideal and loaded potentiometer"></canvas>
+      <canvas id="cvPotB" data-h="150" aria-label="Loading error as percent of full scale against wiper position"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="pk">Meter / track resistance R<sub>m</sub>/R<sub>p</sub> <output data-for="k"></output></label>
+          <input type="range" id="pk" data-key="k" data-scale="log" data-min="0.3" data-max="1000" min="0" max="1000" value="430" data-fmt="-1"></div>
+        <div class="ctl"><label for="px">Wiper position x <output data-for="x"></output></label>
+          <input type="range" id="px" data-key="x" min="0" max="1" step="0.01" value="0.5" data-fmt="2"></div>
+      </div>
+      <div class="readout" id="roPot"></div>
+      <div class="try"><p>Start at \(R_m/R_p\approx10\) and watch the orange curve sag below the line, worst near \(x=0.67\). Raise the ratio to 100: the sag shrinks tenfold. Drop it to 1 and the potentiometer becomes useless as a linear sensor.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 · Worked example: pot loading -->
+<section class="slide" id="ex-pot" data-title="Worked example: a loaded potentiometer">
+  <p class="eyebrow">Worked example</p>
+  <h2>How much does a 10 kΩ meter disturb a 150 Ω potentiometer?</h2>
+  <div class="cols wide-l">
+    <div class="example">
+      <p class="given">A displacement potentiometer has a total resistance of 150 Ω and is supplied with 100 V. Its wiper voltage is read with a meter of internal resistance 10 000 Ω. Find the loading error and the voltage actually read when the wiper is at 25 % and at 75 % of its travel.</p>
+      <p class="small"><b>Known</b>: \(R_p=150\ \Omega\), \(E_i=100\) V, \(R_m=10\,000\ \Omega\), \(x=0.25\) and \(0.75\). <b>Find</b>: error, indicated \(E_o\). <b>Assumptions</b>: uniform track; meter is a pure resistance.</p>
+      <ol class="steps">
+        <li>Resistance ratio: \(R_p/R_m=150/10\,000=0.015\).</li>
+        <li>At \(x=0.25\): \(x(1-x)R_p/R_m=0.25\times0.75\times0.015=0.002813\). Loaded output \(E_o=100\times0.25/1.002813=24.93\) V instead of 25.00 V.</li>
+        <li>Error relative to the ideal reading: \(24.930/25.000-1=-0.28\ \%\).</li>
+        <li>At \(x=0.75\): \(x(1-x)\) is again \(0.1875\), so the relative error is the same, −0.28 %. \(E_o=75/1.002813=74.79\) V instead of 75.00 V.</li>
+        <li><b>What this means</b>: even a meter only 67 times the track resistance costs less than 0.3 %. The error is a deviation from the straight line, so a calibration done with the same meter attached would remove it.</li>
+      </ol>
+    </div>
+    <div>
+      <div class="quiz" data-correct="1">
+        <p class="q">The same potentiometer is read with a 1 MΩ digital meter. The relative error at mid-travel becomes about…</p>
+        <div class="opts">
+          <button class="opt" data-why="That is the 10 kΩ result at mid-travel: \(0.25\times0.015=0.375\ \%\). The new meter is 100 times larger.">−0.38 %</button>
+          <button class="opt" data-why="Right: \(x(1-x)R_p/R_m=0.25\times150/10^6=3.75\times10^{-5}\), about −0.004 %. Error scales as \(1/R_m\).">−0.004 %</button>
+          <button class="opt" data-why="Error never vanishes exactly for finite \(R_m\), and it never makes the reading high.">+0.004 %</button>
+        </div>
+      </div>
+      <div class="pitfall"><p>A low-resistance track makes loading small but heats up: 100 V across 150 Ω dissipates 67 W, far beyond a small potentiometer’s rating of a watt or two. Choosing \(R_p\) is a compromise between loading (want small \(R_p\)) and self-heating (want large \(R_p\)).</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · Other resistive sensors and the ballast circuit -->
+<section class="slide" id="resistive" data-title="Strain gauges, RTDs and the ballast circuit">
+  <p class="eyebrow">Resistive transducers · 2</p>
+  <h2>Stretch it or warm it and R changes too</h2>
+  <div class="cols">
+    <div>
+      <p>A conductor of resistivity \(\rho\), length \(L\) and area \(A\) has \(R=\rho L/A\). Taking logarithms and differentiating,</p>
+      <div class="eq"><span class="label">Fractional change of resistance</span>$$\frac{dR}{R}=\frac{d\rho}{\rho}+\frac{dL}{L}-\frac{dA}{A}=\frac{d\rho}{\rho}+(1+2\nu)\,\varepsilon$$</div>
+      <p class="small">since a wire stretched by strain \(\varepsilon=dL/L\) thins by \(dA/A=-2\nu\varepsilon\) (\(\nu\), Poisson’s ratio). A <b>strain gauge</b> packs this into one number, the gauge factor \(F=(dR/R)/\varepsilon\approx2\): a 120 Ω gauge at \(\varepsilon=1000\times10^{-6}\) changes by only 0.24 Ω. A <b>resistance thermometer</b> (RTD) uses \(\rho(T)\): platinum follows \(R=R_0[1+\alpha(T-T_0)]\), so 100 Ω at 0 °C with \(\alpha=0.00385\ ^\circ\)C⁻¹ reads 119.25 Ω at 50 °C. A <b>thermistor</b> is a semiconductor whose R falls steeply and nonlinearly with T. The lectures on temperature and strain measurement treat these in depth.</p>
+      <p>The simplest way to read any of them is the <dfn>ballast circuit</dfn>: the sensor R in series with a fixed resistor \(R_i\) across \(E_i\), reading the voltage across the sensor, \(E=E_iR/(R+R_i)\).</p>
+    </div>
+    <div>
+      <ol class="steps">
+        <li>Sensitivity to the sensor’s resistance: \(S=\dfrac{dE}{dR}=\dfrac{E_iR_i}{(R+R_i)^2}\).</li>
+        <li>Which \(R_i\) gives the largest S? \(\dfrac{dS}{dR_i}=E_i\dfrac{R-R_i}{(R+R_i)^3}=0\Rightarrow R_i=R\).</li>
+        <li><b>Worked numbers.</b> A 150 Ω transducer, 100 V supply, best sensitivity wanted at mid-range (\(R=75\ \Omega\)): choose \(R_i=75\ \Omega\). Then at mid-range \(S=100\times75/150^2=0.333\) V/Ω.</li>
+        <li>At 25 % (\(R=37.5\ \Omega\)): \(S=7500/112.5^2=0.593\) V/Ω. At 75 % (\(R=112.5\ \Omega\)): \(S=7500/187.5^2=0.213\) V/Ω.</li>
+        <li><b>What this means</b>: the ballast output is nonlinear (sensitivity falls by almost 3:1 over the range), and the full supply voltage sits under the small change. That is why precise work uses a bridge (topic 04, part B), which subtracts the large steady part.</li>
+      </ol>
+      <figure>
+        <svg viewBox="0 0 400 110" aria-label="Ballast circuit: supply Ei, fixed resistor Ri and sensor R in series, voltmeter across the sensor">
+          <path d="M40 30 H120 M160 30 H250 V45 M250 85 V95 H40 V70 M40 50 V30" class="ln"/>
+          <path d="M28 52 H52 M34 66 H46" class="ln"/><text x="10" y="64">Eᵢ</text>
+          <rect x="120" y="22" width="40" height="16" class="box"/><text x="140" y="16" text-anchor="middle" font-size="12">Rᵢ fixed</text>
+          <rect x="242" y="45" width="16" height="40" class="box-acc"/><text x="226" y="70" text-anchor="end" class="t-acc" font-size="12">R sensor</text>
+          <path d="M250 30 H330 V45 M330 85 V95 H250" class="ln-thin"/><circle cx="330" cy="65" r="18" class="box-blu"/><text x="330" y="70" text-anchor="middle" font-size="12">E</text>
+        </svg>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- 7 · Inductive principles, reluctance, eddy current -->
+<section class="slide" id="inductive" data-title="Inductive sensors and eddy-current probes">
+  <p class="eyebrow">Inductive transducers · 1</p>
+  <h2>Move iron near a coil and its inductance changes</h2>
+  <div class="cols">
+    <div>
+      <p>A current \(i\) in a coil of N turns drives a magnetic flux \(\Phi=Ni/\mathcal{R}\) around a magnetic path. \(\mathcal{R}\), the <dfn>reluctance</dfn>, plays the role of resistance for flux: \(\mathcal{R}=l/(\mu A)\) for a path of length \(l\), area \(A\) and permeability \(\mu\). Flux linkage per ampere is the inductance:</p>
+      <div class="eq"><span class="label">Inductance of a coil on a magnetic path</span>$$L=\frac{N\Phi}{i}=\frac{N^2}{\mathcal{R}}$$</div>
+      <p>Iron has a permeability thousands of times that of air, so an air gap \(g\) dominates the path: \(\mathcal{R}\approx2g/(\mu_0A)\) for the two gaps in the drawing, and \(L\approx\mu_0N^2A/(2g)\). Closing the gap raises L as \(1/g\), the same curved law as a capacitor’s gap (later in this part). A <b>variable-reluctance</b> sensor reads that change of L in an AC bridge.</p>
+      <p class="small">With a permanent magnet in the path the coil needs no supply: steel gear teeth sweeping past change the flux, and Faraday’s law \(e=-N\,d\Phi/dt\) gives one voltage pulse per tooth. Counting pulses per second gives shaft speed (a <b>variable-reluctance pickup</b>).</p>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 210" aria-label="(a) C-shaped iron core with a coil and a movable iron armature across an air gap g. (b) Eddy-current probe coil facing a conducting target with circulating eddy currents">
+          <text x="8" y="16" class="t-muted" font-size="12">(a) variable reluctance</text>
+          <path d="M30 40 H150 V80 H130 V60 H50 V140 H130 V120 H150 V160 H30 Z" class="box"/>
+          <g class="ln-acc"><path d="M24 70 H56 M24 80 H56 M24 90 H56 M24 100 H56 M24 110 H56 M24 120 H56"/></g>
+          <text x="12" y="186" class="t-acc" font-size="12">coil, N turns</text>
+          <rect x="164" y="56" width="16" height="108" class="box-blu"/><text x="172" y="182" text-anchor="middle" class="t-blu" font-size="12">armature</text>
+          <path d="M150 70 H164 M150 140 H164" class="ln-thin"/><text x="146" y="104" font-size="12">g</text>
+          <path d="M190 110 H214 M206 104 L216 110 L206 116" class="ln-blu"/><text x="190" y="98" class="t-blu" font-size="11">moves</text>
+          <text x="232" y="16" class="t-muted" font-size="12">(b) eddy-current probe</text>
+          <rect x="250" y="40" width="40" height="120" rx="4" class="box"/>
+          <g class="ln-acc"><path d="M290 62 h8 M290 74 h8 M290 86 h8 M290 98 h8 M290 110 h8 M290 122 h8 M290 134 h8"/></g>
+          <text x="236" y="198" font-size="11" class="t-muted">coil, high-frequency AC</text>
+          <rect x="350" y="30" width="26" height="140" class="box-blu"/><text x="363" y="186" text-anchor="middle" class="t-blu" font-size="12">metal</text>
+          <ellipse cx="363" cy="100" rx="9" ry="30" class="ln-acc" style="stroke-width:1.6"/>
+          <ellipse cx="363" cy="100" rx="5" ry="16" class="ln-acc" style="stroke-width:1.6"/>
+          <path d="M310 100 H340" class="ln-thin"/><path d="M310 94 V106 M340 94 V106" class="ln-thin"/><text x="318" y="90" font-size="12">gap</text>
+        </svg>
+        <figcaption>(a) The armature closes or opens the air gap g and changes the coil’s inductance. (b) A high-frequency field induces eddy currents in the target, which react back on the coil.</figcaption>
+      </figure>
+      <p class="small">An <dfn>eddy-current proximity probe</dfn> works on any conducting target, magnetic or not. Its coil carries a high-frequency current; the field induces circulating (eddy) currents in the nearby metal, whose own field opposes the coil’s, lowering its effective inductance and raising its losses. The closer the target, the stronger the effect. Electronics turn this into a voltage, a common industrial calibration being 7.87 V/mm (200 mV per thousandth of an inch). Non-contact and unaffected by oil, these probes watch shaft vibration and position in turbines and compressors.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 8 · LVDT construction + derivation -->
+<section class="slide" id="lvdt" data-title="The LVDT: construction and output">
+  <p class="eyebrow">Inductive transducers · 2</p>
+  <h2>The LVDT: one primary, two opposed secondaries, a sliding core</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 250" aria-label="LVDT cross-section: primary coil in the middle, secondary coils S1 and S2 at the ends, iron core on a push rod; S1 and S2 joined in series opposition with output Eo across their outer ends; AC excitation Ei on the primary">
+          <circle cx="20" cy="20" r="3.5" class="fill-ink"/><circle cx="380" cy="20" r="3.5" class="fill-ink"/>
+          <text x="200" y="16" text-anchor="middle" class="t-blu" font-size="12">output Eₒ = e₁ − e₂ across the outer terminals</text>
+          <path d="M20 20 H55 V60 M380 20 H305 V60" class="ln"/>
+          <path d="M115 60 V36 H245 V60" class="ln"/><text x="180" y="50" text-anchor="middle" font-size="11" class="t-muted">opposition link</text>
+          <rect x="30" y="60" width="300" height="98" rx="6" class="ln-thin"/>
+          <rect x="40" y="66" width="90" height="22" class="box-blu"/><rect x="40" y="130" width="90" height="22" class="box-blu"/>
+          <rect x="136" y="66" width="88" height="22" class="box"/><rect x="136" y="130" width="88" height="22" class="box"/>
+          <rect x="230" y="66" width="90" height="22" class="box-blu"/><rect x="230" y="130" width="90" height="22" class="box-blu"/>
+          <text x="85" y="82" text-anchor="middle" class="t-blu" font-size="12">S₁</text><text x="180" y="82" text-anchor="middle" font-size="12">P</text><text x="275" y="82" text-anchor="middle" class="t-blu" font-size="12">S₂</text>
+          <rect x="140" y="99" width="130" height="20" class="fill-ink" opacity=".75"/>
+          <text x="205" y="113" text-anchor="middle" font-size="11" class="fill-paper">iron core</text>
+          <path d="M270 109 H392" class="ln"/><text x="392" y="102" text-anchor="end" font-size="11" class="t-muted">push rod</text>
+          <path d="M165 152 V196 H168 M195 152 V196 H192" class="ln"/><circle cx="180" cy="196" r="12" class="box"/><path d="M173 196 q3.5 -7 7 0 t7 0" class="ln-thin"/>
+          <text x="180" y="226" text-anchor="middle" font-size="12">Eᵢ (AC excitation on P)</text>
+          <path d="M250 182 H300" class="ln-acc"/><path d="M292 176 L302 182 L292 188" class="ln-acc"/><text x="306" y="186" class="t-acc" font-size="12">x (core)</text>
+          <text x="34" y="176" font-size="11" class="t-muted">coil form and shield</text>
+        </svg>
+        <figcaption>Linear variable differential transformer. Moving the core right couples more flux into S₂ and less into S₁.</figcaption>
+      </figure>
+      <div class="analogy"><p>Two equal buckets under one tap, connected so you weigh their difference. With the tap (the core) centred the difference is zero. Shift the tap and one bucket gains what the other loses, so the difference grows twice as fast as either change alone, and its sign tells you which way you moved.</p></div>
+    </div>
+    <div>
+      <p>The <dfn>linear variable differential transformer</dfn> (LVDT) is a transformer whose coupling depends on core position. Derive its output:</p>
+      <ol class="steps">
+        <li>The primary, resistance \(R_p\) and inductance \(L_p\), carries \(I_p=E_i/(R_p+j\omega L_p)\) from an AC excitation of angular frequency \(\omega\).</li>
+        <li>Each secondary picks up \(e_1=M_1\,dI_p/dt\) and \(e_2=M_2\,dI_p/dt\), with \(M_1,M_2\) the <dfn>mutual inductances</dfn> (volts induced per ampere-per-second).</li>
+        <li>Wired in opposition, \(E_o=e_1-e_2=(M_1-M_2)\,dI_p/dt\), so the amplitude is \(\lvert E_o\rvert=\omega\lvert M_1-M_2\rvert\lvert I_p\rvert\).</li>
+        <li>By symmetry \(M_1=M_2\) at the centre. For small x, one rises and the other falls by the same amount, \(M_1-M_2\approx2k\,x\):
+          $$\lvert E_o\rvert\approx2k\,\omega\lvert I_p\rvert\,\lvert x\rvert$$</li>
+        <li>The sign of \(M_1-M_2\) flips as the core crosses the centre, so the output is in phase with the excitation on one side and <b>180° out of phase</b> on the other.</li>
+      </ol>
+      <p class="small">A <dfn>phase-sensitive demodulator</dfn> compares the output with the excitation and gives a DC voltage whose sign follows the side. At the centre a small <b>null voltage</b> remains, from unequal coils, stray capacitance and harmonics of the excitation.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 9 · LVDT simulator -->
+<section class="slide" id="lvdtsim" data-title="LVDT simulator">
+  <p class="eyebrow">Inductive transducers · simulator</p>
+  <h2>See amplitude and phase follow the core</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simLVDT">
+      <div class="simhead"><span>LVDT simulator</span><span class="legend"><span><i style="background:var(--muted)"></i>excitation</span><span><i style="background:var(--acc)"></i>output e₁ − e₂</span><span><i style="background:var(--blu)"></i>demodulated DC</span></span></div>
+      <canvas id="cvLVDTa" data-h="140" aria-label="LVDT with primary between two secondaries and a movable core"></canvas>
+      <div class="duo">
+        <canvas id="cvLVDTb" data-h="210" aria-label="Output magnitude V-graph and demodulated signed output against core position"></canvas>
+        <canvas id="cvLVDTc" data-h="210" aria-label="Excitation and output waveforms against time"></canvas>
+      </div>
+      <div class="controls">
+        <div class="ctl"><label for="lvx">Core displacement x <output data-for="x"></output></label>
+          <input type="range" id="lvx" data-key="x" min="-6" max="6" step="0.05" value="1" data-fmt="2" data-unit=" mm"></div>
+        <div class="ctl"><label for="lvn">Coil mismatch (null voltage) <output data-for="n"></output></label>
+          <input type="range" id="lvn" data-key="n" min="0" max="0.1" step="0.005" value="0.02" data-fmt="3"></div>
+      </div>
+      <div class="readout" id="roLVDT"></div>
+    </div>
+    <div>
+      <p>The left plot is the LVDT’s characteristic. The black curve is the magnitude of the output, the <b>V-graph</b> a meter would show. The blue curve is what a phase-sensitive demodulator delivers: the same magnitude with a sign, a straight line through zero.</p>
+      <p>The right plot shows the two waveforms in time. The output has the excitation’s frequency; only its size and its phase carry the information.</p>
+      <div class="try"><p>Move x from −6 to +6 mm. Inside about ±2 mm the curves are straight (green band). Beyond, the core leaves the coils and the output peaks and falls. Watch the output trace flip from in phase to opposite phase as x crosses zero. Then raise the coil mismatch: the bottom of the V rounds off and never reaches zero. That residual is the null voltage, and it limits the smallest displacement you can resolve near the centre.</p></div>
+      <div class="quiz" data-correct="2">
+        <p class="q">An LVDT reads 0.30 V both at x = +0.5 mm and at x = −0.5 mm. How does the instrument tell them apart?</p>
+        <div class="opts">
+          <button class="opt" data-why="The output frequency is always the excitation frequency.">By the output frequency</button>
+          <button class="opt" data-why="By symmetry the magnitudes are equal; magnitude alone cannot give direction.">By a small difference in amplitude</button>
+          <button class="opt" data-why="Yes. One side is in phase with the excitation, the other 180° out; the demodulator turns this into a signed DC voltage.">By the phase relative to the excitation</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 · LVDT performance + worked example -->
+<section class="slide" id="ex-lvdt" data-title="Worked example: reading an LVDT">
+  <p class="eyebrow">Worked example · LVDT in practice</p>
+  <h2>From a V-graph to a displacement</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 220" aria-label="LVDT V-graph: output magnitude rises linearly from about 3 mV at the null to 1.00 V at plus and minus 1.52 mm; enlarged inset shows the rounded null">
+          <g class="ln-thin" opacity=".5"><path d="M30 20 V180 M90 20 V180 M210 20 V180 M270 20 V180 M30 60 H270 M30 100 H270 M30 140 H270 M30 20 H270"/></g>
+          <path d="M30 180 H270 M150 180 V20" class="ln-thin"/>
+          <path d="M30 20 L146 176 Q150 180 154 176 L270 20" class="ln-acc"/>
+          <g font-size="11" class="t-mono t-muted"><text x="30" y="196" text-anchor="middle">−1.52</text><text x="90" y="196" text-anchor="middle">−0.76</text><text x="150" y="196" text-anchor="middle">0</text><text x="210" y="196" text-anchor="middle">0.76</text><text x="270" y="196" text-anchor="middle">1.52</text>
+          <text x="146" y="32" text-anchor="end">1.00</text><text x="146" y="104" text-anchor="end">0.50</text></g>
+          <text x="150" y="214" text-anchor="middle" font-size="12">core position x (mm)</text>
+          <text x="156" y="14" font-size="12">|Eₒ| (V rms)</text>
+          <text x="36" y="168" font-size="11" class="t-muted">opposite phase</text><text x="264" y="168" text-anchor="end" font-size="11" class="t-muted">in phase</text>
+          <rect x="290" y="40" width="104" height="80" class="box"/>
+          <text x="342" y="34" text-anchor="middle" font-size="11" class="t-muted">null, enlarged</text>
+          <path d="M298 52 Q342 140 386 52" class="ln-acc" style="stroke-width:1.8"/>
+          <path d="M298 117 H386" class="ln-thin dash"/>
+          <path d="M342 96 V116" class="ln-thin"/><path d="M338 100 L342 94 L346 100 M338 112 L342 118 L346 112" class="ln-thin"/>
+          <text x="342" y="138" text-anchor="middle" font-size="11">null ≈ 3 mV</text>
+          <path d="M156 176 L290 110" class="ln-thin dash"/>
+        </svg>
+        <figcaption>Characteristic supplied with an LVDT (redrawn): linear over ±1.52 mm, with a rounded null of about 3 mV.</figcaption>
+      </figure>
+      <div class="note" data-label="Typical LVDT figures"><p>Ranges from about ±0.1 mm to ±75 mm; nonlinearity about 0.5 % of range; output 16 to 160 mV per mm of travel per volt of excitation, depending on excitation frequency; low output resistance. The excitation frequency should be at least ten times the highest frequency of core motion.</p></div>
+    </div>
+    <div class="example">
+      <p class="given">The LVDT whose V-graph is drawn gives 1.00 V rms at ±1.52 mm. (a) What is its sensitivity? (b) The demodulator shows 0.40 V in phase with the excitation, then later 0.40 V in opposite phase. Where is the core each time? (c) What displacement is hidden in the 3 mV null? (d) It is excited at 2.5 kHz. Can it follow a 1 kHz vibration?</p>
+      <ol class="steps">
+        <li>(a) Slope of the linear part: \(K=1.00\ \text{V}/1.52\ \text{mm}=0.656\) V/mm.</li>
+        <li>(b) \(x=0.40/0.656=0.61\) mm. In phase means the side marked “in phase”: \(x=+0.61\) mm; opposite phase: \(x=-0.61\) mm.</li>
+        <li>(c) \(3\ \text{mV}/0.656\ \text{V/mm}=0.0046\) mm \(=4.6\ \mu\)m. Near the centre, displacements smaller than about 5 µm cannot be read from the magnitude.</li>
+        <li>(d) No. The rule “excitation at least ten times the motion frequency” allows motion up to about 250 Hz. Each excitation cycle is one look at the core, and a demodulator needs several looks per motion cycle.</li>
+        <li><b>What this means</b>: an LVDT is frictionless (the core never touches the coils), has no wiper steps, and is electrically isolated from the moving part, which is why it is the standard laboratory displacement transducer. Its price is AC excitation and demodulating electronics.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- 11 · Capacitive basics -->
+<section class="slide" id="cap" data-title="Capacitive transducers">
+  <p class="eyebrow">Capacitive transducers · 1</p>
+  <h2>Three handles on one formula: gap, area and dielectric</h2>
+  <div class="cols">
+    <div>
+      <p>Put charge \(+Q\) and \(-Q\) on two parallel plates of overlap area \(A\), a distance \(d\) apart. The field between them is uniform, \(E=Q/(\varepsilon A)\), so the voltage is \(V=Ed=Qd/(\varepsilon A)\). The ratio \(Q/V\) is the capacitance:</p>
+      <div class="eq"><span class="label">Parallel-plate capacitance</span>$$C=\frac{\varepsilon_r\varepsilon_0A}{d}$$</div>
+      <div class="symbols"><span>\(\varepsilon_0\)</span><span>permittivity of vacuum, \(8.854\times10^{-12}\) F/m</span><span>\(\varepsilon_r\)</span><span>dielectric constant: 1.0006 for air, about 3 for plastics</span><span>\(A,\ d\)</span><span>overlap area (m²) and gap (m)</span></div>
+      <p class="small">In laboratory units: \(C=0.0885\,\varepsilon_rA/d\) pF with A in cm² and d in cm. Plates of 10 mm diameter with a 0.1 mm air gap give only 6.95 pF.</p>
+      <p>Differentiate with respect to each handle to get the sensitivity:</p>
+      <div class="eq"><span class="label">Sensitivities</span>$$\frac{\partial C}{\partial d}=-\frac{C}{d},\qquad\frac{\partial C}{\partial A}=\frac{C}{A},\qquad\frac{\partial C}{\partial\varepsilon_r}=\frac{C}{\varepsilon_r}$$</div>
+      <div class="why"><p>Area and dielectric enter C linearly, so those sensors are linear. The gap is in the denominator, so a gap sensor follows \(1/d\): closing the gap by 10 % raises C by 11.1 %, and by 20 % raises it by 25 %. Small gaps give high sensitivity but a curved calibration.</p></div>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 250" aria-label="Three capacitive sensor modes: changing gap, changing overlap area by sliding a plate, changing dielectric with liquid level between coaxial tubes">
+          <text x="8" y="16" class="t-muted" font-size="12">(a) gap</text>
+          <rect x="20" y="40" width="90" height="8" class="fill-ink"/><rect x="20" y="96" width="90" height="8" class="fill-acc"/>
+          <path d="M65 52 V92" class="ln-thin"/><path d="M61 58 L65 50 L69 58 M61 86 L65 94 L69 86" class="ln-thin"/><text x="72" y="78">d</text>
+          <path d="M120 100 V70 M114 78 L120 68 L126 78" class="ln-acc"/><text x="102" y="126" class="t-acc" font-size="11">moves</text>
+          <text x="140" y="16" class="t-muted" font-size="12">(b) area</text>
+          <rect x="146" y="40" width="90" height="8" class="fill-ink"/><rect x="176" y="96" width="90" height="8" class="fill-acc"/>
+          <rect x="176" y="48" width="60" height="48" class="fill-grid"/><text x="206" y="77" text-anchor="middle" font-size="11">A</text>
+          <path d="M226 116 H262 M254 110 L264 116 L254 122" class="ln-acc"/><text x="182" y="120" class="t-acc" font-size="11">slides</text>
+          <text x="290" y="16" class="t-muted" font-size="12">(c) dielectric</text>
+          <rect x="300" y="30" width="80" height="200" rx="4" class="ln-thin"/>
+          <rect x="302" y="140" width="76" height="88" class="box-blu" style="stroke:none"/>
+          <rect x="318" y="36" width="10" height="186" class="fill-ink"/><rect x="352" y="36" width="10" height="186" class="fill-ink"/>
+          <path d="M296 140 H384" class="ln-blu"/><text x="292" y="144" text-anchor="end" class="t-blu" font-size="11">level h</text>
+          <text x="306" y="246" font-size="11" class="t-muted">two electrodes in a tank</text>
+          <text x="8" y="160" font-size="12">C = εA/d</text>
+          <text x="8" y="182" font-size="12" class="t-muted">gap: C ∝ 1/d (curved)</text>
+          <text x="8" y="202" font-size="12" class="t-muted">area: C ∝ A (straight)</text>
+          <text x="8" y="222" font-size="12" class="t-muted">level: C = a + b·h (straight)</text>
+        </svg>
+        <figcaption>(a) A diaphragm or target changes the gap. (b) Sliding or rotating plates change the overlap. (c) Rising liquid replaces air between two electrodes and raises the effective dielectric constant.</figcaption>
+      </figure>
+      <p class="small"><b>Level gauge.</b> For two coaxial tubes of radii \(a\) and \(b\) and length \(L\), with liquid of dielectric constant \(\varepsilon_r\) up to height \(h\), the wet and dry lengths are capacitors in parallel: \(C=\dfrac{2\pi\varepsilon_0[\varepsilon_rh+(L-h)]}{\ln(b/a)}\), linear in h. With \(b/a=2\) that is 80.3 pF per metre of air, and twice that per metre of a liquid with \(\varepsilon_r=2\) such as kerosene.</p>
+      <div class="analogy"><p>A capacitor is a sponge for charge squeezed between two walls. Bigger walls (area) or a more absorbent filling (dielectric) hold more, in proportion. Pushing the walls closer also holds more, but the gain runs away as the gap closes, like a spring that stiffens as you compress it.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 12 · Differential capacitor + practical issues -->
+<section class="slide" id="capdiff" data-title="Differential capacitive sensing">
+  <p class="eyebrow">Capacitive transducers · 2</p>
+  <h2>Two gaps that change in opposite directions cancel the curvature</h2>
+  <div class="cols">
+    <div>
+      <p>Put a movable plate midway between two fixed plates, each gap \(d\). Move the middle plate by \(x\) toward plate 1: \(C_1=\varepsilon A/(d-x)\) and \(C_2=\varepsilon A/(d+x)\). Both are curved in x, but their difference ratio is not.</p>
+      <ol class="steps">
+        <li>Connect \(C_1\) and \(C_2\) in series across an AC supply \(E_i\), and compare their middle node with a fixed half-supply reference (an AC bridge). Capacitive reactance is \(1/(\omega C)\), so the voltage across \(C_2\) is \(E_i\,\dfrac{1/C_2}{1/C_1+1/C_2}=E_i\dfrac{C_1}{C_1+C_2}\).</li>
+        <li>Output: \(E_o=E_i\left(\dfrac{C_1}{C_1+C_2}-\dfrac12\right)=\dfrac{E_i}{2}\,\dfrac{C_1-C_2}{C_1+C_2}\).</li>
+        <li>Substitute: \(C_1-C_2=\dfrac{2\varepsilon Ax}{d^2-x^2}\) and \(C_1+C_2=\dfrac{2\varepsilon Ad}{d^2-x^2}\). The common factor cancels:
+          $$E_o=\frac{E_i}{2}\,\frac{x}{d}$$</li>
+        <li>Exactly linear in x, independent of \(\varepsilon\) and A, and twice as sensitive as one gap at small x. The same push-pull idea is used in MEMS accelerometers (Part B).</li>
+      </ol>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 190" aria-label="Differential capacitor: fixed plate 1, movable middle plate, fixed plate 2. Bridge: C1 over C2 in one branch, two equal reference resistors in the other, AC supply across both, output meter between the middle nodes">
+          <rect x="10" y="30" width="80" height="7" class="fill-ink"/><rect x="10" y="80" width="80" height="7" class="fill-acc"/><rect x="10" y="130" width="80" height="7" class="fill-ink"/>
+          <text x="96" y="38" font-size="12">plate 1</text><text x="96" y="88" class="t-acc" font-size="12">moving</text><text x="96" y="138" font-size="12">plate 2</text>
+          <text x="22" y="62" font-size="12">C₁</text><text x="22" y="114" font-size="12">C₂</text>
+          <path d="M60 76 V50 M55 58 L60 48 L65 58" class="ln-acc"/><text x="67" y="62" class="t-acc" font-size="12">x</text>
+          <path d="M175 20 H370 M175 170 H370 M175 20 V82 M175 108 V170" class="ln"/>
+          <circle cx="175" cy="95" r="13" class="box"/><path d="M168 95 q3.5 -7 7 0 t7 0" class="ln-thin"/><text x="192" y="120" font-size="12">Eᵢ</text>
+          <path d="M255 20 V54 M255 62 V128 M255 136 V170" class="ln"/>
+          <path d="M243 54 H267 M243 62 H267 M243 128 H267 M243 136 H267" class="ln-acc" style="stroke-width:3"/>
+          <text x="236" y="62" text-anchor="end" class="t-acc" font-size="12">C₁</text><text x="236" y="136" text-anchor="end" class="t-acc" font-size="12">C₂</text>
+          <path d="M370 20 V38 M370 78 V112 M370 152 V170" class="ln"/>
+          <rect x="362" y="38" width="16" height="40" class="box"/><rect x="362" y="112" width="16" height="40" class="box"/>
+          <text x="384" y="62" font-size="11">R</text><text x="384" y="136" font-size="11">R</text>
+          <circle cx="255" cy="95" r="3" class="fill-ink"/><circle cx="370" cy="95" r="3" class="fill-ink"/>
+          <path d="M255 95 H292 M334 95 H370" class="ln-thin"/><circle cx="313" cy="95" r="20" class="box-blu"/><text x="313" y="100" text-anchor="middle" font-size="12">Eₒ</text>
+          <text x="312" y="186" text-anchor="middle" font-size="11" class="t-muted">sensor vs reference branch</text>
+        </svg>
+      </figure>
+      <div class="pitfall"><p>Capacitive sensors have very high <b>output impedance</b>, \(Z=1/(2\pi fC)\). A 22.5 pF sensor excited at 10 kHz has \(Z\approx707\) kΩ, so any meter or cable connected to it loads it heavily. A metre of ordinary cable adds around 100 pF in parallel, several times the sensor itself, and that cable capacitance changes when the cable flexes or warms. Practical sensors keep the electronics close, use driven guard electrodes, and run at high excitation frequency.</p></div>
+          </div>
+  </div>
+</section>
+
+<!-- 13 · Capacitive simulator -->
+<section class="slide" id="capsim" data-title="Capacitive sensor simulator">
+  <p class="eyebrow">Capacitive transducers · simulator</p>
+  <h2>Compare gap, area and differential sensing</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simCap">
+      <div class="simhead"><span>Capacitive sensor bench</span><span class="legend"><span><i style="background:var(--muted)"></i>straight line</span><span><i style="background:var(--acc)"></i>sensor output</span></span></div>
+      <canvas id="cvCapA" data-h="130" aria-label="Plates of the chosen capacitive sensor drawn at the current displacement"></canvas>
+      <canvas id="cvCapB" data-h="230" aria-label="Normalised output against normalised displacement for the chosen mode"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="cm">Sensing mode</label>
+          <select id="cm" data-key="mode"><option value="gap">Single gap (plate moves closer)</option><option value="area">Overlap area (plate slides)</option><option value="diff">Differential pair (middle plate moves)</option></select></div>
+        <div class="ctl"><label for="cu">Displacement u = x/d (or x/length) <output data-for="u"></output></label>
+          <input type="range" id="cu" data-key="u" min="-0.6" max="0.6" step="0.01" value="0.2" data-fmt="2"></div>
+      </div>
+      <div class="readout" id="roCap"></div>
+    </div>
+    <div>
+      <p>The plot shows the sensor’s normalised output against normalised displacement \(u\). For the single gap the output is \(\Delta C/C_0=u/(1-u)\), with \(u\) the fraction by which the gap closes. For sliding plates it is \(\Delta A/A_0=u\). For the differential pair in its bridge it is \(E_o/(E_i/2)=u\).</p>
+      <div class="try"><p>Pick “single gap” and move u to +0.3: the output is 0.43, 43 % above the straight line. Move to −0.3 (gap opening): the error changes sign. Switch to the differential pair: the curve lies on the line at every u. Finally pick “area”: linear too, but the sensitivity per unit displacement is set by plate width, not by a tiny gap, so it is usually lower.</p></div>
+      <div class="takeaway"><p>Use a single gap for small motions where the high sensitivity matters (microphones, proximity probes), area change for longer linear or angular travel, and a differential pair when you need both sensitivity and linearity.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 · Worked example: capacitive sensitivity and uncertainty -->
+<section class="slide" id="ex-cap" data-title="Worked example: capacitive displacement sensor">
+  <p class="eyebrow">Worked example</p>
+  <h2>Sensitivity, and how well must C be measured?</h2>
+  <div class="cols wide-l">
+    <div class="example">
+      <p class="given">A capacitive displacement transducer has two square plates of area 645.2 mm² (1 in²) separated by an air gap of 0.254 mm (0.01 in); for air \(\varepsilon_r=1.0006\). (a) Find its capacitance and displacement sensitivity. (b) The gap must be inferred within ±0.00254 mm (±0.0001 in), and the plate area is only known within ±3.23 mm² (±0.005 in²). How accurately must C be measured?</p>
+      <p class="small"><b>Assumptions</b>: parallel-plate formula (gap much smaller than plate width, so fringing is negligible); uncertainties independent, combined by root-sum-square.</p>
+      <ol class="steps">
+        <li>(a) \(C=\dfrac{\varepsilon_r\varepsilon_0A}{d}=\dfrac{1.0006\times8.854\times10^{-12}\times6.452\times10^{-4}}{2.54\times10^{-4}}=22.50\ \text{pF}\).</li>
+        <li>Sensitivity \(S=\partial C/\partial d=-C/d=-22.50/0.254=-88.6\) pF/mm, about −2250 pF per inch. A 1 µm change of gap changes C by 0.089 pF.</li>
+        <li>(b) The gap is computed from the measurements as \(d=\varepsilon_r\varepsilon_0A/C\), a product of powers. Its relative uncertainty combines the relative uncertainties of A and C: \(\left(\dfrac{w_d}{d}\right)^2=\left(\dfrac{w_A}{A}\right)^2+\left(\dfrac{w_C}{C}\right)^2\).</li>
+        <li>Allowed \(w_d/d=0.00254/0.254=0.010\); known \(w_A/A=3.23/645.2=0.0050\). So \(w_C/C=\sqrt{0.010^2-0.005^2}=0.00866\).</li>
+        <li>\(w_C=0.00866\times22.50=\pm0.195\) pF.</li>
+        <li><b>What this means</b>: you must measure about 22.5 pF to within 0.2 pF, which is less than the capacitance of a few centimetres of cable. The electronics must sit at the sensor or the cable must be guarded.</li>
+      </ol>
+    </div>
+    <div>
+      <div class="note" data-label="Why the gap rule is a root-sum-square"><p>For a result \(d=kA^aC^b\), each relative uncertainty enters multiplied by its exponent: \((w_d/d)^2=(a\,w_A/A)^2+(b\,w_C/C)^2\). Here \(a=1\) and \(b=-1\), so both enter with weight 1. The tighter the area tolerance, the more of the uncertainty budget is left for the capacitance measurement.</p></div>
+      <div class="reveal-box" data-label="Reveal answer">
+        <p>Quick check: if the plate area were known exactly, how well would C need to be measured?</p>
+        <div class="answer"><p>Then \(w_C/C=w_d/d=1.0\ \%\), so \(w_C=\pm0.225\) pF. Halving the area uncertainty from 0.5 % to zero only relaxes the capacitance requirement from 0.87 % to 1.0 %, because uncertainties add in quadrature.</p></div>
+      </div>
+      <div class="analogy"><p>An uncertainty budget is a shared bill. The total you may spend is fixed (1 % on the gap). Whatever the area already costs is paid first, in quadrature, and the capacitance measurement gets what is left.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 15 · Comparison table -->
+<section class="slide" id="compare" data-title="Comparison of passive transducers">
+  <p class="eyebrow">Summary of characteristics</p>
+  <h2>The passive displacement transducers side by side</h2>
+  <div class="tbl wrap compact"><table>
+    <tr><th>Transducer</th><th>Input and range</th><th>Sensitivity or resolution</th><th>Errors and noise</th><th>Frequency response</th><th>Output</th><th>Typical use, remarks</th></tr>
+    <tr><td><b>Potentiometer</b> (sliding contact)</td><td>linear or angular displacement; down to 0.1 % of full track</td><td>about 0.05 mm or 0.2°; wire steps of 1/N</td><td>nonlinearity about 0.5 %; contact noise about 10 µV, worse with wiper chatter</td><td>a few hertz for general units</td><td>voltage ratio; resistance changes with T by 0.002–0.15 %/°C</td><td>simple, cheap, high output; wears; must not be loaded</td></tr>
+    <tr><td><b>LVDT</b></td><td>linear displacement, ±0.1 mm to ±75 mm; needs only a tiny force on the core</td><td>about 0.5 % of range; no steps</td><td>nonlinearity about 0.5 %; accuracy about ±1 %; stray AC magnetic fields; null voltage</td><td>up to about 1/10 of excitation frequency</td><td>AC voltage, 16–160 mV per mm per volt; low output impedance</td><td>rugged, frictionless, isolated; needs AC excitation and demodulator</td></tr>
+    <tr><td><b>Capacitive</b> (gap, area, dielectric)</td><td>displacement from below 1 nm to metres; level; pressure via a diaphragm; force needed: almost none</td><td>can reach about 0.4 pF per µm of gap</td><td>humidity, stray and cable capacitance, careless mechanics</td><td>to about 50 kHz, set by the mechanics</td><td>capacitance, 0.001–1000 pF; output impedance 10³–10⁷ Ω</td><td>suits tiny forces and small motions; needs careful, close electronics</td></tr>
+    <tr><td><b>Eddy-current probe</b></td><td>gap to any conducting target, typically 0–2 mm</td><td>commonly 7.87 V/mm</td><td>target material and finish change the calibration</td><td>static up to several kilohertz</td><td>DC voltage from driver electronics</td><td>non-contact shaft vibration and position; works in oil</td></tr>
+    <tr><td><b>Variable reluctance</b></td><td>gap, or passing gear teeth</td><td>pulse per tooth for speed</td><td>gap law is curved, as for a single capacitor gap</td><td>speed pickups to many kilohertz of tooth rate</td><td>AC bridge output, or self-generated pulses</td><td>rugged speed sensing with no supply</td></tr>
+  </table></div>
+  <p class="small">Figures are typical orders of magnitude for commercial devices, useful for a first choice; a real selection always checks the manufacturer’s data. Strain gauges and RTDs belong to this family too and get their own topics (11 and 08).</p>
+</section>
+
+<!-- 16 · Check yourself -->
+<section class="slide" id="check" data-title="Check yourself">
+  <p class="eyebrow">Check yourself</p>
+  <h2>Four quick checks on Part A</h2>
+  <div class="cols">
+    <div class="quiz" data-correct="1">
+      <p class="q">A 1 kΩ potentiometer is read by a 100 kΩ meter. Where along the travel is the loading error largest as a fraction of full scale?</p>
+      <div class="opts">
+        <button class="opt" data-why="At mid-travel the error is \(-x^2(1-x)R_p/R_m=-0.125\times0.01\), not the maximum.">At x = 0.5</button>
+        <button class="opt" data-why="Right. \(x^2(1-x)\) is largest where its derivative \(2x-3x^2\) is zero, at \(x=2/3\): \(0.148\times0.01=0.15\ \%\) of full scale.">At x = 2/3</button>
+        <button class="opt" data-why="At the end the meter is directly across the supply, so the reading is exact.">At x = 1</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="2">
+      <p class="q">Why are the LVDT’s two secondaries connected in series opposition?</p>
+      <div class="opts">
+        <button class="opt" data-why="Opposition actually cancels most of the induced voltage; it does not add the two.">To double the output voltage at every core position</button>
+        <button class="opt" data-why="The frequency is fixed by the excitation either way.">To change the output frequency</button>
+        <button class="opt" data-why="Yes. Equal coupling at the centre gives zero; a displacement makes one secondary gain what the other loses, so the difference is proportional to x and its phase shows the direction.">So the output is the difference of the two couplings, zero at the centre</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="0">
+      <p class="q">A capacitive level gauge reads 80 pF with the tank empty and 160 pF full. What does it read half full?</p>
+      <div class="opts">
+        <button class="opt" data-why="The wet and dry lengths are capacitors in parallel and the dielectric enters C linearly: \(80+0.5\times80=120\) pF.">120 pF</button>
+        <button class="opt" data-why="That would be true for a gap sensor (1/d law), not for a change of dielectric along the electrodes.">Less than 120 pF, because C is nonlinear</button>
+        <button class="opt" data-why="Capacitances in parallel add, so half the liquid adds half the change.">160 pF, the liquid fills the field anyway</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="1">
+      <p class="q">Which of these transducers can sense a shaft’s position without any contact and regardless of whether the shaft steel is magnetic?</p>
+      <div class="opts">
+        <button class="opt" data-why="A potentiometer needs a wiper in contact with the moving part.">Potentiometer</button>
+        <button class="opt" data-why="Right. Eddy currents flow in any conductor, so stainless or aluminium targets work too, with their own calibration.">Eddy-current probe</button>
+        <button class="opt" data-why="A variable-reluctance sensor relies on a magnetic (iron) target to change the flux path.">Variable-reluctance sensor</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 17 · Summary -->
+<section class="slide" id="summary" data-title="Summary">
+  <p class="eyebrow">Summary</p>
+  <h2>Part A on one page</h2>
+  <div class="tbl wrap compact"><table>
+    <tr><th>Idea</th><th>Key relation</th><th>Remember</th></tr>
+    <tr><td>Potentiometer</td><td>\(E_o/E_i=x\)</td><td>Wire steps of \(1/N\); wear and noise</td></tr>
+    <tr><td>Potentiometer loading</td><td>\(E_o/E_i=x/[1+x(1-x)R_p/R_m]\)</td><td>Worst near \(x=2/3\); keep \(R_m\gg R_p\)</td></tr>
+    <tr><td>Strain gauge, RTD</td><td>\(dR/R=F\varepsilon\); \(R=R_0[1+\alpha\Delta T]\)</td><td>Small ΔR on large R</td></tr>
+    <tr><td>Ballast circuit</td><td>\(S=E_iR_i/(R+R_i)^2\)</td><td>Best \(R_i=R\); nonlinear</td></tr>
+    <tr><td>Inductance, reluctance</td><td>\(L=N^2/\mathcal{R}\), \(L\propto1/g\)</td><td>Gap law is curved</td></tr>
+    <tr><td>LVDT</td><td>\(E_o=(M_1-M_2)\,dI_p/dt\), \(\lvert E_o\rvert\propto\lvert x\rvert\)</td><td>Phase gives sign; null voltage</td></tr>
+    <tr><td>Capacitance</td><td>\(C=\varepsilon_r\varepsilon_0A/d\), \(\partial C/\partial d=-C/d\)</td><td>Area, dielectric linear; gap curved</td></tr>
+    <tr><td>Differential capacitor</td><td>\(E_o=(E_i/2)\,x/d\)</td><td>Linear; output impedance high</td></tr>
+  </table></div>
+  <div class="cols">
+    <div>
+      <h3>You should now be able to…</h3>
+      <ul>
+        <li>place a transducer in the measurement chain and say whether it is active or passive;</li>
+        <li>derive and use the loaded potentiometer equation and the ballast-circuit sensitivity;</li>
+        <li>explain how an LVDT gives amplitude proportional to displacement and phase giving direction;</li>
+        <li>compute capacitance, sensitivity and uncertainty for gap, area and level sensors, and explain why a differential pair is linear;</li>
+        <li>choose between potentiometer, LVDT, capacitive and eddy-current sensing for a displacement task.</li>
+      </ul>
+    </div>
+    <div>
+      <div class="watch">
+        <h3>Watch next</h3>
+        <a href="https://www.youtube.com/results?search_query=how+an+LVDT+works" target="_blank" rel="noopener">How an LVDT works <small>YouTube search</small></a>
+        <a href="https://www.youtube.com/results?search_query=capacitive+displacement+sensor+principle" target="_blank" rel="noopener">Capacitive displacement sensors <small>YouTube search</small></a>
+        <a href="https://www.youtube.com/results?search_query=eddy+current+proximity+probe+how+it+works" target="_blank" rel="noopener">Eddy-current proximity probes <small>YouTube search</small></a>
+      </div>
+      <p class="further">Further reading: Holman, Experimental Methods for Engineers, 8th ed., §4.6 and §4.19–4.22</p>
+      <div class="row"><a class="btn" href="d02c.html">&larr; Previous topic: System Response</a><a class="btn primary" href="d03b.html">Part B · Piezoelectric, optical, Hall and digital &rarr;</a></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---- cover: displacement and transducer voltage ---- */
+  let coverT = 0;
+  function drawCover() {
+    const tEnd = 14, tt = Math.min(coverT, tEnd), a = [], b = [];
+    for (let i = 0; i <= 600; i++) {
+      const t = tEnd * i / 600; if (t > tt) break;
+      const m = 0.9 * Math.sin(0.6 * t) + 0.3 * Math.sin(1.7 * t + 1);
+      a.push([t, m]); b.push([t, 0.45 * m - 1.1 + 0.03 * Math.sin(37 * t)]);
+    }
+    Deck.plot($('coverTrace'), { x: [0, tEnd], y: [-1.8, 1.4], pad: { l: 8, r: 8, t: 6, b: 6 }, xticks: [], yticks: [],
+      series: [{ pts: a, color: 'blu', width: 2.2 }, { pts: b, color: 'acc', width: 2 }] });
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (coverT < 15) { coverT += RM ? 15 : dt * 3; drawCover(); } });
+
+  /* ---- potentiometer loading ---- */
+  Deck.onShow('potload', () => {
+    const get = Deck.controls('simPot', draw);
+    function draw() {
+      const v = get(), k = v.k, x = v.x;
+      const f = s => s / (1 + s * (1 - s) / k);
+      const e = s => (f(s) - s) * 100;
+      Deck.plot($('cvPotA'), { x: [0, 1], y: [0, 1], xlabel: 'wiper position x', ylabel: 'Eₒ / Eᵢ',
+        series: [{ f: s => s, color: 'muted', dash: [5, 4], width: 1.5 }, { f: f, color: 'acc' }],
+        points: [{ x: x, y: f(x), color: 'ink', r: 5 }] });
+      let emin = 0, xm = 0; for (let i = 0; i <= 600; i++) { const s = i / 600, ee = e(s); if (ee < emin) { emin = ee; xm = s; } }
+      const lo = Math.min(-0.01, emin * 1.15);
+      Deck.plot($('cvPotB'), { x: [0, 1], y: [lo, 0], xlabel: 'wiper position x', ylabel: 'error, % FS', pad: { l: 64 },
+        yfmt: t => (Math.abs(lo) < 0.1 ? t.toFixed(3) : Math.abs(lo) < 2 ? t.toFixed(2) : t.toFixed(0)),
+        series: [{ f: e, color: 'blu' }], vlines: [{ x: xm, color: 'muted', label: 'max at x = ' + xm.toFixed(2) }],
+        points: [{ x: x, y: e(x), color: 'ink', r: 4.5 }] });
+      const rel = x > 0 ? (f(x) / x - 1) * 100 : 0;
+      $('roPot').innerHTML = 'Eₒ/Eᵢ = <b>' + f(x).toFixed(4) + '</b> (ideal ' + x.toFixed(2) + ') &nbsp; error <b>' + e(x).toFixed(3) + ' % FS</b>, <b>' + rel.toFixed(3) + ' %</b> of reading &nbsp; worst <b>' + emin.toFixed(3) + ' % FS</b>';
+    }
+    return draw;
+  });
+
+  /* ---- LVDT ---- */
+  const lvG = u => u * Math.exp(-Math.pow(u / 2.4, 6));
+  const lvOut = x => lvG(x / 2);
+  let lvPh = 0, lvDraw = null;
+  Deck.onShow('lvdtsim', () => {
+    const get = Deck.controls('simLVDT', () => lvDraw && lvDraw());
+    function draw() {
+      const v = get(), x = v.x, e = lvOut(x), nul = v.n, amp = Math.sqrt(e * e + nul * nul), inPhase = e >= 0;
+      const { ctx, W, H } = Deck.sizeCanvas($('cvLVDTa'));
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const L = W * 0.72, x0 = (W - L) / 2, yc = H * 0.52, rh = H * 0.2;
+      const coil = (a, b, col, lab) => {
+        ctx.fillStyle = Deck.alpha(col, .18); ctx.strokeStyle = Deck.color(col); ctx.lineWidth = 1.4;
+        [[yc - rh - 16, 14], [yc + rh + 2, 14]].forEach(([y, h]) => {
+          ctx.fillRect(a, y, b - a, h); ctx.strokeRect(a, y, b - a, h);
+          ctx.beginPath(); for (let k = a + 5; k < b; k += 6) { ctx.moveTo(k, y); ctx.lineTo(k, y + h); } ctx.globalAlpha = .5; ctx.stroke(); ctx.globalAlpha = 1;
+        });
+        ctx.fillStyle = Deck.color(col); ctx.font = Deck.font(12, true); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(lab, (a + b) / 2, yc - rh - 19);
+      };
+      coil(x0, x0 + L / 3 - 3, 'blu', 'S₁'); coil(x0 + L / 3 + 3, x0 + 2 * L / 3 - 3, 'muted', 'P (AC)'); coil(x0 + 2 * L / 3 + 3, x0 + L, 'blu', 'S₂');
+      const cc = W / 2 + x * L / 16, cl = L * 0.45;
+      ctx.fillStyle = Deck.color('ink'); ctx.globalAlpha = .75; ctx.fillRect(cc - cl / 2, yc - rh * 0.6, cl, rh * 1.2); ctx.globalAlpha = 1;
+      ctx.strokeStyle = Deck.color('ink'); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cc + cl / 2, yc); ctx.lineTo(W - 4, yc); ctx.stroke();
+      ctx.fillStyle = Deck.color('paper'); ctx.font = Deck.font(11, true); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('core', cc, yc);
+      ctx.strokeStyle = Deck.color('acc'); ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(W / 2, yc - rh - 2); ctx.lineTo(W / 2, yc + rh + 20); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = Deck.color('acc'); ctx.textBaseline = 'top'; ctx.fillText('x = 0', W / 2, yc + rh + 18);
+      Deck.plot($('cvLVDTb'), { x: [-6, 6], y: [-1.7, 1.7], xlabel: 'core position x (mm)', ylabel: 'output (relative)',
+        bands: [{ x0: -2, x1: 2, color: 'grn', alpha: .12 }], hlines: [{ y: 0, color: 'muted', dash: [2, 3] }],
+        series: [{ f: t => Math.sqrt(lvOut(t) * lvOut(t) + nul * nul), color: 'ink', width: 2 }, { f: lvOut, color: 'blu', dash: [6, 4], width: 2 }],
+        points: [{ x: x, y: amp, color: 'acc', r: 5 }] });
+      const ex = [], out = [];
+      for (let i = 0; i <= 300; i++) { const t = 3 * i / 300, w = 2 * Math.PI * t + lvPh; ex.push([t, Math.sin(w)]); out.push([t, e * Math.sin(w) + nul * Math.cos(w)]); }
+      Deck.plot($('cvLVDTc'), { x: [0, 3], y: [-1.7, 1.7], xlabel: 'time (excitation cycles)', ylabel: 'voltage (relative)',
+        series: [{ pts: ex, color: 'muted', width: 1.4 }, { pts: out, color: 'acc', width: 2.4 }] });
+      $('roLVDT').innerHTML = 'magnitude <b>' + amp.toFixed(3) + '</b> &nbsp; demodulated <b>' + (e >= 0 ? '+' : '') + e.toFixed(3) + '</b> &nbsp; phase <b>' + (Math.abs(e) < nul ? 'near null' : inPhase ? '0° (core toward S₁)' : '180° (core toward S₂)') + '</b> &nbsp; ' + (Math.abs(x) <= 2 ? '<b>linear region</b>' : '<b>outside linear region</b>: ' + ((e - x / 2) / (x / 2) * 100).toFixed(0) + ' % from the line');
+    }
+    lvDraw = draw; return draw;
+  });
+  Deck.loop('lvdtsim', dt => { if (!lvDraw || RM) return; lvPh -= dt * 2.2; lvDraw(); });
+
+  /* ---- capacitive bench ---- */
+  Deck.onShow('capsim', () => {
+    const get = Deck.controls('simCap', draw);
+    function draw() {
+      const v = get(), u = v.u, mode = v.mode;
+      const f = mode === 'gap' ? (s => s / (1 - s)) : (s => s);
+      // drawing
+      const { ctx, W, H } = Deck.sizeCanvas($('cvCapA'));
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const cx = W / 2, pw = Math.min(W * 0.5, 260), d0 = H * 0.26;
+      const plate = (x, y, w, col) => { ctx.fillStyle = Deck.color(col); ctx.fillRect(x, y - 3, w, 6); };
+      ctx.font = Deck.font(11.5, true); ctx.textBaseline = 'middle';
+      if (mode === 'gap') {
+        const yTop = H * 0.2, yBot = yTop + d0 * 1.6 * (1 - u);
+        plate(cx - pw / 2, yTop, pw, 'ink'); plate(cx - pw / 2, yBot, pw, 'acc');
+        ctx.fillStyle = Deck.color('muted'); ctx.textAlign = 'left'; ctx.fillText('gap = d(1 − u)', cx + pw / 2 + 8, (yTop + yBot) / 2);
+      } else if (mode === 'area') {
+        const y1 = H * 0.3, y2 = y1 + d0 * 1.4, sh = u * pw * 0.6;
+        plate(cx - pw / 2, y1, pw, 'ink'); plate(cx - pw / 2 + sh - pw * 0.0, y2, pw, 'acc');
+        ctx.fillStyle = Deck.alpha('blu', .2); const a = Math.max(cx - pw / 2, cx - pw / 2 + sh), b = Math.min(cx + pw / 2, cx + pw / 2 + sh);
+        ctx.fillRect(a, y1 + 3, b - a, y2 - y1 - 6);
+        ctx.fillStyle = Deck.color('muted'); ctx.textAlign = 'left'; ctx.fillText('overlap shaded', 8, H - 12);
+      } else {
+        const yA = H * 0.15, yC = H * 0.85, yM = (yA + yC) / 2 - u * (yC - yA) / 2;
+        plate(cx - pw / 2, yA, pw, 'ink'); plate(cx - pw / 2, yC, pw, 'ink'); plate(cx - pw / 2, yM, pw, 'acc');
+        ctx.fillStyle = Deck.color('muted'); ctx.textAlign = 'left';
+        ctx.fillText('C₁, gap d(1 − u)', cx + pw / 2 + 8, (yA + yM) / 2); ctx.fillText('C₂, gap d(1 + u)', cx + pw / 2 + 8, (yM + yC) / 2);
+      }
+      const yr = mode === 'gap' ? [-0.6, 1.6] : [-0.7, 0.7];
+      const lbl = mode === 'gap' ? 'ΔC / C₀' : mode === 'area' ? 'ΔA / A₀ = ΔC / C₀' : 'Eₒ / (Eᵢ/2)';
+      Deck.plot($('cvCapB'), { x: [-0.6, 0.6], y: yr, xlabel: 'normalised displacement u', ylabel: lbl,
+        hlines: [{ y: 0, color: 'muted', dash: [2, 3] }],
+        series: [{ f: s => s, color: 'muted', dash: [5, 4], width: 1.5 }, { f: f, color: 'acc' }],
+        points: [{ x: u, y: f(u), color: 'ink', r: 5 }] });
+      const err = Math.abs(u) > 1e-6 ? (f(u) - u) / u * 100 : 0;
+      $('roCap').innerHTML = 'output <b>' + f(u).toFixed(3) + '</b> &nbsp; straight line <b>' + u.toFixed(3) + '</b> &nbsp; deviation <b>' + err.toFixed(1) + ' %</b> of the line' + (mode === 'diff' ? ' &nbsp; (C₁−C₂)/(C₁+C₂) = u exactly' : '');
+    }
+    return draw;
+  });
+})();
+</script>
+</body>
+</html>

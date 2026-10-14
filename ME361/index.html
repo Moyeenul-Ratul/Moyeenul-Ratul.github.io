@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ME 361 Interactive Sessions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<style>
+html,body{margin:0}
+/* Layout: a course map on chart-recorder paper — syllabus index on top, then the deck run in course order. */
+:root{
+  --paper:#F3F5F6; --panel:#FCFDFD; --ink:#16202B; --muted:#56636F; --rule:#D3DAE0; --grid:#E4E9ED;
+  --acc:#C9481A; --acc-soft:#F8E3D9; --blu:#1D63AE; --blu-soft:#DCE8F5;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"Public Sans","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --paper:#0E141A; --panel:#141C24; --ink:#E3E9EF; --muted:#94A2AF; --rule:#2B3743; --grid:#19222B;
+  --acc:#FF7D4A; --acc-soft:#3A2116; --blu:#6CAEFF; --blu-soft:#16283C; color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --paper:#0E141A; --panel:#141C24; --ink:#E3E9EF; --muted:#94A2AF; --rule:#2B3743; --grid:#19222B;
+  --acc:#FF7D4A; --acc-soft:#3A2116; --blu:#6CAEFF; --blu-soft:#16283C; color-scheme:dark; }
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:1rem;line-height:1.55;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:24px 24px;padding-inline:16px;padding-block:0}
+.wrap{max-width:1080px;margin:0 auto;padding-block:40px 64px;display:flex;flex-direction:column;gap:40px}
+a{color:var(--blu)}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:3px}
+.eyebrow{font-family:var(--f-mono);font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--acc);margin:0}
+h1,h2,h3{font-family:var(--f-display);margin:0;line-height:1.05;text-wrap:balance}
+h1{font-size:clamp(2.6rem,7vw,4.4rem);font-weight:700}
+h2{font-size:clamp(1.6rem,3.5vw,2.2rem);font-weight:600}
+h3{font-size:1.45rem;font-weight:600}
+p{margin:0;max-width:66ch}
+.hero{display:flex;flex-direction:column;gap:14px}
+.hero .lead{font-size:1.2rem;max-width:60ch}
+.trace{width:100%;height:90px;display:block}
+.trace path{fill:none;stroke-width:2.4}
+.keys{display:flex;flex-wrap:wrap;gap:8px 18px;font-family:var(--f-mono);font-size:.8rem;color:var(--muted)}
+.keys kbd{font-family:var(--f-mono);border:1px solid var(--rule);border-bottom-width:2px;border-radius:4px;padding:0 .4em;background:var(--panel);color:var(--ink)}
+section{display:flex;flex-direction:column;gap:16px}
+.tbl{overflow-x:auto;border:1px solid var(--rule);border-radius:8px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+th,td{padding:9px 14px;text-align:left;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-family:var(--f-mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:none}
+td .dl{display:inline-block;font-family:var(--f-mono);font-size:.82rem;text-decoration:none;border:1px solid var(--rule);border-radius:999px;padding:.05em .55em;margin:0 4px 4px 0;color:var(--ink);background:var(--paper)}
+td .dl:hover{border-color:var(--acc)}
+.group{display:flex;flex-direction:column;gap:12px}
+.group > header{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid var(--rule);padding-bottom:6px}
+.group > header span{font-family:var(--f-mono);font-size:.75rem;color:var(--muted)}
+.decks{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.deck{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0;text-decoration:none;color:var(--ink);transition:border-color .15s}
+.deck:hover{border-color:var(--acc)}
+.deck .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.deck .n{font-family:var(--f-display);font-weight:700;font-size:2.4rem;line-height:1;color:var(--acc)}
+.deck .ch{font-family:var(--f-mono);font-size:.72rem;color:var(--muted);text-align:right}
+.deck p{font-size:.92rem;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips span{font-size:.75rem;background:var(--blu-soft);color:var(--ink);border-radius:999px;padding:.1em .6em}
+.deck .foot{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:6px;font-family:var(--f-mono);font-size:.78rem;color:var(--muted)}
+.deck .go{color:var(--acc);font-weight:600}
+.resume{color:var(--blu)}
+.legend-note{font-size:.9rem;color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){ .trace .draw{stroke-dasharray:1200;stroke-dashoffset:1200;animation:draw 2.4s ease forwards} @keyframes draw{to{stroke-dashoffset:0}} }
+
+h4{font-family:var(--f-display);font-size:1.3rem;font-weight:600;margin:0;line-height:1.1;text-wrap:balance}
+.topic{display:flex;flex-direction:column;gap:10px}
+.thead{display:flex;align-items:baseline;gap:12px}
+.thead .n{font-family:var(--f-display);font-weight:700;font-size:2rem;color:var(--acc);line-height:1}
+.thead h3{flex:1;min-width:0}
+.thead .cnt{font-family:var(--f-mono);font-size:.75rem;color:var(--muted)}
+.group{gap:22px}
+.deck .pl{font-family:var(--f-mono);font-size:.78rem;font-weight:600;color:var(--acc);letter-spacing:.06em;text-transform:uppercase}
+.deck.off{opacity:.6;border-style:dashed}
+.dl.off{opacity:.45}
+.prog{color:var(--acc)}
+#groups{display:flex;flex-direction:column;gap:34px}
+</style>
+</head><body>
+
+<div class="wrap">
+<header class="hero">
+  <p class="eyebrow">ME 361 · Instrumentation and Measurement · BUET</p>
+  <h1>Interactive sessions</h1>
+  <p class="lead">Interactive sessions for the lectures on measurement-system behaviour, sensing elements and signal conditioning. Each part is a short set of 16–18 slides that explains its ideas fully, with drawn figures, worked examples, simulations to play with and quick questions to check yourself.</p>
+  <svg class="trace" viewBox="0 0 1000 90" preserveAspectRatio="none" aria-hidden="true">
+    <path class="draw" style="stroke:var(--blu)" d="M0 80 C 80 80, 120 18, 260 14 L1000 14" />
+    <path class="draw" style="stroke:var(--acc)" d="M0 80 C 40 80, 70 -10, 110 4 S 170 34, 200 24 S 250 6, 280 12 S 330 20, 360 16 S 420 12, 460 14 L1000 14" />
+  </svg>
+  <div class="keys"><span><kbd>←</kbd> <kbd>→</kbd> or swipe to move</span><span><kbd>O</kbd> slide list</span><span>Each part remembers where you stopped</span></div>
+</header>
+<section aria-labelledby="map"><h2 id="map">Syllabus topics and the matching sessions</h2><div class="tbl"><table><tr><th>Course topic</th><th>Parts</th></tr>
+<tr><td>Behaviour of measurement systems / system dynamics</td><td><a class="dl" href="d01a.html">01A</a><a class="dl" href="d01b.html">01B</a><a class="dl" href="d02a.html">02A</a><a class="dl" href="d02b.html">02B</a><a class="dl" href="d02c.html">02C</a></td></tr>
+<tr><td>Different types of sensing elements</td><td><a class="dl" href="d03a.html">03A</a><a class="dl" href="d03b.html">03B</a></td></tr>
+<tr><td>Signal conditioning: analog</td><td><a class="dl" href="d04a.html">04A</a><a class="dl" href="d04b.html">04B</a><a class="dl" href="d04c.html">04C</a></td></tr>
+<tr><td>Signal conditioning: digital, incl. data acquisition</td><td><a class="dl" href="d05a.html">05A</a><a class="dl" href="d05b.html">05B</a><a class="dl" href="d05c.html">05C</a><a class="dl" href="d05d.html">05D</a><a class="dl" href="d05e.html">05E</a><a class="dl" href="d05f.html">05F</a></td></tr>
+</table></div><p class="legend-note">Readings: Figliola &amp; Beasley, Theory and Design for Mechanical Measurements (Ch. 2, 3, 6); Holman, Experimental Methods for Engineers (Ch. 4); Floyd, Digital Fundamentals.</p></section>
+<section aria-labelledby="topics"><h2 id="topics">Sessions</h2><div id="groups">
+<div class="group"><header><h3>System behaviour</h3></header>
+<div class="topic"><div class="thead"><span class="n">01</span><h3>Signals</h3><span class="cnt">2 parts</span></div><div class="decks">
+<a class="deck" href="d01a.html" data-file="d01a.html"><div class="top"><span class="pl">Part A</span><span class="ch">18 slides</span></div><h4>Signal Types, Mean and RMS</h4><p>Before you choose an instrument, describe the signal it must follow. Is it steady or changing? Smooth or sampled? Predictable or random? How big is it on average, and how big are its swings?</p><div class="chips"><span>sampling and quantizing</span><span>the averaging window</span><span>Phase: one sine from sine plus cosine</span></div><div class="foot"><span></span><span class="go">Open →</span></div></a>
+<a class="deck" href="d01b.html" data-file="d01b.html"><div class="top"><span class="pl">Part B</span><span class="ch">18 slides</span></div><h4>Fourier Series and the Frequency Spectrum</h4><p>A clarinet and a trumpet can play the same note, yet you never confuse them. A healthy fan and one with a loose bearing can turn at the same speed, yet an accelerometer tells them apart. The difference is which frequencies the signal contains, and how strongly. This part teaches you to find them.</p><div class="chips"><span>Orthogonality</span><span>Fourier series builder</span><span>The Fourier transform</span><span>spectrum of two sines</span></div><div class="foot"><span></span><span class="go">Open →</span></div></a>
+</div></div>
+<div class="topic"><div class="thead"><span class="n">02</span><h3>System Response</h3><span class="cnt">3 parts</span></div><div class="decks">
+<a class="deck" href="d02a.html" data-file="d02a.html"><div class="top"><span class="pl">Part A</span><span class="ch">17 slides</span></div><h4>Models and First-Order Systems</h4><p>Why a thermometer “lies” for the first few seconds, how one number, the time constant τ, predicts exactly how long it lies, and how fast a sensor must be to follow a temperature that keeps changing.</p><div class="chips"><span>Time constant, error fraction, rise time</span><span>Game: find the hidden τ</span><span>Ramp input: a constant lag</span><span>Sine input: smaller and later</span></div><div class="foot"><span></span><span class="go">Open →</span></div></a>
+<a class="deck" href="d02b.html" data-file="d02b.html"><div class="top"><span class="pl">Part B</span><span class="ch">17 slides</span></div><h4>Second-Order Systems</h4><p>Why an accelerometer rings like a struck bell, how two numbers, the natural frequency ωₙ and the damping ratio ζ, predict that ringing, and how to choose them so the instrument reports vibration without exaggerating it.</p><div class="chips"><span>ringing</span><span>Resonance and the frequency bands</span></div><div class="foot"><span></span><span class="go">Open →</span></div></a>
+<a class="deck" href="d02c.html" data-file="d02c.html"><div class="top"><span class="pl">Part C</span><span class="ch">16 slides</span></div><h4>Transfer Functions and Distortion</h4><p>Real signals are many sine waves at once. This part shows how an instrument treats each of them, why a square wave can come out rounded or ringing, and how to predict what a whole chain of sensor, amplifier and recorder does to a signal.</p><div class="chips"><span>Frequency response from G(iω)</span><span>Worked example: same parts, different shape</span><span>square-wave distortion</span><span>Bode plot of a chain</span></div><div class="foot"><span></span><span class="go">Open →</span></div></a>
+</div></div>
+</div>
+<div class="group"><header><h3>Sensing elements</h3></header>
+<div class="topic"><div class="thead"><span class="n">03</span><h3>Sensing Elements</h3><span class="cnt">2 parts</span></div><div class="decks">
+<a class="deck" href="d03a.html" data-file="d03a.html"><div class="top"><span class="pl">Part A</span><span class="ch">17 slides</span></div><h4>Resistive, Capacitive and Inductive Transducers</h4><p>A sliding contact, a moving plate and an iron core: three simple mechanical changes that turn a displacement into a change of resistance, capacitance or magnetic coupling. This part builds each one, derives its output, and shows where it bends away from a straight line.</p><div class="chips"><span>Potentiometer loading</span><span>LVDT simulator</span><span>Capacitive sensor simulator</span></div><div class="foot"><span></span><span class="go">Open →</span></div></a>
+<a class="deck" href="d03b.html" data-file="d03b.html"><div class="top"><span class="pl">Part B</span><span class="ch">18 slides</span></div><h4>Piezoelectric, Optical, Hall-Effect and Digital Transducers</h4><p>Squeeze a crystal and it gives a charge. Shine light on a semiconductor and it conducts or makes a voltage. Push a current through a magnetic field and a voltage appears sideways. Chop a light beam with a slotted disc and you count position. This part derives each effect and the sensors built on it.</p><div class="chips"><span>Charge leakage and the time constant</span><span>Photoconductive cell in a divider</span><span>Hall-effect simulator and applications</span><span>Quadrature encoder simulator</span></div><div class="foot"><span></span><span class="go">Open →</span></div></a>
+</div></div>
+</div>
+<div class="group"><header><h3>Signal conditioning</h3></header>
+<div class="topic"><div class="thead"><span class="n">04</span><h3>Analog Signal Conditioning</h3><span class="cnt">3 parts</span></div><div class="decks">
+<a class="deck" href="d04a.html" data-file="d04a.html"><div class="top"><span class="pl">Part A</span><span class="ch">17 slides</span></div><h4>Meters and Electrical Instruments</h4><p>A transducer hands you a current, a voltage, a resistance or a train of pulses. This part shows the instruments that read them: moving-coil and AC meters, the null-balance potentiometer, digital and electronic voltmeters, oscilloscopes, recorders and counters, and how each one can disturb what it measures.</p><div class="chips"><span>Galvanometer: deflection and null modes</span><span>Null-balance voltage: the potentiometer</span><span>Digital meters: counting clock pulses</span><span>Phase and frequency with Lissajous figures</span></div><div class="foot"><span></span><span class="go">Open →</span></div></a>
+<a class="deck" href="d04b.html" data-file="d04b.html"><div class="top"><span class="pl">Part B</span><span class="ch">17 slides</span></div><h4>Bridges, Loading and Impedance</h4><p>A strain gauge changes by a fraction of an ohm, an RTD by a few ohms. The Wheatstone bridge turns those tiny changes into a voltage you can read. Then every meter you connect borrows a little of that signal. This part shows how to read small resistance changes and how to keep the act of reading from spoiling them.</p><div class="chips"><span>Bridge simulator</span><span>Loading simulator</span></div><div class="foot"><span></span><span class="go">Open →</span></div></a>
+<a class="deck" href="d04c.html" data-file="d04c.html"><div class="top"><span class="pl">Part C</span><span class="ch">18 slides</span></div><h4>Amplifiers, Filters and Grounding</h4><p>A bridge hands you a few millivolts with mains hum and hiss riding on top. This part makes that signal large with operational amplifiers, removes the unwanted frequencies with filters, and keeps new noise out with proper grounds, shields and wiring.</p><div class="chips"><span>Op-amp circuit simulator</span><span>Filter simulator</span></div><div class="foot"><span></span><span class="go">Open →</span></div></a>
+</div></div>
+<div class="topic"><div class="thead"><span class="n">05</span><h3>Digital Devices &amp; Data Acquisition</h3><span class="cnt">6 parts</span></div><div class="decks">
+<a class="deck" href="d05a.html" data-file="d05a.html"><div class="top"><span class="pl">Part A</span><span class="ch">18 slides</span></div><h4>Number Systems, Codes and Logic Gates</h4><p>Every reading that leaves a modern instrument travels as a pattern of HIGH and LOW voltages. This part teaches the language of those patterns: how numbers and characters are coded in bits, and how simple gates make decisions with them.</p><div class="chips"><span>Number-base converter simulator</span><span>Absolute encoder simulator</span><span>Logic gate playground</span></div><div class="foot"><span></span><span class="go">Open →</span></div></a>
+<a class="deck" href="d05b.html" data-file="d05b.html"><div class="top"><span class="pl">Part B</span><span class="ch">18 slides</span></div><h4>Boolean Algebra, Combinational Logic and Flip-Flops</h4><p>Gates decide; flip-flops remember. With a little algebra you can turn a safety rule into the smallest possible circuit, and with a few flip-flops you can count pulses, tell which way a shaft turns and measure frequency.</p><div class="chips"><span>Karnaugh-map simplifier</span><span>Flip-flop timing simulator; encoder direction</span><span>Frequency counter simulator</span></div><div class="foot"><span></span><span class="go">Open →</span></div></a>
+<a class="deck" href="d05c.html" data-file="d05c.html"><div class="top"><span class="pl">Part C</span><span class="ch">17 slides</span></div><h4>Sampling and Aliasing</h4><p>A computer never sees your signal. It sees a list of numbers taken at fixed instants. Take them too rarely and a fast vibration can masquerade as a slow one, and nothing in the numbers will warn you.</p><div class="chips"><span>Aliasing simulator</span><span>Wagon-wheel effect</span><span>Leakage simulator</span></div><div class="foot"><span></span><span class="go">Open →</span></div></a>
+<a class="deck" href="d05d.html" data-file="d05d.html"><div class="top"><span class="pl">Part D</span><span class="ch">18 slides</span></div><h4>Bits, Words and Converters</h4><p>Every sample from part C must become a whole number before a computer can keep it. Converters build the bridge between volts and bits, and the size of their smallest step decides what you can and cannot see.</p><div class="chips"><span>HIGH and LOW signals; register simulator</span><span>Quantization simulator</span><span>Successive-approximation simulator</span><span>Ramp and dual-slope converters</span></div><div class="foot"><span></span><span class="go">Open →</span></div></a>
+<a class="deck" href="d05e.html" data-file="d05e.html"><div class="top"><span class="pl">Part E</span><span class="ch">18 slides</span></div><h4>DAQ Systems and Communication</h4><p>Sensors, filters, a multiplexer, a sample-and-hold, a converter and a computer: put them together and you have a data-acquisition system. How you wire it, and how its numbers travel, decides whether the data can be trusted.</p><div class="chips"><span>Multiplexer simulator: rate and skew</span><span>Gain and offset simulator</span><span>Wiring simulator: single-ended versus differential</span><span>Digital images</span></div><div class="foot"><span></span><span class="go">Open →</span></div></a>
+<a class="deck" href="d05f.html" data-file="d05f.html"><div class="top"><span class="pl">Part F</span><span class="ch">18 slides</span></div><h4>Industrial Transmission and Digital Filtering</h4><p>A sensor signal must cross a noisy plant, survive ground differences, be converted with enough resolution and then be cleaned of hum and spikes. This part covers the 4–20 mA current loop, isolation, the sigma-delta converter and the digital filters that work on the stored numbers.</p><div class="chips"><span>Loop budget simulator</span><span>The sigma-delta modulator</span><span>Oversampling, noise shaping; sigma-delta or SAR</span><span>Filter playground and the 50 Hz example</span></div><div class="foot"><span></span><span class="go">Open →</span></div></a>
+</div></div>
+</div></div></section></div>
+<script>
+(function(){ try{ const saved={}; for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i)||''; const m=/^deck:.*\/(d\d\d[a-f]\.html)$/.exec(k)||/^deck:(d\d\d[a-f]\.html)$/.exec(k); if(m) saved[m[1]]=+localStorage.getItem(k);}
+ document.querySelectorAll('a.deck[data-file]').forEach(a=>{const s=saved[a.dataset.file]; if(s>0){a.href=a.dataset.file+'#s'+(s+1); const g=a.querySelector('.go'); g.textContent='Resume at slide '+(s+1)+' →'; g.classList.add('resume');}}); }catch(e){} })();
+</script>
+</body></html>

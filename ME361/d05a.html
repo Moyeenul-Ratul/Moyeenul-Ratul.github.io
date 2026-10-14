@@ -1,0 +1,934 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Numbers, Codes and Gates</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="deck.css">
+<style>
+  .tbl.compact th,.tbl.compact td{padding:5px 10px;font-size:.88rem}
+  .tbl.tt th,.tbl.tt td{padding:3px 9px;font-size:.86rem;font-family:var(--f-mono);text-align:center}
+  .readout{display:block;line-height:1.9}
+  svg .w{stroke:var(--ink);stroke-width:1.5;fill:none}
+  svg .gb{fill:var(--panel);stroke:var(--ink);stroke-width:1.6}
+  svg .band-h{fill:var(--acc-soft)} svg .band-l{fill:var(--blu-soft)} svg .band-x{fill:var(--red-soft)}
+  .ov{text-decoration:overline}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:640px){.duo{grid-template-columns:1fr}}
+  .bits{display:flex;gap:5px;flex-wrap:wrap}
+  .bits > button{min-width:2.2em;display:inline-flex;flex-direction:column;align-items:center;gap:1px;padding:.28em .3em;
+    border:1.5px solid var(--rule);border-radius:6px;background:var(--paper);color:var(--ink);font:600 .98rem var(--f-mono);cursor:pointer}
+  .bits small{font:400 .6rem var(--f-mono);color:var(--muted)}
+  .bits .on{border-color:var(--acc);background:var(--acc-soft);color:var(--acc)}
+  @media (max-width:480px){.bits{gap:3px}.bits > button{min-width:1.75em;padding:.2em .1em;font-size:.82rem}}
+  .btnrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .btnrow .btn{font-size:.82rem;padding:.45em .75em}
+  .convin{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:.9rem}
+  .convin input[type=text]{font:600 1rem var(--f-mono);color:var(--ink);background:var(--paper);border:1px solid var(--rule);border-radius:6px;padding:.3em .5em;width:11em}
+  .tt tr.cur td{background:var(--acc-soft);color:var(--acc);font-weight:700}
+  .gcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .gcards .card{padding:10px 12px;gap:4px}
+  .gcards svg{max-width:150px}
+  .warn{color:var(--red);font-weight:600}
+  .cover h1{max-width:24ch}
+</style>
+<script>window.DECK = { num: "05a", title: "Number Systems, Codes and Logic Gates" };</script>
+<script src="deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+
+<!-- 1 · Cover -->
+<section class="slide cover center" id="cover" data-title="Cover">
+  <p class="num">TOPIC 05 · PART A OF 6</p>
+  <h1>Number Systems, Codes and Logic Gates</h1>
+  <p class="lead">Every reading that leaves a modern instrument travels as a pattern of HIGH and LOW voltages. This part teaches the language of those patterns: how numbers and characters are coded in bits, and how simple gates make decisions with them.</p>
+  <div class="parts"><span>A · Number systems, codes and logic gates</span><a href="d05b.html">B · Boolean algebra, combinational logic and flip-flops</a><a href="d05c.html">C · Sampling and aliasing</a><a href="d05d.html">D · Bits, words and converters</a><a href="d05e.html">E · DAQ systems and communication</a><a href="d05f.html">F · Industrial transmission and digital filtering</a></div>
+  <canvas class="bigtrace" id="coverTrace" data-h="120" aria-label="Animated timing diagram: a clock, two data waveforms A and B, and the AND of A and B scrolling past"></canvas>
+  <ol class="agenda">
+    <li>Analog and digital; bits and logic levels</li>
+    <li>Pulses, clocks and timing diagrams</li>
+    <li>Binary, hexadecimal and octal numbers</li>
+    <li>Signed numbers and binary arithmetic</li>
+    <li>BCD, Gray code, ASCII and parity</li>
+    <li>The seven logic gates and the logic families</li>
+  </ol>
+</section>
+
+<!-- 2 · Where we are -->
+<section class="slide" id="where" data-title="Where we are">
+  <p class="eyebrow">Where we are</p>
+  <h2>The analog chain is built; now the signal enters the digital world</h2>
+  <div class="cols">
+    <div>
+      <p>The previous topic built the analog half of a measurement chain: a sensor produces a small voltage, a bridge or amplifier raises it, and a filter removes noise. Almost every chain then ends in a digital device: a counter, a data-acquisition card, a programmable logic controller (PLC) or a computer. This topic covers that digital half.</p>
+      <p class="define">An <dfn>analog quantity</dfn> has continuous values: a thermocouple voltage can be 4.0961 mV or anything near it. A <dfn>digital quantity</dfn> has a set of discrete values: a limit switch is open or closed; a counter holds 1250, never 1250.4.</p>
+      <p>Digital signals win on four counts. Small noise does not change a 0 into a 1, so readings survive long cables. Numbers can be stored for years without drift. Arithmetic, filtering and decisions are done exactly by a processor. A copy is identical to the original.</p>
+      <div class="analogy"><p>An analog signal is a dimmer: every position gives a slightly different brightness, and a shaky hand changes the light. A digital signal is a wall switch: a shaky hand does nothing until you actually flip it. Digital electronics trades fine resolution for that robustness, then wins resolution back by using many switches together.</p></div>
+    </div>
+    <div>
+      <div class="grid-cards">
+        <div class="card"><span class="tag">Parts A–B · the language</span><h3>Numbers, codes, logic</h3><p>How bits stand for numbers and characters, how gates combine them, and how flip-flops remember and count.</p></div>
+        <div class="card"><span class="tag">Parts C–E · the crossing</span><h3>Volts to numbers</h3><p>Sampling, converters and complete data-acquisition systems.</p></div>
+        <div class="card"><span class="tag">Part F · the journey</span><h3>Transmission and filtering</h3><p>Sending readings across a plant and filtering them in software.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 · Bits and logic levels -->
+<section class="slide" id="levels" data-title="Bits and logic levels">
+  <p class="eyebrow">Binary digits</p>
+  <h2>A bit is a voltage that is either HIGH or LOW, with a forbidden gap between</h2>
+  <div class="cols">
+    <div>
+      <p class="define">A <dfn>bit</dfn> (binary digit) is one of the two symbols 0 and 1. A digital circuit represents them by two voltage ranges called <dfn>logic levels</dfn>. In <dfn>positive logic</dfn>, used throughout this course, the higher range (HIGH) means 1 and the lower range (LOW) means 0.</p>
+      <p>A HIGH is not one exact voltage. A practical gate accepts any input between a minimum and a maximum value as HIGH, and any input in a lower band as LOW. The labels on the figure are those limits: \(V_{H(\min)}\) is the smallest voltage still read as HIGH, \(V_{L(\max)}\) the largest still read as LOW.</p>
+      <p>The band between \(V_{L(\max)}\) and \(V_{H(\min)}\) is <b>unacceptable</b>. A voltage there may be read as either level, and may be read differently from moment to moment. For the 5 V transistor-transistor logic (TTL) inputs drawn here, HIGH is 2.0–5.0 V and LOW is 0–0.8 V.</p>
+      <p>Why ranges and not exact values? Because resistances, supply voltage and temperature vary from part to part, and because cables pick up noise. The noisy trace on the right is still read perfectly: every point lies inside one band.</p>
+    </div>
+    <div>
+    <figure>
+      <svg viewBox="0 0 400 236" aria-label="Logic level bands for a 5 V TTL input: HIGH from 2.0 to 5.0 volts, unacceptable from 0.8 to 2.0 volts, LOW from 0 to 0.8 volts, with a noisy digital waveform that stays inside the HIGH and LOW bands">
+        <rect x="64" y="20" width="76" height="114" class="band-h"/>
+        <rect x="64" y="134" width="76" height="45.6" class="band-x"/>
+        <rect x="64" y="179.6" width="76" height="30.4" class="band-l"/>
+        <path d="M64 20 H392 M64 134 H392 M64 179.6 H392 M64 210 H392" class="ln-thin dash"/>
+        <text x="102" y="74" text-anchor="middle" font-size="12.5" class="t-acc">HIGH</text><text x="102" y="90" text-anchor="middle" font-size="11">(binary 1)</text>
+        <text x="102" y="155" text-anchor="middle" font-size="10.5">unacceptable</text><text x="102" y="168" text-anchor="middle" font-size="10.5">(undefined)</text>
+        <text x="102" y="199" text-anchor="middle" font-size="12" class="t-blu">LOW (0)</text>
+        <text x="58" y="24" text-anchor="end" class="t-mono" font-size="10.5">5.0 V</text><text x="58" y="36" text-anchor="end" class="t-mono t-muted" font-size="9.5">VH(max)</text>
+        <text x="58" y="131" text-anchor="end" class="t-mono" font-size="10.5">2.0 V</text><text x="58" y="143" text-anchor="end" class="t-mono t-muted" font-size="9.5">VH(min)</text>
+        <text x="58" y="177" text-anchor="end" class="t-mono" font-size="10.5">0.8 V</text><text x="58" y="189" text-anchor="end" class="t-mono t-muted" font-size="9.5">VL(max)</text>
+        <text x="58" y="214" text-anchor="end" class="t-mono" font-size="10.5">0 V</text><text x="58" y="226" text-anchor="end" class="t-mono t-muted" font-size="9.5">VL(min)</text>
+        <path d="M150 198 L158 195 L166 200 L174 196 L182 199 L188 197 L192 46 L200 42 L208 47 L216 41 L224 45 L232 40 L240 44 L246 42 L250 196 L258 200 L266 195 L274 199 L282 196 L290 200 L296 197 L300 44 L308 40 L316 46 L324 42 L332 45 L340 41 L346 43 L350 197 L358 199 L366 195 L374 200 L382 197 L390 198" class="ln-acc"/>
+        <text x="270" y="232" text-anchor="middle" font-size="10.5" class="t-muted">noisy signal: 0 1 0 1 0, read without error</text>
+      </svg>
+      <figcaption>Logic levels of a 5 V TTL input. The noise on the trace never crosses into the unacceptable band, so every bit is read correctly.</figcaption>
+    </figure>
+      <div class="quiz" data-correct="2">
+        <p class="q">A proximity sensor drives a 5 V TTL input through a long cable. On a scope the LOW level sits at 1.3 V. What will the input read?</p>
+        <div class="opts">
+          <button class="opt" data-why="1.3 V is above \(V_{L(\max)}=0.8\) V, so it is not a guaranteed LOW.">Always LOW</button>
+          <button class="opt" data-why="1.3 V is below \(V_{H(\min)}=2.0\) V, so it is not a guaranteed HIGH either.">Always HIGH</button>
+          <button class="opt" data-why="1.3 V lies in the unacceptable band 0.8–2.0 V. The gate may read it either way and may flicker between the two. Fix the wiring or the ground offset.">Unpredictable: it may read either level</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 · Waveforms -->
+<section class="slide" id="waves" data-title="Pulses, clocks and timing diagrams">
+  <p class="eyebrow">Digital waveforms</p>
+  <h2>Pulses, period, duty cycle and the clock</h2>
+  <div class="cols">
+    <div>
+      <p class="define">A <dfn>pulse</dfn> is a jump from the resting level to the other level and back. Its first edge is the <dfn>leading edge</dfn>, its last the <dfn>trailing edge</dfn>. Real edges take time: the <dfn>rise time</dfn> \(t_r\) is measured from 10 % to 90 % of the pulse amplitude, the <dfn>fall time</dfn> \(t_f\) from 90 % to 10 %, and the <dfn>pulse width</dfn> \(t_W\) between the 50 % points of the two edges. The extreme 10 % at each end is left out because the edge bends there.</p>
+      <p>A <dfn>periodic</dfn> pulse train repeats every <dfn>period</dfn> \(T\), measured from one edge to the same edge of the next pulse. Its frequency and duty cycle are</p>
+      <div class="eq"><span class="label">Frequency and duty cycle of a pulse train</span>
+        $$f=\frac{1}{T}\qquad \text{duty cycle}=\frac{t_W}{T}\times100\%$$
+      </div>
+      <p>A <dfn>clock</dfn> is a periodic waveform whose period sets the <dfn>bit time</dfn>, the interval that one bit occupies; all other waveforms in the circuit change in step with its edges. A <dfn>timing diagram</dfn> draws several waveforms on one time axis, so you can read the state of every line at any instant.</p>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 172" aria-label="A non-ideal pulse with overshoot, ringing and droop; 10, 50 and 90 percent levels; rise time between 10 and 90 percent on the rising edge; pulse width between the 50 percent points; fall time on the falling edge">
+          <path d="M40 140 H100 L130 30 Q134 22 140 30 Q146 38 152 32 Q156 29 160 33 L290 36 L320 140 Q326 148 332 140 Q336 136 340 140 H392" class="ln-acc"/>
+          <path d="M40 129 H392 M40 85 H392 M40 41 H392" class="ln-thin dash"/>
+          <text x="36" y="132" text-anchor="end" class="t-mono t-muted" font-size="10">10%</text>
+          <text x="36" y="88" text-anchor="end" class="t-mono t-muted" font-size="10">50%</text>
+          <text x="36" y="44" text-anchor="end" class="t-mono t-muted" font-size="10">90%</text>
+          <path d="M103 129 V156 M127 41 V156" class="ln-thin"/><text x="115" y="168" text-anchor="middle" class="t-mono" font-size="11">tr</text>
+          <path d="M115 85 H303" class="ln-blu"/><text x="210" y="80" text-anchor="middle" class="t-mono t-blu" font-size="11">tW (50% to 50%)</text>
+          <path d="M292 41 V156 M316 129 V156" class="ln-thin"/><text x="304" y="168" text-anchor="middle" class="t-mono" font-size="11">tf</text>
+          <text x="146" y="16" text-anchor="middle" font-size="10" class="t-muted">overshoot, ringing</text>
+          <text x="225" y="28" text-anchor="middle" font-size="10" class="t-muted">droop</text>
+          <text x="355" y="156" text-anchor="middle" font-size="10" class="t-muted">undershoot</text>
+        </svg>
+        <figcaption>A real pulse. The ideal pulse has vertical edges and a flat top.</figcaption>
+      </figure>
+      <div class="example">
+        <p class="given">An optical tachometer looks at a disc with 20 slots. Its output is the pulse train below (times in ms). Find the period, frequency and duty cycle, and the shaft speed.</p>
+        <svg viewBox="0 0 400 62" aria-label="Pulse train: pulses from 0 to 1 ms, 10 to 11 ms and 20 to 21 ms">
+          <path d="M20 44 H40 V12 H50 V44 H140 V12 H150 V44 H240 V12 H250 V44 H340 V12 H350 V44 H390" class="ln-acc"/>
+          <text x="40" y="58" text-anchor="middle" class="t-mono" font-size="10">0</text><text x="52" y="58" text-anchor="middle" class="t-mono" font-size="10">1</text>
+          <text x="140" y="58" text-anchor="middle" class="t-mono" font-size="10">10</text><text x="152" y="58" text-anchor="start" class="t-mono" font-size="10">11</text>
+          <text x="240" y="58" text-anchor="middle" class="t-mono" font-size="10">20</text><text x="340" y="58" text-anchor="middle" class="t-mono" font-size="10">30</text>
+          <text x="396" y="58" text-anchor="end" class="t-mono t-muted" font-size="10">t (ms)</text>
+        </svg>
+        <ol class="steps">
+          <li>Known: \(t_W=1\) ms, leading edges at 0, 10, 20 ms; 20 slots per revolution. Find: \(T, f\), duty cycle, speed.</li>
+          <li>Period, leading edge to leading edge: \(T=10\) ms. Frequency \(f=1/T=1/0.010\ \text{s}=100\) Hz.</li>
+          <li>Duty cycle \(=t_W/T\times100\%=1/10\times100\%=10\%\).</li>
+          <li>Each slot gives one pulse, so the shaft turns \(100/20=5\) rev/s \(=300\) rpm. The digital meter only has to count edges; no voltage needs to be measured accurately.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 · Binary numbers -->
+<section class="slide" id="binary" data-title="Binary and decimal numbers">
+  <p class="eyebrow">Number systems</p>
+  <h2>Binary is decimal with only two digits: each place is worth twice the one to its right</h2>
+  <div class="cols">
+    <div>
+      <p>In a <dfn>positional number system</dfn> each digit is multiplied by a <dfn>weight</dfn> that depends on its place. In decimal (base 10) the weights are powers of ten: \(568.23=5\times10^2+6\times10^1+8\times10^0+2\times10^{-1}+3\times10^{-2}\).</p>
+      <p><dfn>Binary</dfn> (base 2) uses only 0 and 1, and the weights are powers of two:</p>
+      <div class="eq"><span class="label">Value of a binary number</span>
+        $$N=\sum_k b_k\,2^{k}=\dots+b_2 2^2+b_1 2^1+b_0 2^0+b_{-1}2^{-1}+b_{-2}2^{-2}+\dots$$
+      </div>
+      <div class="symbols">
+        <span>\(b_k\)</span><span>bit in place \(k\) (0 or 1); \(k=0\) is just left of the binary point</span>
+        <span>\(2^k\)</span><span>weight: 1, 2, 4, 8, 16 … to the left; ½, ¼, ⅛ … to the right</span>
+      </div>
+      <p>So binary to decimal is "add the weights of the 1s": \(1101101_2=64+32+8+4+1=109\), and \(0.1011_2=0.5+0.125+0.0625=0.6875\). With \(n\) bits you can count from 0 to \(2^n-1\); four bits reach 15, eight bits 255.</p>
+      <p class="small"><b>Notation.</b> A subscript names the base: \(109_{10}=1101101_2\). The rightmost bit is the <dfn>least significant bit</dfn> (LSB), the leftmost the <dfn>most significant bit</dfn> (MSB).</p>
+    </div>
+    <div>
+      <div class="example">
+        <p class="given">Convert 58 and 0.3 (decimal) to binary.</p>
+        <ol class="steps">
+          <li><b>Why repeated division works.</b> Dividing a binary number by 2 shifts it one place right; the bit that falls off is the remainder. So the remainders, in order, are \(b_0, b_1, b_2,\dots\)</li>
+          <li>58 ÷ 2 = 29 r <b>0</b>; 29 ÷ 2 = 14 r <b>1</b>; 14 ÷ 2 = 7 r <b>0</b>; 7 ÷ 2 = 3 r <b>1</b>; 3 ÷ 2 = 1 r <b>1</b>; 1 ÷ 2 = 0 r <b>1</b>.</li>
+          <li>Read the remainders from last to first: \(58_{10}=111010_2\). Check: \(32+16+8+2=58\).</li>
+          <li><b>Fractions</b> go the other way: multiplying by 2 shifts left, and the bit that crosses the point is the next bit. 0.3 × 2 = <b>0</b>.6; 0.6 × 2 = <b>1</b>.2; 0.2 × 2 = <b>0</b>.4; 0.4 × 2 = <b>0</b>.8; 0.8 × 2 = <b>1</b>.6; 0.6 × 2 = <b>1</b>.2 …</li>
+          <li>\(0.3_{10}=0.0100110011\ldots_2\): the pattern 0011 repeats for ever. A computer must cut it off, so 0.3 is stored with a tiny error. This is why a program may print 0.1 + 0.2 as 0.30000000000000004.</li>
+        </ol>
+      </div>
+      <div class="analogy"><p>Binary weights work like a set of balance-pan masses of 1, 2, 4, 8, 16 … g. Any whole number of grams can be matched by putting each mass either on the pan (1) or off it (0), and there is exactly one way to do it.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · Hex and octal -->
+<section class="slide" id="hex" data-title="Hexadecimal and octal">
+  <p class="eyebrow">Number systems</p>
+  <h2>Hexadecimal and octal: shorthand for long rows of bits</h2>
+  <div class="cols wide-r">
+    <div>
+      <div class="tbl tt"><table>
+        <tr><th>Dec</th><th>Binary</th><th>Hex</th><th>Octal</th></tr>
+        <tr><td>0</td><td>0000</td><td>0</td><td>0</td></tr>
+        <tr><td>1</td><td>0001</td><td>1</td><td>1</td></tr>
+        <tr><td>2</td><td>0010</td><td>2</td><td>2</td></tr>
+        <tr><td>3</td><td>0011</td><td>3</td><td>3</td></tr>
+        <tr><td>4</td><td>0100</td><td>4</td><td>4</td></tr>
+        <tr><td>5</td><td>0101</td><td>5</td><td>5</td></tr>
+        <tr><td>6</td><td>0110</td><td>6</td><td>6</td></tr>
+        <tr><td>7</td><td>0111</td><td>7</td><td>7</td></tr>
+        <tr><td>8</td><td>1000</td><td>8</td><td>10</td></tr>
+        <tr><td>9</td><td>1001</td><td>9</td><td>11</td></tr>
+        <tr><td>10</td><td>1010</td><td>A</td><td>12</td></tr>
+        <tr><td>11</td><td>1011</td><td>B</td><td>13</td></tr>
+        <tr><td>12</td><td>1100</td><td>C</td><td>14</td></tr>
+        <tr><td>13</td><td>1101</td><td>D</td><td>15</td></tr>
+        <tr><td>14</td><td>1110</td><td>E</td><td>16</td></tr>
+        <tr><td>15</td><td>1111</td><td>F</td><td>17</td></tr>
+      </table></div>
+    </div>
+    <div>
+      <p>A 16-bit word such as 1100101001010111 is hard to read and easy to miscopy. <dfn>Hexadecimal</dfn> (base 16) uses the digits 0–9 and A–F (A = 10 … F = 15). Since \(16=2^4\), one hex digit stands for exactly four bits, so conversion is just regrouping. <dfn>Octal</dfn> (base 8, digits 0–7) does the same with groups of three bits, since \(8=2^3\).</p>
+      <ol class="steps" data-open>
+        <li><b>Binary → hex:</b> split into groups of four from the right: 1100 1010 0101 0111 = <b>CA57</b><sub>16</sub>.</li>
+        <li><b>Binary → octal:</b> groups of three from the right, padding the left: 001 011 001 011 = <b>1313</b><sub>8</sub> for 1011001011.</li>
+        <li><b>Hex → decimal:</b> weights are powers of 16: \(1A3F_{16}=1\cdot4096+10\cdot256+3\cdot16+15\cdot1=6719\).</li>
+        <li><b>Octal → decimal:</b> weights are powers of 8: \(2374_8=2\cdot512+3\cdot64+7\cdot8+4=1276\).</li>
+      </ol>
+      <div class="example">
+        <p class="given">A 12-bit data-acquisition card with a 0–10 V input range returns the reading 0x9C4 (the prefix 0x marks hexadecimal). The card divides its range into \(2^{12}=4096\) equal steps. What voltage was measured?</p>
+        <ol class="steps">
+          <li>\(9C4_{16}=9\cdot256+12\cdot16+4=2304+192+4=2500\).</li>
+          <li>Each step is \(10\ \text{V}/4096=2.441\) mV, so the input is \(2500\times10/4096=6.104\) V.</li>
+          <li>The same reading in binary is 1001 1100 0100: twelve bits, three hex digits. Instrument manuals and serial monitors almost always show raw readings in hex for this reason.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 · Converter simulator -->
+<section class="slide" id="conv" data-title="Number-base converter simulator">
+  <p class="eyebrow">Simulator · one word, many readings</p>
+  <h2>The same bits mean different numbers under different codes</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simConv">
+      <div class="simhead"><span>Number-base converter</span></div>
+      <div class="convin">
+        <input type="text" id="cvIn" value="-39" aria-label="Number to convert" spellcheck="false">
+        <select id="cvBase" aria-label="Base of the number typed"><option value="10" selected>decimal</option><option value="2">binary</option><option value="16">hex</option><option value="8">octal</option></select>
+        <select id="cvW" aria-label="Word length"><option value="4">4 bits</option><option value="8" selected>8 bits</option><option value="12">12 bits</option><option value="16">16 bits</option></select>
+        <button class="btn" type="button" id="cvGo">Convert</button>
+      </div>
+      <div class="bits" id="cvBits" aria-label="Bits of the word, most significant on the left; click a bit to toggle it"></div>
+      <div class="btnrow"><button class="btn" type="button" id="cvInc">+1</button><button class="btn" type="button" id="cvDec">−1</button><button class="btn" type="button" id="cvInv">Invert all (1's complement)</button><button class="btn" type="button" id="cvNeg">Negate (2's complement)</button></div>
+      <div class="tbl compact"><table id="cvTab"></table></div>
+      <div class="readout" id="cvSteps"></div>
+    </div>
+    <div>
+      <p>Type a number in any base, choose the word length, then press <b>Convert</b>, or click individual bits. The table shows what the same row of bits means when it is read as an unsigned number, as a signed number in three different codes (next slide), in hexadecimal and octal, and what the BCD and Gray codes of the unsigned value look like (slide 10).</p>
+      <p>The bottom line repeats the division-by-two procedure from slide 5 for the unsigned value, so you can check a hand conversion.</p>
+      <div class="try"><p>Enter <b>-39</b> with 8 bits: the word is 11011001. Read down the table: unsigned 217, two's complement −39, ones' complement −38, sign-magnitude −89. One pattern, four meanings: a word has no meaning until you know its code.</p>
+      <p>Now set 4 bits and enter 7, then press +1 repeatedly. Watch the signed reading jump from +7 to −8: the word has <b>overflowed</b>. Then switch to 16 bits and enter hex <b>9C4</b> to see the data-card reading of slide 6.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 · Signed numbers -->
+<section class="slide" id="signed" data-title="Binary arithmetic and signed numbers">
+  <p class="eyebrow">Arithmetic</p>
+  <h2>Adding bits, and three ways to write a negative number</h2>
+  <div class="cols">
+    <div>
+      <p>Binary addition has four rules: \(0+0=0\), \(0+1=1\), \(1+1=10\) (0, carry 1), and \(1+1+1=11\) (1, carry 1). Column by column, exactly as in decimal: \(0111+0011=1010\), that is \(7+3=10\).</p>
+      <p>A signed number needs one bit for the sign. By convention the MSB is the <dfn>sign bit</dfn>: 0 for positive, 1 for negative. The other bits can be used in three ways.</p>
+      <p class="define"><dfn>Sign-magnitude</dfn>: the remaining bits hold the size in plain binary. <dfn>1's complement</dfn>: a negative number is the positive one with every bit inverted. <dfn>2's complement</dfn>: the 1's complement plus 1. Positive numbers look the same in all three.</p>
+      <div class="tbl compact"><table>
+        <tr><th>Code</th><th>+39</th><th>−39</th><th>8-bit range</th></tr>
+        <tr><td>Sign-magnitude</td><td>00100111</td><td>10100111</td><td>−127 … +127</td></tr>
+        <tr><td>1's complement</td><td>00100111</td><td>11011000</td><td>−127 … +127</td></tr>
+        <tr><td>2's complement</td><td>00100111</td><td>11011001</td><td>−128 … +127</td></tr>
+      </table></div>
+      <p class="small">Sign-magnitude and 1's complement both have two zeros (00000000 and a "negative zero"), and need special rules for addition. 2's complement has a single zero and lets one adder circuit do both addition and subtraction, so every processor and data-acquisition card uses it.</p>
+    </div>
+    <div>
+      <p>Reading a 2's-complement word is easiest with weights: give the sign bit a <b>negative</b> weight \(-2^{n-1}\) and the others their usual weights.</p>
+      <div class="eq"><span class="label">Value of an n-bit 2's-complement word</span>
+        $$N=-b_{n-1}2^{n-1}+\sum_{k=0}^{n-2}b_k 2^k$$
+      </div>
+      <p>Example: \(10101010=-128+32+8+2=-86\). And \(11011001=-128+64+16+8+1=-39\), matching the table.</p>
+      <div class="why"><p>An \(n\)-bit register wraps round after \(2^n\), like a clock face. Adding \(2^n-x\) to anything has the same effect as subtracting \(x\), because the extra \(2^n\) falls off the top as a lost carry. So \(2^n-x\) can stand for \(-x\). Inverting all bits gives \((2^n-1)-x\); adding 1 gives \(2^n-x\). That is the whole recipe. (Part D uses this code, and offset binary, for converter outputs.)</p></div>
+      <div class="analogy"><p>On a 12-hour clock, moving the hand forward 9 hours lands on the same place as moving it back 3 hours. In a 4-bit register, adding 13 does the same as subtracting 3. 2's complement simply names 13 "−3".</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 · 2's complement arithmetic -->
+<section class="slide" id="arith" data-title="Worked example: subtraction and overflow">
+  <p class="eyebrow">Worked example</p>
+  <h2>Subtracting by adding, and spotting overflow</h2>
+  <div class="cols">
+    <div class="example">
+      <p class="given">Evaluate four 8-bit 2's-complement subtractions using only an adder: (a) 00001000 − 00000011; (b) 00001100 − 11110111; (c) 11100111 − 00010011; (d) 10001000 − 11100010.</p>
+      <ol class="steps">
+        <li><b>Method.</b> To subtract, take the 2's complement of the number being subtracted (invert, add 1) and add. Discard any carry out of the sign bit.</li>
+        <li>(a) \(8-3\). Negating 00000011 gives 11111101. \(00001000+11111101=1\,00000101\). Drop the carry: <b>00000101 = +5</b>.</li>
+        <li>(b) \(12-(-9)\). Negating 11110111 gives 00001001 (+9). \(00001100+00001001=\) <b>00010101 = +21</b>.</li>
+        <li>(c) \(-25-19\). Negating 00010011 gives 11101101. \(11100111+11101101=1\,11010100\). Drop the carry: <b>11010100</b> \(=-128+64+16+4=\) <b>−44</b>.</li>
+        <li>(d) \(-120-(-30)\). Negating 11100010 gives 00011110 (+30). \(10001000+00011110=\) <b>10100110</b> \(=-128+32+4+2=\) <b>−90</b>.</li>
+        <li>Every answer is right, and the hardware never needed a subtractor. This is the reason for the code.</li>
+      </ol>
+    </div>
+    <div>
+      <p class="define"><dfn>Overflow</dfn> happens when the true result needs more bits than the word has. Rule: overflow is possible only when two numbers of the <b>same sign</b> are added, and it has occurred if the result has the <b>opposite sign</b>.</p>
+      <p>Example: \(125+58=183\), but 8 bits stop at +127. \(01111101+00111010=10110111\), which reads as −73. Two positives gave a negative: overflow.</p>
+      <div class="pitfall"><p>A 16-bit position counter on an encoder shaft holds −32 768 to +32 767 counts. If the machine runs long enough in one direction, the count jumps from +32 767 to −32 768 and the "position" leaps by a full range. Logging software must detect this wrap (or use a longer word) before it computes speed from differences.</p></div>
+      <div class="quiz" data-correct="1">
+        <p class="q">Which 8-bit 2's-complement addition overflows?</p>
+        <div class="opts">
+          <button class="opt" data-why="−100 + 60 = −40, well inside −128…+127. Numbers of opposite sign can never overflow.">10011100 + 00111100</button>
+          <button class="opt" data-why="−100 + (−60) = −160, below −128. Both inputs are negative but the 8-bit sum 01100000 is positive (+96): overflow.">10011100 + 11000100</button>
+          <button class="opt" data-why="60 + 60 = 120, which fits (≤ 127). The result 01111000 is positive, as it should be.">00111100 + 00111100</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 · BCD and Gray -->
+<section class="slide" id="bcdgray" data-title="BCD and Gray code">
+  <p class="eyebrow">Codes</p>
+  <h2>BCD for displays, Gray code for position sensors</h2>
+  <div class="cols">
+    <div>
+      <p class="define">A <dfn>code</dfn> is an agreed bit pattern for each number, letter or symbol. Straight binary is one code; the ones below are built for particular jobs.</p>
+      <p><dfn>Binary-coded decimal</dfn> (BCD, also called 8421 code) writes each decimal digit separately as four bits: \(9673\to\) 1001 0110 0111 0011. Only 0000–1001 are used; 1010 to 1111 are invalid. BCD wastes some bit patterns, but a digital panel meter or a counter display can drive each digit directly, without any division by ten.</p>
+      <p><dfn>Gray code</dfn> is unweighted (its bits have no place values) and is built so that <b>only one bit changes</b> between any two consecutive numbers. In straight binary, 3 → 4 is 0011 → 0100, three bits at once. In Gray code it is 0010 → 0110, one bit.</p>
+      <ol class="steps" data-open>
+        <li><b>Binary → Gray:</b> keep the MSB; each next Gray bit is the sum of a binary bit and its left neighbour, carries discarded (1 when the two differ). \(10110\to\) 1, 1+0, 0+1, 1+1, 1+0 = <b>11101</b>.</li>
+        <li><b>Gray → binary:</b> keep the MSB; each next binary bit is the binary bit just found plus the next Gray bit, carries discarded. \(11011\to\) 1, 1+1=0, 0+0=0, 0+1=1, 1+1=0 = <b>10010</b>.</li>
+      </ol>
+      <div class="analogy"><p>Gray code is a staircase on which you may move only one foot at a time. You are never caught with both feet in the air, so nobody can mistake where you are standing.</p></div>
+    </div>
+    <div>
+      <div class="tbl tt"><table>
+        <tr><th>Dec</th><th>Binary</th><th>Gray</th><th>Dec</th><th>Binary</th><th>Gray</th></tr>
+        <tr><td>0</td><td>0000</td><td>0000</td><td>8</td><td>1000</td><td>1100</td></tr>
+        <tr><td>1</td><td>0001</td><td>0001</td><td>9</td><td>1001</td><td>1101</td></tr>
+        <tr><td>2</td><td>0010</td><td>0011</td><td>10</td><td>1010</td><td>1111</td></tr>
+        <tr><td>3</td><td>0011</td><td>0010</td><td>11</td><td>1011</td><td>1110</td></tr>
+        <tr><td>4</td><td>0100</td><td>0110</td><td>12</td><td>1100</td><td>1010</td></tr>
+        <tr><td>5</td><td>0101</td><td>0111</td><td>13</td><td>1101</td><td>1011</td></tr>
+        <tr><td>6</td><td>0110</td><td>0101</td><td>14</td><td>1110</td><td>1001</td></tr>
+        <tr><td>7</td><td>0111</td><td>0100</td><td>15</td><td>1111</td><td>1000</td></tr>
+      </table></div>
+      <p>Why does a measurement engineer care? An <dfn>absolute shaft encoder</dfn> reports angle as a code read optically from concentric tracks on a disc, one track per bit. The detectors can never be perfectly aligned, so at a sector boundary some bits switch slightly before others. With binary, the boundary 0111 → 1000 changes all four bits, and for an instant the encoder can report any value at all. With Gray code only one bit is in doubt, so the reading is always one of the two neighbouring sectors. The next slide lets you see this happen.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 11 · Encoder simulator -->
+<section class="slide" id="enc" data-title="Absolute encoder simulator">
+  <p class="eyebrow">Simulator · absolute shaft encoder</p>
+  <h2>Binary versus Gray tracks under a misaligned read head</h2>
+  <div class="sim" id="simEnc">
+    <div class="simhead"><span>Encoder disc and its reading over one revolution</span><span class="legend"><span><i style="background:var(--muted)"></i>true sector</span><span><i style="background:var(--acc)"></i>encoder reading</span></span></div>
+    <div class="duo">
+      <canvas id="cvDisk" data-h="240" aria-label="Encoder disc with concentric code tracks, the most significant bit on the inner track, and a row of detectors at the top"></canvas>
+      <canvas id="cvEncP" data-h="240" aria-label="Decoded encoder reading versus shaft angle over one revolution, compared with the true sector number"></canvas>
+    </div>
+    <div class="controls">
+      <div class="ctl"><label for="enCode">Track code</label><select id="enCode" data-key="code"><option value="b" selected>straight binary</option><option value="g">Gray code</option></select></div>
+      <div class="ctl"><label for="enN">Tracks (bits) <output data-for="N"></output></label><input type="range" id="enN" data-key="N" min="3" max="4" step="1" value="3" data-fmt="0"></div>
+      <div class="ctl"><label for="enMis">Detector misalignment <output data-for="mis"></output></label><input type="range" id="enMis" data-key="mis" min="0" max="12" step="0.5" value="6" data-fmt="1" data-unit="°"></div>
+      <div class="ctl"><label for="enAng">Shaft angle <output data-for="ang"></output></label><input type="range" id="enAng" data-key="ang" min="0" max="359.5" step="0.5" value="356" data-fmt="1" data-unit="°"></div>
+    </div>
+    <div class="btnrow"><button class="btn" type="button" id="enPlay">Rotate</button></div>
+    <div class="readout" id="roEnc"></div>
+  </div>
+  <div class="cols">
+    <p>Each track is read by its own light source and detector (dots). An orange segment reflects light and reads 1. The misalignment slider skews the row of detectors: the inner (MSB) detector sits ahead of the line by the set angle, the outer (LSB) detector behind it. The right plot shows the decoded reading (Gray readings are converted back to binary first) for every shaft angle.</p>
+    <div class="try"><p>With straight binary and 6° misalignment, look at the right plot: tall orange spikes appear at sector boundaries, for example a reading of 3 near 360° where the truth is 7 or 0. Slide the angle to 356° and read the error in the readout. Now switch to Gray code: the spikes vanish and the only error left is a reading one sector early or late within a few degrees of each boundary (near 360° that shows as 0 instead of 7, which is still the neighbouring sector). Set misalignment to 0 and both codes are perfect, but no real encoder is perfectly aligned.</p></div>
+  </div>
+</section>
+
+<!-- 12 · ASCII and parity -->
+<section class="slide" id="ascii" data-title="ASCII and parity">
+  <p class="eyebrow">Codes</p>
+  <h2>ASCII carries text; a parity bit catches single-bit errors</h2>
+  <div class="cols">
+    <div>
+      <p><dfn>ASCII</dfn> (American Standard Code for Information Interchange) gives each character a 7-bit code, 128 in all: 32 non-printing <dfn>control characters</dfn> (such as carriage return, CR, and line feed, LF) and 96 printable ones. Many instruments with a serial port send each reading as a line of ASCII characters.</p>
+      <div class="tbl compact"><table>
+        <tr><th>Char</th><th>Hex</th><th>Binary</th><th>Char</th><th>Hex</th><th>Binary</th></tr>
+        <tr><td>0 … 9</td><td>30 … 39</td><td>011 0000 …</td><td>CR</td><td>0D</td><td>000 1101</td></tr>
+        <tr><td>2</td><td>32</td><td>011 0010</td><td>LF</td><td>0A</td><td>000 1010</td></tr>
+        <tr><td>3</td><td>33</td><td>011 0011</td><td>space</td><td>20</td><td>010 0000</td></tr>
+        <tr><td>5</td><td>35</td><td>011 0101</td><td>+ &nbsp; −</td><td>2B &nbsp; 2D</td><td>010 1011 …</td></tr>
+        <tr><td>.</td><td>2E</td><td>010 1110</td><td>A … Z</td><td>41 … 5A</td><td>100 0001 …</td></tr>
+        <tr><td>=</td><td>3D</td><td>011 1101</td><td>a … z</td><td>61 … 7A</td><td>110 0001 …</td></tr>
+      </table></div>
+      <p>A thermometer that reports 23.5 °C as the characters "23.5" followed by CR therefore sends five bytes: 32 33 2E 35 0D (hex). The digit characters are simply 30 hex plus the digit value, which makes converting text to numbers easy.</p>
+      <div class="analogy"><p>Parity is a cloakroom attendant who checks only whether the number of coats on a hook is even. If one coat goes missing, the count is odd and the loss is noticed. If two go missing, the count is even again and nobody notices.</p></div>
+    </div>
+    <div>
+      <p class="define">A <dfn>parity bit</dfn> is one extra bit attached to a group of bits so that the total number of 1s is always even (<dfn>even parity</dfn>) or always odd (<dfn>odd parity</dfn>). The receiver counts the 1s again; a wrong count means at least one bit was flipped on the way.</p>
+      <div class="example">
+        <p class="given">(a) Attach even parity bits to 1010, 111000, 101101, 1000111001001 and 101101011111. (b) A link uses even parity and the BCD digit 0101 is sent as 0 0101 (parity bit first). The receiver gets 0 0001. Is the error detected?</p>
+        <ol class="steps">
+          <li>Count the 1s; the even parity bit is 1 only if the count is odd.</li>
+          <li>1010: two 1s → P = <b>0</b>. 111000: three → P = <b>1</b>. 101101: four → P = <b>0</b>.</li>
+          <li>1000111001001: six 1s → P = <b>0</b>. 101101011111: nine → P = <b>1</b>.</li>
+          <li>(b) 0 0001 contains one 1, an odd count, but even parity was agreed: the receiver flags an error and can ask for the byte again.</li>
+          <li>Two flipped bits are another story: if 0 0101 arrives as 0 0011, it still holds two 1s, an even count, and passes unnoticed. Parity catches any odd number of flipped bits and misses any even number.</li>
+        </ol>
+      </div>
+      <p class="small">In hardware the parity bit is produced by a chain of exclusive-OR gates (slide 14), one of the simplest circuits in a serial link.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 13 · NOT AND OR -->
+<section class="slide" id="gates1" data-title="NOT, AND and OR">
+  <p class="eyebrow">Logic gates</p>
+  <h2>Three basic decisions: NOT, AND and OR</h2>
+  <p class="define">A <dfn>logic gate</dfn> is a circuit whose output level is a fixed function of its input levels. A <dfn>truth table</dfn> lists the output for every combination of inputs; \(n\) inputs give \(2^n\) rows. A <dfn>Boolean expression</dfn> writes the same function with variables: \(\overline{A}\) (read "A bar" or "not A") is the complement, \(A\cdot B\) or \(AB\) is AND, \(A+B\) is OR. Here + means OR, not arithmetic addition.</p>
+  <div class="gcards">
+    <div class="card"><span class="tag">Inverter · NOT</span>
+      <svg viewBox="0 0 150 50" aria-label="Inverter symbol: triangle with a bubble on the output"><path d="M48 7 L78 25 L48 43 Z" class="gb"/><circle cx="82" cy="25" r="4" class="gb"/><path d="M30 25 H48" class="w"/><text x="27" y="29" text-anchor="end" font-size="12">A</text><path d="M86 25 H104" class="w"/><text x="107" y="29" text-anchor="start" font-size="12">X</text></svg>
+      <p class="small">\(X=\overline{A}\). Output is the opposite of the input. The bubble always means "inverted".</p>
+      <div class="tbl tt"><table><tr><th>A</th><th>X</th></tr><tr><td>0</td><td>1</td></tr><tr><td>1</td><td>0</td></tr></table></div>
+    </div>
+    <div class="card"><span class="tag">AND</span>
+      <svg viewBox="0 0 150 50" aria-label="AND gate symbol: flat back and round front"><path d="M40 7 H66 A18 18 0 0 1 66 43 H40 Z" class="gb"/><path d="M22 16 H40" class="w"/><text x="19" y="20" text-anchor="end" font-size="12">A</text><path d="M22 34 H40" class="w"/><text x="19" y="38" text-anchor="end" font-size="12">B</text><path d="M84 25 H102" class="w"/><text x="105" y="29" text-anchor="start" font-size="12">X</text></svg>
+      <p class="small">\(X=AB\). HIGH only when <b>all</b> inputs are HIGH.</p>
+      <div class="tbl tt"><table><tr><th>A</th><th>B</th><th>X</th></tr><tr><td>0</td><td>0</td><td>0</td></tr><tr><td>0</td><td>1</td><td>0</td></tr><tr><td>1</td><td>0</td><td>0</td></tr><tr><td>1</td><td>1</td><td>1</td></tr></table></div>
+    </div>
+    <div class="card"><span class="tag">OR</span>
+      <svg viewBox="0 0 150 50" aria-label="OR gate symbol: curved back and pointed front"><path d="M40 7 Q52 25 40 43 Q70 43 86 25 Q70 7 40 7 Z" class="gb"/><path d="M22 16 H44.5" class="w"/><text x="19" y="20" text-anchor="end" font-size="12">A</text><path d="M22 34 H44.5" class="w"/><text x="19" y="38" text-anchor="end" font-size="12">B</text><path d="M86 25 H104" class="w"/><text x="107" y="29" text-anchor="start" font-size="12">X</text></svg>
+      <p class="small">\(X=A+B\). HIGH when <b>at least one</b> input is HIGH.</p>
+      <div class="tbl tt"><table><tr><th>A</th><th>B</th><th>X</th></tr><tr><td>0</td><td>0</td><td>0</td></tr><tr><td>0</td><td>1</td><td>1</td></tr><tr><td>1</td><td>0</td><td>1</td></tr><tr><td>1</td><td>1</td><td>1</td></tr></table></div>
+    </div>
+  </div>
+  <div class="cols">
+    <figure>
+      <svg viewBox="0 0 400 104" aria-label="Left: battery, two switches A and B in series, and a lamp: the lamp lights only if A and B are both closed. Right: two switches A and B in parallel feeding a lamp: it lights if either is closed">
+        <path d="M14 20 H44 M66 20 H94 M116 20 H150 V36 M150 64 V86 H14 V60 M14 46 V20" class="w"/>
+        <circle cx="44" cy="20" r="2.5" class="fill-ink"/><circle cx="66" cy="20" r="2.5" class="fill-ink"/><path d="M44 20 L64 10" class="w"/>
+        <circle cx="94" cy="20" r="2.5" class="fill-ink"/><circle cx="116" cy="20" r="2.5" class="fill-ink"/><path d="M94 20 L114 10" class="w"/>
+        <text x="55" y="38" text-anchor="middle" font-size="12">A</text><text x="105" y="38" text-anchor="middle" font-size="12">B</text>
+        <circle cx="150" cy="50" r="14" class="gb"/><path d="M140 40 L160 60 M160 40 L140 60" class="w"/>
+        <path d="M4 46 H24 M8 52 H20 M4 58 H24 M8 64 H20" class="w"/>
+        <text x="90" y="101" text-anchor="middle" font-size="11" class="t-acc">series switches = AND</text>
+        <path d="M214 24 H240 M240 12 V36 M240 12 H262 M284 12 H310 V36 M240 36 H262 M284 36 H310 M310 24 H344 V36 M344 64 V86 H214 V60 M214 46 V24" class="w"/>
+        <circle cx="262" cy="12" r="2.5" class="fill-ink"/><circle cx="284" cy="12" r="2.5" class="fill-ink"/><path d="M262 12 L281 3" class="w"/>
+        <circle cx="262" cy="36" r="2.5" class="fill-ink"/><circle cx="284" cy="36" r="2.5" class="fill-ink"/><path d="M262 36 L281 27" class="w"/>
+        <text x="296" y="9" font-size="12">A</text><text x="296" y="52" font-size="12">B</text>
+        <circle cx="344" cy="50" r="14" class="gb"/><path d="M334 40 L354 60 M354 40 L334 60" class="w"/>
+        <path d="M204 46 H224 M208 52 H220 M204 58 H224 M208 64 H220" class="w"/>
+        <text x="290" y="101" text-anchor="middle" font-size="11" class="t-acc">parallel switches = OR</text>
+      </svg>
+    </figure>
+    <div class="analogy"><p>Think of each input as a switch that is closed when it is 1, and the output as a lamp. Two switches in series (left) light the lamp only if A <i>and</i> B are closed. Two in parallel (right) light it if A <i>or</i> B is closed. Early relay control panels in factories were built exactly like this, and PLC "ladder logic" still draws AND and OR as series and parallel contacts.</p></div>
+  </div>
+</section>
+
+<!-- 14 · NAND NOR XOR XNOR -->
+<section class="slide" id="gates2" data-title="NAND, NOR, XOR and XNOR">
+  <p class="eyebrow">Logic gates</p>
+  <h2>NAND, NOR, XOR and XNOR, and a tank-level indicator</h2>
+  <div class="cols">
+    <div>
+      <div class="tbl tt"><table>
+        <tr><th>A</th><th>B</th><th>NAND \(\overline{AB}\)</th><th>NOR \(\overline{A+B}\)</th><th>XOR \(A\oplus B\)</th><th>XNOR \(\overline{A\oplus B}\)</th></tr>
+        <tr><td>0</td><td>0</td><td>1</td><td>1</td><td>0</td><td>1</td></tr>
+        <tr><td>0</td><td>1</td><td>1</td><td>0</td><td>1</td><td>0</td></tr>
+        <tr><td>1</td><td>0</td><td>1</td><td>0</td><td>1</td><td>0</td></tr>
+        <tr><td>1</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1</td></tr>
+      </table></div>
+      <svg viewBox="0 0 400 54" aria-label="Symbols of the NAND, NOR, XOR and XNOR gates">
+        <path d="M22 4 H48 A18 18 0 0 1 48 40 H22 Z" class="gb"/><circle cx="70" cy="22" r="4" class="gb"/><path d="M8 13 H22" class="w"/><path d="M8 31 H22" class="w"/><path d="M74 22 H88" class="w"/> <path d="M120 4 Q132 22 120 40 Q150 40 166 22 Q150 4 120 4 Z" class="gb"/><circle cx="170" cy="22" r="4" class="gb"/><path d="M106 13 H124.5" class="w"/><path d="M106 31 H124.5" class="w"/><path d="M174 22 H188" class="w"/> <path d="M224 4 Q236 22 224 40 Q254 40 270 22 Q254 4 224 4 Z" class="gb"/><path d="M218 4 Q230 22 218 40" class="w"/><path d="M204 13 H222.5" class="w"/><path d="M204 31 H222.5" class="w"/><path d="M270 22 H284" class="w"/> <path d="M322 4 Q334 22 322 40 Q352 40 368 22 Q352 4 322 4 Z" class="gb"/><path d="M316 4 Q328 22 316 40" class="w"/><circle cx="372" cy="22" r="4" class="gb"/><path d="M302 13 H320.5" class="w"/><path d="M302 31 H320.5" class="w"/><path d="M376 22 H390" class="w"/>
+        <text x="44" y="52" text-anchor="middle" font-size="10" class="t-muted">NAND</text><text x="143" y="52" text-anchor="middle" font-size="10" class="t-muted">NOR</text><text x="246" y="52" text-anchor="middle" font-size="10" class="t-muted">XOR</text><text x="346" y="52" text-anchor="middle" font-size="10" class="t-muted">XNOR</text>
+      </svg>
+      <p><dfn>NAND</dfn> is AND followed by NOT: LOW only when all inputs are HIGH. <dfn>NOR</dfn> is OR followed by NOT: HIGH only when all inputs are LOW. The <dfn>exclusive-OR</dfn> (XOR) is HIGH when its two inputs <b>differ</b>, so it is a one-bit "are these different?" detector; it is also binary addition without the carry, which is why it builds parity and Gray-code circuits. The <dfn>exclusive-NOR</dfn> (XNOR) is HIGH when the inputs are equal.</p>
+      <p>Redundant sensors use XOR as a fault detector: two pressure switches watching the same line should always agree. Feed both into an XOR; a HIGH output means one of them has failed. (If both fail in the same way the XOR cannot tell.)</p>
+    </div>
+    <div class="example">
+      <p class="given">Two chemical tanks each have a level sensor that outputs 5 V (HIGH) while the tank is more than one-quarter full and 0 V (LOW) once it falls to one quarter. A single green LED on the panel must light when both tanks are above one quarter. The LED is wired from +5 V through a resistor to the gate output, so it lights when the output is LOW. Which gate?</p>
+      <svg viewBox="0 0 400 150" aria-label="Two tanks with level sensors wired to the two inputs of a NAND gate; the NAND output pulls a green LED, fed from plus 5 volts through a resistor, low">
+        <rect x="8" y="8" width="50" height="56" class="gb"/><rect x="9" y="26" width="48" height="37" class="band-l"/><path d="M8 50 H58" class="ln-thin dash"/><text x="33" y="20" text-anchor="middle" font-size="10.5">tank A</text>
+        <rect x="58" y="44" width="24" height="12" class="box-acc"/><text x="70" y="40" text-anchor="middle" font-size="9" class="t-muted">sensor</text>
+        <rect x="8" y="82" width="50" height="56" class="gb"/><rect x="9" y="104" width="48" height="33" class="band-l"/><path d="M8 124 H58" class="ln-thin dash"/><text x="33" y="94" text-anchor="middle" font-size="10.5">tank B</text>
+        <rect x="58" y="118" width="24" height="12" class="box-acc"/>
+        <text x="4" y="148" font-size="9" class="t-muted">dashed line: one-quarter level</text>
+        <path d="M82 50 H150 V87 H182 M82 124 H160 V105 H182" class="w"/>
+        <text x="116" y="45" text-anchor="middle" class="t-mono t-acc" font-size="10">HIGH</text><text x="120" y="119" text-anchor="middle" class="t-mono t-acc" font-size="10">HIGH</text>
+        <path d="M200 78 H226 A18 18 0 0 1 226 114 H200 Z" class="gb"/><circle cx="248" cy="96" r="4" class="gb"/><path d="M182 87 H200" class="w"/><path d="M182 105 H200" class="w"/><path d="M252 96 H270" class="w"/>
+        <path d="M270 96 H286" class="w"/>
+        <path d="M286 96 L302 86 V106 Z" class="gb"/><path d="M286 86 V106" class="w"/>
+        <path d="M296 82 L304 74 M302 86 L310 78" class="ln-thin"/>
+        <path d="M302 96 H316 L320 90 L326 102 L332 90 L338 102 L344 90 L348 96 H370 V60" class="w"/>
+        <text x="370" y="54" text-anchor="middle" class="t-mono" font-size="11">+5 V</text>
+        <text x="296" y="122" text-anchor="middle" font-size="10" class="t-grn" style="fill:var(--grn)">green LED</text>
+        <text x="332" y="82" text-anchor="middle" font-size="10" class="t-muted">R</text>
+        <text x="226" y="132" text-anchor="middle" class="t-mono" font-size="10">LOW → LED on</text>
+      </svg>
+      <ol class="steps">
+        <li>The light must come on when A <b>and</b> B are HIGH, so the logic is AND.</li>
+        <li>But the LED lights on a LOW output (current flows from +5 V, through R and the LED, into the gate). So the output must be LOW exactly when \(AB=1\): \(X=\overline{AB}\), a <b>NAND</b> gate.</li>
+        <li>Check the table: A = B = 1 gives NAND = 0, LED on. If either tank drops to a quarter, that input goes LOW, NAND = 1, LED off. The resistor limits the LED current to a safe 10–20 mA.</li>
+        <li>For three tanks, use a 3-input NAND. A HIGH output that is used to <i>do</i> something is called <dfn>active-HIGH</dfn>; this LOW output that lights the LED is <dfn>active-LOW</dfn>, and a bubble in a symbol marks such a signal.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- 15 · Gate playground -->
+<section class="slide" id="play" data-title="Logic gate playground">
+  <p class="eyebrow">Simulator · gates, truth tables and timing diagrams</p>
+  <h2>Feed any gate a pattern of inputs and watch its output</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simGate">
+      <div class="simhead"><span>Gate playground</span><span class="legend"><span><i style="background:var(--blu)"></i>inputs</span><span><i style="background:var(--acc)"></i>output X</span></span></div>
+      <div class="controls">
+        <div class="ctl"><label for="gKind">Gate</label><select id="gKind" data-key="g"><option>AND</option><option>OR</option><option selected>NAND</option><option>NOR</option><option>XOR</option><option>XNOR</option><option>NOT</option></select></div>
+        <div class="ctl"><label for="gN">Inputs <output data-for="n"></output></label><input type="range" id="gN" data-key="n" min="2" max="3" step="1" value="2" data-fmt="0"></div>
+      </div>
+      <canvas id="cvGate" data-h="250" aria-label="Timing diagram of the gate inputs and output over sixteen bit times; click an input slot to toggle it"></canvas>
+      <div class="btnrow"><button class="btn" type="button" id="gCount">Inputs count in binary</button><button class="btn" type="button" id="gRand">Random inputs</button><button class="btn" type="button" id="gPlay">Play cursor</button></div>
+      <div class="readout" id="roGate"></div>
+    </div>
+    <div>
+      <div class="row" style="align-items:flex-start;gap:14px">
+        <svg id="gSym" viewBox="0 0 150 50" style="width:150px" aria-label="Symbol of the selected gate"></svg>
+        <div class="tbl tt" style="flex:1;min-width:150px"><table id="gTab"></table></div>
+      </div>
+      <p>The canvas is a timing diagram of sixteen bit times. <b>Click any slot of an input row</b> to flip that bit; the output row is recomputed at once. The truth table highlights the row that applies at the cursor position, so you can see that a timing diagram is just a truth table read in the order the inputs arrive.</p>
+      <div class="try"><p>Press <b>Inputs count in binary</b>: A and B step through 00, 01, 10, 11 twice, and the output row spells out the truth-table column of the gate. Switch between AND and NAND, then OR and NOR, and see each output become the mirror image. Set 3 inputs and choose XOR: the output is HIGH whenever an odd number of inputs are HIGH. That is the even-parity bit of slide 12, computed by gates.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 16 · Logic families -->
+<section class="slide" id="families" data-title="Logic families, noise margin and delay">
+  <p class="eyebrow">Real gates</p>
+  <h2>TTL and CMOS: thresholds, noise margins and delay</h2>
+  <div class="cols">
+    <div>
+      <p>Gates are sold as <dfn>fixed-function ICs</dfn>, several identical gates in one package: the 74HC00 holds four 2-input NANDs, the 74HC04 six inverters, the 74HC08 four ANDs, the 74HC32 four ORs, the 74HC86 four XORs. The letters after "74" name the <dfn>logic family</dfn>: LS and F are bipolar TTL; HC, AC and LVC are <dfn>CMOS</dfn> (complementary metal-oxide-semiconductor), which draws almost no current when idle and dominates today.</p>
+      <div class="tbl compact"><table>
+        <tr><th>Parameter (5 V supply)</th><th>TTL (74LS)</th><th>CMOS (74HC)</th></tr>
+        <tr><td>\(V_{IL(\max)}\) input LOW</td><td>0.8 V</td><td>1.5 V</td></tr>
+        <tr><td>\(V_{IH(\min)}\) input HIGH</td><td>2.0 V</td><td>3.5 V</td></tr>
+        <tr><td>\(V_{OL(\max)}\) output LOW</td><td>0.4 V</td><td>0.33 V</td></tr>
+        <tr><td>\(V_{OH(\min)}\) output HIGH</td><td>2.4 V</td><td>4.4 V</td></tr>
+        <tr><td>Propagation delay</td><td>≈ 10 ns</td><td>≈ 10 ns</td></tr>
+      </table></div>
+      <p class="define">The <dfn>propagation delay</dfn> \(t_{PLH}\) or \(t_{PHL}\) is the time from the 50 % point of an input edge to the 50 % point of the output edge it causes (LH: output going LOW to HIGH). It limits how fast a gate can switch. The <dfn>noise margin</dfn> is how much noise a guaranteed output level can pick up and still be read correctly by the next input.</p>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 214" aria-label="TTL driver output bands next to TTL receiver input bands; the gaps between 2.4 and 2.0 volts and between 0.4 and 0.8 volts are the noise margins">
+          <rect x="60" y="30" width="80" height="88.4" class="band-h"/><rect x="60" y="186.4" width="80" height="13.6" class="band-l"/>
+          <rect x="250" y="30" width="80" height="102" class="band-h"/><rect x="250" y="132" width="80" height="40.8" class="band-x"/><rect x="250" y="172.8" width="80" height="27.2" class="band-l"/>
+          <path d="M40 118.4 H360 M40 132 H360 M40 172.8 H360 M40 186.4 H360" class="ln-thin dash"/>
+          <text x="100" y="22" text-anchor="middle" font-size="11">driver output</text><text x="290" y="22" text-anchor="middle" font-size="11">receiver input</text>
+          <text x="100" y="78" text-anchor="middle" font-size="10.5" class="t-acc">HIGH out ≥ 2.4 V</text><text x="290" y="84" text-anchor="middle" font-size="10.5" class="t-acc">read HIGH ≥ 2.0 V</text>
+          <text x="290" y="156" text-anchor="middle" font-size="10">undefined</text>
+          <text x="100" y="211" text-anchor="middle" font-size="10.5" class="t-blu">LOW out ≤ 0.4 V</text><text x="290" y="211" text-anchor="middle" font-size="10.5" class="t-blu">read LOW ≤ 0.8 V</text>
+          <path d="M244 118.4 V132" class="ln-acc"/><text x="238" y="129" text-anchor="end" font-size="10" class="t-mono t-acc">NMH 0.4 V</text>
+          <path d="M244 172.8 V186.4" class="ln-blu"/><text x="238" y="183" text-anchor="end" font-size="10" class="t-mono t-blu">NML 0.4 V</text>
+          <text x="36" y="122" text-anchor="end" class="t-mono" font-size="9.5">2.4</text><text x="36" y="136" text-anchor="end" class="t-mono" font-size="9.5">2.0</text>
+          <text x="36" y="176" text-anchor="end" class="t-mono" font-size="9.5">0.8</text><text x="36" y="190" text-anchor="end" class="t-mono" font-size="9.5">0.4</text>
+        </svg>
+      </figure>
+      <div class="example">
+        <p class="given">Find the HIGH and LOW noise margins of 74LS and 74HC gates, and decide whether a 74LS output can drive a 74HC input.</p>
+        <ol class="steps">
+          <li>A HIGH output is at least \(V_{OH(\min)}\); the input needs at least \(V_{IH(\min)}\). The difference is the HIGH margin: \(NM_H=V_{OH(\min)}-V_{IH(\min)}\). Likewise \(NM_L=V_{IL(\max)}-V_{OL(\max)}\).</li>
+          <li>TTL: \(NM_H=2.4-2.0=0.4\) V, \(NM_L=0.8-0.4=0.4\) V.</li>
+          <li>CMOS: \(NM_H=4.4-3.5=0.9\) V, \(NM_L=1.5-0.33=1.17\) V. CMOS tolerates more than twice the noise.</li>
+          <li>TTL into CMOS: the TTL HIGH may be only 2.4 V, but the CMOS input needs 3.5 V. The margin is \(2.4-3.5=-1.1\) V: a HIGH may not be recognised. Use an HCT part (CMOS with TTL-compatible input thresholds) or a pull-up resistor.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 17 · Check yourself -->
+<section class="slide" id="check" data-title="Check yourself">
+  <p class="eyebrow">Self-test</p>
+  <h2>Check yourself</h2>
+  <div class="cols c3">
+    <div class="quiz" data-correct="0">
+      <p class="q">A 4-track absolute encoder uses Gray code. What pattern does it show in the sector whose binary number is 1011?</p>
+      <div class="opts">
+        <button class="opt" data-why="Keep the MSB 1; then 1+0 = 1, 0+1 = 1, 1+1 = 0 (carry dropped): 1110. The table on slide 10 agrees (decimal 11).">1110</button>
+        <button class="opt" data-why="That is the Gray code of 9 (1001). Recheck each adjacent pair of 1011.">1101</button>
+        <button class="opt" data-why="That is 1011 with every bit inverted, the 1's complement, not the Gray code.">0100</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="0">
+      <p class="q">An instrument sends the ASCII digit "7" (011 0111) with an even parity bit placed in front. Which 8 bits are sent?</p>
+      <div class="opts">
+        <button class="opt" data-why="011 0111 has five 1s, an odd count, so the even parity bit must be 1 to make six.">1011 0111</button>
+        <button class="opt" data-why="That would leave five 1s, an odd total, which breaks even parity.">0011 0111</button>
+        <button class="opt" data-why="This is the code shifted one place left, not a parity bit added.">0110 1110</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="1">
+      <p class="q">A press may run (X = 1) only if the guard switch G is closed (1) and the start button S is pressed (1), and the emergency stop E is not pressed (E = 0). Which expression is right?</p>
+      <div class="opts">
+        <button class="opt" data-why="OR would let the press run with only one condition met, for example with the guard open.">\(X=G+S+\overline{E}\)</button>
+        <button class="opt" data-why="All three conditions must hold at once: AND of G, S and NOT E. A 3-input AND with an inverter on E does it.">\(X=G\,S\,\overline{E}\)</button>
+        <button class="opt" data-why="This runs the press only while the emergency stop is pressed, the opposite of what is wanted.">\(X=G\,S\,E\)</button>
+      </div>
+    </div>
+  </div>
+  <div class="reveal-box" data-label="One more: reveal the answer">
+    <p>A 16-bit signed (2's-complement) temperature register reads 0xFF38, and the data sheet says one count is 0.1 °C. What is the temperature?</p>
+    <div class="answer"><p>FF38 hex = 1111 1111 0011 1000. The MSB is 1, so the value is negative. Unsigned it is \(15\cdot4096+15\cdot256+3\cdot16+8=65\,336\); subtracting \(2^{16}=65\,536\) gives −200 counts. (Or invert and add 1: 0000 0000 1100 1000 = 200, so the word is −200.) Temperature \(=-200\times0.1=-20.0\) °C. Reading the word as unsigned would have given +6533.6 °C, an obvious but common mistake.</p></div>
+  </div>
+</section>
+
+<!-- 18 · Summary -->
+<section class="slide" id="summary" data-title="Summary">
+  <p class="eyebrow">Summary</p>
+  <h2>Numbers, codes and gates on one page</h2>
+  <div class="tbl compact"><table>
+    <tr><th>Idea</th><th>Rule</th><th>Remember</th></tr>
+    <tr><td>Logic levels</td><td>TTL in: LOW ≤ 0.8 V, HIGH ≥ 2.0 V</td><td>between them: undefined</td></tr>
+    <tr><td>Pulse train</td><td>\(f=1/T\), duty \(=t_W/T\)</td><td>\(t_r, t_f\) 10–90 %; \(t_W\) at 50 %</td></tr>
+    <tr><td>Binary</td><td>\(N=\sum b_k2^k\); divide by 2 for integers, multiply by 2 for fractions</td><td>\(n\) bits: 0 … \(2^n-1\)</td></tr>
+    <tr><td>Hex / octal</td><td>group 4 / 3 bits from the right</td><td>0x9C4 = 2500</td></tr>
+    <tr><td>2's complement</td><td>invert and add 1; MSB weight \(-2^{n-1}\)</td><td>8 bits: −128 … +127; same-sign sum changing sign = overflow</td></tr>
+    <tr><td>BCD / Gray / ASCII</td><td>digit by digit / one bit changes per step / 7-bit text</td><td>Gray for absolute encoders</td></tr>
+    <tr><td>Parity</td><td>extra bit makes the count of 1s even (or odd)</td><td>detects odd numbers of bit errors only</td></tr>
+    <tr><td>Gates</td><td>AND all, OR any, XOR differ, bubble = invert</td><td>noise margin \(V_{OH(\min)}-V_{IH(\min)}\)</td></tr>
+  </table></div>
+  <div class="cols">
+    <div>
+      <h3>You should now be able to…</h3>
+      <ul>
+        <li>read logic levels, pulse width, period and duty cycle from a waveform;</li>
+        <li>convert between decimal, binary, hex and octal, including fractions;</li>
+        <li>write and read signed numbers, subtract by 2's-complement addition and detect overflow;</li>
+        <li>use BCD, Gray code, ASCII and parity, and say why encoders use Gray code;</li>
+        <li>write the truth table and timing diagram of any basic gate and choose a gate for a simple interlock or alarm;</li>
+        <li>compute noise margins and check that two logic families can talk to each other.</li>
+      </ul>
+    </div>
+    <div class="watch">
+      <h3>Watch next</h3>
+      <a href="https://www.youtube.com/results?search_query=binary+hexadecimal+octal+conversion+explained" target="_blank" rel="noopener">Binary, hex and octal conversion <small>YouTube search</small></a>
+      <a href="https://www.youtube.com/results?search_query=two%27s+complement+subtraction+overflow" target="_blank" rel="noopener">2's-complement subtraction and overflow <small>YouTube search</small></a>
+      <a href="https://www.youtube.com/results?search_query=gray+code+absolute+rotary+encoder" target="_blank" rel="noopener">Gray code in absolute encoders <small>YouTube search</small></a>
+      <a href="https://www.youtube.com/results?search_query=logic+gates+truth+tables+timing+diagrams" target="_blank" rel="noopener">Logic gates and timing diagrams <small>YouTube search</small></a>
+    </div>
+  </div>
+  <p class="further">Further reading: Floyd, Digital Fundamentals, Ch. 1–3</p>
+  <div class="row"><a class="btn" href="d04c.html">&larr; Previous topic: Analog Signal Conditioning</a><a class="btn primary" href="d05b.html">Part B · Boolean algebra, combinational logic and flip-flops &rarr;</a></div>
+</section>
+
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const binS = (x, M) => (x >>> 0).toString(2).padStart(M, '0').slice(-M);
+  const rnd = k => { const s = Math.sin(k * 12.9898 + 4.1) * 43758.5453; return s - Math.floor(s); };
+
+  /* ---------- shared: gate symbol as SVG markup (same geometry as the static figures) ---------- */
+  function gateSVG(kind, x, y, n, ins, out) {
+    const YS = { 1: [18], 2: [9, 27], 3: [6, 18, 30] };
+    const orl = /OR/.test(kind), xb = /XOR|XNOR/.test(kind) ? x + 6 : x; let s = '', o;
+    if (kind === 'AND' || kind === 'NAND') { s += `<path d="M${x} ${y} H${x + 26} A18 18 0 0 1 ${x + 26} ${y + 36} H${x} Z" class="gb"/>`; o = x + 44; }
+    else if (orl) {
+      s += `<path d="M${xb} ${y} Q${xb + 12} ${y + 18} ${xb} ${y + 36} Q${xb + 30} ${y + 36} ${xb + 46} ${y + 18} Q${xb + 30} ${y} ${xb} ${y} Z" class="gb"/>`;
+      if (/X/.test(kind)) s += `<path d="M${x} ${y} Q${x + 12} ${y + 18} ${x} ${y + 36}" class="w"/>`;
+      o = xb + 46;
+    } else { s += `<path d="M${x} ${y} L${x + 30} ${y + 18} L${x} ${y + 36} Z" class="gb"/>`; o = x + 30; n = 1; }
+    if (/^N|XNOR|NOT/.test(kind)) { s += `<circle cx="${o + 4}" cy="${y + 18}" r="4" class="gb"/>`; o += 8; }
+    YS[n].forEach((yy, i) => {
+      const t = yy / 36, end = orl ? x + 24 * t * (1 - t) : x;
+      s += `<path d="M${x - 18} ${y + yy} H${end}" class="w"/><text x="${x - 21}" y="${y + yy + 4}" text-anchor="end" font-size="12">${ins[i]}</text>`;
+    });
+    s += `<path d="M${o} ${y + 18} H${o + 18}" class="w"/><text x="${o + 21}" y="${y + 22}" font-size="12">${out}</text>`;
+    return s;
+  }
+
+  /* ---------- cover: scrolling timing diagram ---------- */
+  let ct = 0;
+  function drawCover() {
+    const cv = $('coverTrace'), { ctx, W, H } = Deck.sizeCanvas(cv);
+    ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+    const rows = [['CLK', 'muted'], ['A', 'blu'], ['B', 'blu'], ['A·B', 'acc']], rh = H / 4, lx = 40, bw = Math.max(30, W / 24);
+    const A = k => rnd(k) > 0.45 ? 1 : 0, B = k => rnd(k + 101) > 0.4 ? 1 : 0;
+    const s = ct * 1.4, k0 = Math.floor(s) - 1, k1 = k0 + Math.ceil((W - lx) / bw) + 3;
+    ctx.font = Deck.font(11, true); ctx.textBaseline = 'middle';
+    rows.forEach((r, ri) => {
+      const yH = ri * rh + rh * 0.22, yL = ri * rh + rh * 0.8;
+      ctx.fillStyle = Deck.color(r[1]); ctx.textAlign = 'left'; ctx.fillText(r[0], 4, (yH + yL) / 2);
+      ctx.save(); ctx.beginPath(); ctx.rect(lx, 0, W - lx, H); ctx.clip();
+      ctx.strokeStyle = Deck.color(r[1]); ctx.lineWidth = ri === 3 ? 2.4 : 1.8; ctx.beginPath();
+      let first = true;
+      for (let k = k0; k <= k1; k++) {
+        const x0 = lx + (k - s) * bw, x1 = x0 + bw;
+        if (ri === 0) {
+          const xm = x0 + bw / 2;
+          if (first) { ctx.moveTo(x0, yL); first = false; }
+          ctx.lineTo(x0, yL); ctx.lineTo(x0, yH); ctx.lineTo(xm, yH); ctx.lineTo(xm, yL); ctx.lineTo(x1, yL);
+        } else {
+          const v = ri === 1 ? A(k) : ri === 2 ? B(k) : A(k) & B(k), y = v ? yH : yL;
+          if (first) { ctx.moveTo(x0, y); first = false; } else ctx.lineTo(x0, y);
+          ctx.lineTo(x1, y);
+        }
+      }
+      ctx.stroke(); ctx.restore();
+    });
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (RM) { if (ct === 0) { ct = 0.001; drawCover(); } return; } ct += dt; drawCover(); });
+
+  /* ---------- number-base converter ---------- */
+  Deck.onShow('conv', () => {
+    let W = 8, x = 217;
+    const box = $('cvBits');
+    function build() {
+      box.innerHTML = '';
+      for (let b = W - 1; b >= 0; b--) {
+        const bt = document.createElement('button'); bt.type = 'button'; bt.dataset.b = b;
+        bt.title = 'bit ' + b + ', weight ' + Math.pow(2, b);
+        bt.innerHTML = '<b class="v"></b><small>' + (b === W - 1 && W > 8 ? '2^' + b : Math.pow(2, b)) + '</small>';
+        bt.addEventListener('click', () => { x ^= (1 << b); draw(); });
+        box.appendChild(bt);
+      }
+    }
+    function msg(t) { $('cvSteps').innerHTML = '<span class="warn">' + t + '</span>'; }
+    function parse() {
+      W = +$('cvW').value; const base = +$('cvBase').value, mask = Math.pow(2, W) - 1;
+      let t = $('cvIn').value.trim().replace(/[\s_]/g, ''), neg = false;
+      if (base === 16) t = t.replace(/^0x/i, '');
+      if (base === 10 && /^[-−]/.test(t)) { neg = true; t = t.slice(1); }
+      const ok = { 10: /^\d+$/, 2: /^[01]+$/, 16: /^[0-9a-f]+$/i, 8: /^[0-7]+$/ }[base];
+      build();
+      if (!ok.test(t)) { draw(); msg('That is not a valid ' + { 10: 'decimal', 2: 'binary', 16: 'hexadecimal', 8: 'octal' }[base] + ' number.'); return; }
+      const v = parseInt(t, base);
+      if (neg) {
+        if (v > Math.pow(2, W - 1)) { draw(); msg('−' + v + ' needs more than ' + W + ' bits in 2\'s complement (range −' + Math.pow(2, W - 1) + ' … +' + (Math.pow(2, W - 1) - 1) + ').'); return; }
+        x = (Math.pow(2, W) - v) & mask;
+      } else {
+        if (v > mask) { draw(); msg(v + ' needs more than ' + W + ' bits (largest unsigned value ' + mask + ').'); return; }
+        x = v;
+      }
+      draw();
+    }
+    function draw() {
+      const half = Math.pow(2, W - 1), mask = Math.pow(2, W) - 1;
+      x &= mask;
+      box.querySelectorAll('button').forEach(bt => { const on = (x >> +bt.dataset.b) & 1; bt.classList.toggle('on', !!on); bt.querySelector('.v').textContent = on; });
+      const neg = x >= half, sgn = v => (v > 0 ? '+' : '') + v;
+      const tc = neg ? x - Math.pow(2, W) : x;
+      const oc = neg ? ((~x) & mask) === 0 ? '−0' : String(-((~x) & mask)) : sgn(x);
+      const sm = neg ? (x - half === 0 ? '−0' : String(-(x - half))) : sgn(x);
+      const hex = x.toString(16).toUpperCase().padStart(Math.ceil(W / 4), '0');
+      const bcd = String(x).split('').map(d => binS(+d, 4)).join(' ');
+      const gray = binS(x ^ (x >> 1), W);
+      let ones = 0; for (let k = 0; k < W; k++) ones += (x >> k) & 1;
+      const grp = s => s.replace(/(.{4})(?=.)/g, '$1 ');
+      $('cvTab').innerHTML =
+        '<tr><th>Read as</th><th>Value</th></tr>' +
+        '<tr><td>bits</td><td><b>' + grp(binS(x, W)) + '</b></td></tr>' +
+        '<tr><td>unsigned binary</td><td>' + x + '</td></tr>' +
+        '<tr><td>2\'s complement</td><td><b>' + sgn(tc) + '</b></td></tr>' +
+        '<tr><td>1\'s complement</td><td>' + oc + '</td></tr>' +
+        '<tr><td>sign-magnitude</td><td>' + sm + '</td></tr>' +
+        '<tr><td>hexadecimal / octal</td><td>' + hex + ' / ' + x.toString(8) + '</td></tr>' +
+        '<tr><td>BCD of unsigned value</td><td>' + bcd + '</td></tr>' +
+        '<tr><td>Gray code of word</td><td>' + grp(gray) + '</td></tr>' +
+        '<tr><td>even parity bit</td><td>' + (ones % 2) + ' &nbsp;(' + ones + ' ones)</td></tr>';
+      let st = [], v = x;
+      if (v === 0) st.push('0');
+      while (v > 0 && st.length < 16) { st.push(v + '÷2 = ' + Math.floor(v / 2) + ' r <b>' + (v % 2) + '</b>'); v = Math.floor(v / 2); }
+      $('cvSteps').innerHTML = 'Repeated division of ' + x + ': ' + st.join('; ') + ' → read remainders last to first.';
+    }
+    $('cvGo').addEventListener('click', parse);
+    $('cvIn').addEventListener('keydown', e => { if (e.key === 'Enter') parse(); });
+    $('cvW').addEventListener('change', () => { const m = Math.pow(2, +$('cvW').value) - 1; W = +$('cvW').value; x &= m; build(); draw(); });
+    $('cvInc').addEventListener('click', () => { x = (x + 1) % Math.pow(2, W); draw(); });
+    $('cvDec').addEventListener('click', () => { x = (x - 1 + Math.pow(2, W)) % Math.pow(2, W); draw(); });
+    $('cvInv').addEventListener('click', () => { x = (~x) & (Math.pow(2, W) - 1); draw(); });
+    $('cvNeg').addEventListener('click', () => { x = (Math.pow(2, W) - x) % Math.pow(2, W); draw(); });
+    build(); draw();
+    return draw;
+  });
+
+  /* ---------- absolute encoder ---------- */
+  Deck.onShow('enc', () => {
+    let playing = false;
+    const ang = $('enAng');
+    const get = Deck.controls('simEnc', draw);
+    const code = (s, g) => g ? s ^ (s >> 1) : s;
+    const decode = (c, g) => { if (!g) return c; let b = 0; while (c) { b ^= c; c >>= 1; } return b; };
+    const offs = (N, mis) => Array.from({ length: N }, (_, k) => N > 1 ? -mis + 2 * mis * k / (N - 1) : 0);
+    function raw(th, N, mis, g) {
+      const d = 360 / (1 << N), o = offs(N, mis); let c = 0;
+      for (let k = 0; k < N; k++) { const phi = ((th + o[k]) % 360 + 360) % 360, s = Math.floor(phi / d); if ((code(s, g) >> k) & 1) c |= 1 << k; }
+      return c;
+    }
+    $('enPlay').addEventListener('click', () => { playing = !playing; $('enPlay').textContent = playing ? 'Stop' : 'Rotate'; });
+    Deck.loop('enc', dt => {
+      if (!playing) return;
+      let a = +ang.value + dt * 18; if (a >= 360) a -= 360;
+      ang.value = a; ang.dispatchEvent(new Event('input'));
+    });
+    function draw() {
+      const v = get(), N = v.N, g = v.code === 'g', mis = v.mis, th = v.ang, S = 1 << N, d = 360 / S;
+      // disc
+      const cv = $('cvDisk'), { ctx, W, H } = Deck.sizeCanvas(cv);
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const cx = W / 2, cy = H / 2 + 4, R = Math.min(W, H) / 2 - 22, r0 = R * 0.26, w = (R - r0) / N, rad = a => a * Math.PI / 180;
+      for (let k = 0; k < N; k++) {
+        const i = N - 1 - k, rin = r0 + i * w, rout = rin + w;
+        for (let s = 0; s < S; s++) {
+          const a1 = rad(-90 + s * d - th), a2 = rad(-90 + (s + 1) * d - th);
+          ctx.beginPath(); ctx.arc(cx, cy, rout, a1, a2); ctx.arc(cx, cy, rin, a2, a1, true); ctx.closePath();
+          ctx.fillStyle = ((code(s, g) >> k) & 1) ? Deck.alpha('acc', 0.85) : Deck.color('panel'); ctx.fill();
+          ctx.strokeStyle = Deck.color('rule'); ctx.lineWidth = 1; ctx.stroke();
+        }
+      }
+      ctx.font = Deck.font(N > 3 ? 9.5 : 11, true); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = Deck.color('muted');
+      for (let s = 0; s < S; s++) { const a = rad(-90 + (s + 0.5) * d - th); ctx.fillText(String(s), cx + (R + 11) * Math.cos(a), cy + (R + 11) * Math.sin(a)); }
+      ctx.beginPath(); ctx.arc(cx, cy, r0 - 2, 0, 7); ctx.fillStyle = Deck.color('paper'); ctx.fill(); ctx.strokeStyle = Deck.color('muted'); ctx.stroke();
+      ctx.fillStyle = Deck.color('muted'); ctx.font = Deck.font(9.5); ctx.fillText('hub', cx, cy);
+      ctx.strokeStyle = Deck.color('muted'); ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(cx, cy - r0); ctx.lineTo(cx, cy - R - 4); ctx.stroke(); ctx.setLineDash([]);
+      const o = offs(N, mis);
+      for (let k = 0; k < N; k++) {
+        const i = N - 1 - k, rm = r0 + (i + 0.5) * w, a = rad(-90 + o[k]);
+        ctx.beginPath(); ctx.arc(cx + rm * Math.cos(a), cy + rm * Math.sin(a), 4.5, 0, 7);
+        ctx.fillStyle = Deck.color('blu'); ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = Deck.color('paper'); ctx.stroke();
+      }
+      // reading vs angle
+      const tru = [], rd = [];
+      for (let i = 0; i <= 1440; i++) { const t = i / 4; tru.push([t, Math.floor((t % 360) / d)]); rd.push([t, decode(raw(t, N, mis, g), g)]); }
+      Deck.plot($('cvEncP'), { x: [0, 360], y: [-0.5, S - 0.5], xlabel: 'shaft angle (degrees)', ylabel: 'sector number', xticks: [0, 90, 180, 270, 360],
+        yticks: N > 3 ? [0, 3, 6, 9, 12, 15] : [0, 1, 2, 3, 4, 5, 6, 7], pad: { l: 44 },
+        vlines: [{ x: th, color: 'blu', dash: [4, 3] }],
+        series: [{ pts: tru, color: 'muted', width: 3 }, { pts: rd, color: 'acc', width: 1.6 }] });
+      const c = raw(th, N, mis, g), val = decode(c, g), truth = Math.floor(th / d), err = ((val - truth + S + S / 2) % S) - S / 2;
+      $('roEnc').innerHTML = 'true sector <b>' + truth + '</b> &nbsp; detectors read <b>' + binS(c, N) + '</b>' + (g ? ' (Gray) → binary <b>' + binS(val, N) + '</b>' : '') +
+        ' = <b>' + val + '</b> &nbsp; error <b>' + (err > 0 ? '+' : '') + err + ' sector' + (Math.abs(err) === 1 ? '' : 's') + '</b> &nbsp; sector width <b>' + d.toFixed(1) + '°</b>';
+    }
+    return draw;
+  });
+
+  /* ---------- gate playground ---------- */
+  Deck.onShow('play', () => {
+    const L = 16; let inp = [[], [], []], cursor = 0, playing = false, acc = 0;
+    let mode = 'count';
+    const get = Deck.controls('simGate', () => { if (mode === 'count') countPreset(); draw(); });
+    const nIn = v => v.g === 'NOT' ? 1 : v.n;
+    function evalG(g, a) {
+      const all = a.every(t => t), any = a.some(t => t), x = a.reduce((p, t) => p ^ t, 0);
+      return { AND: all, OR: any, NAND: !all, NOR: !any, XOR: x, XNOR: !x, NOT: !a[0] }[g] ? 1 : 0;
+    }
+    function countPreset() { for (let i = 0; i < 3; i++) for (let t = 0; t < L; t++) { const n = nIn(get()), c = Math.floor(t / 2) % (1 << n); inp[i][t] = i < n ? (c >> (n - 1 - i)) & 1 : 0; } }
+    function randPreset() { for (let i = 0; i < 3; i++) for (let t = 0; t < L; t++) inp[i][t] = Math.random() < 0.5 ? 1 : 0; }
+    countPreset();
+    const names = ['A', 'B', 'C'];
+    const exprs = { AND: n => names.slice(0, n).join(''), OR: n => names.slice(0, n).join(' + '), NAND: n => '<span class="ov">' + names.slice(0, n).join('') + '</span>', NOR: n => '<span class="ov">' + names.slice(0, n).join(' + ') + '</span>', XOR: n => names.slice(0, n).join(' ⊕ '), XNOR: n => '<span class="ov">' + names.slice(0, n).join(' ⊕ ') + '</span>', NOT: () => '<span class="ov">A</span>' };
+    const cv = $('cvGate');
+    function geom() { const W = cv.clientWidth, H = parseFloat(cv.style.height) || 250, n = nIn(get()), lx = 30, sw = (W - lx - 8) / L, rows = n + 1, rh = (H - 22) / rows; return { W, H, n, lx, sw, rows, rh }; }
+    cv.addEventListener('click', e => {
+      const r = cv.getBoundingClientRect(), G = geom(), x = e.clientX - r.left, y = e.clientY - r.top;
+      const t = Math.floor((x - G.lx) / G.sw), row = Math.floor((y - 4) / G.rh);
+      if (t < 0 || t >= L) return;
+      if (row >= 0 && row < G.n) { inp[row][t] ^= 1; mode = 'custom'; }
+      cursor = t; draw();
+    });
+    $('gCount').addEventListener('click', () => { mode = 'count'; countPreset(); cursor = 0; draw(); });
+    $('gRand').addEventListener('click', () => { mode = 'random'; randPreset(); draw(); });
+    $('gPlay').addEventListener('click', () => { playing = !playing; $('gPlay').textContent = playing ? 'Stop cursor' : 'Play cursor'; });
+    Deck.loop('play', dt => { if (!playing) return; acc += dt; if (acc > 0.6) { acc = 0; cursor = (cursor + 1) % L; draw(); } });
+    function draw() {
+      const v = get(), n = nIn(v);
+      const out = []; for (let t = 0; t < L; t++) out.push(evalG(v.g, inp.slice(0, n).map(r => r[t])));
+      const { ctx, W, H } = Deck.sizeCanvas(cv);
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const lx = 30, sw = (W - lx - 8) / L, rows = n + 1, rh = (H - 22) / rows;
+      ctx.fillStyle = Deck.alpha('ylw', 0.18); ctx.fillRect(lx + cursor * sw, 0, sw, H - 18);
+      ctx.strokeStyle = Deck.color('rule'); ctx.lineWidth = 1;
+      for (let t = 0; t <= L; t++) { ctx.beginPath(); ctx.moveTo(lx + t * sw, 4); ctx.lineTo(lx + t * sw, H - 20); ctx.stroke(); }
+      ctx.font = Deck.font(10, true); ctx.fillStyle = Deck.color('muted'); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      for (let t = 0; t < L; t += (W < 480 ? 2 : 1)) ctx.fillText(String(t + 1), lx + (t + 0.5) * sw, H - 6);
+      for (let r = 0; r < rows; r++) {
+        const isOut = r === n, data = isOut ? out : inp[r], y0 = 4 + r * rh, yH = y0 + rh * 0.2, yL = y0 + rh * 0.78;
+        ctx.fillStyle = Deck.color(isOut ? 'acc' : 'blu'); ctx.font = Deck.font(12, true); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.fillText(isOut ? 'X' : names[r], 6, (yH + yL) / 2);
+        ctx.strokeStyle = Deck.color(isOut ? 'acc' : 'blu'); ctx.lineWidth = isOut ? 2.6 : 2; ctx.beginPath();
+        for (let t = 0; t < L; t++) { const y = data[t] ? yH : yL, x0 = lx + t * sw; if (t === 0) ctx.moveTo(x0, y); else ctx.lineTo(x0, y); ctx.lineTo(x0 + sw, y); }
+        ctx.stroke();
+      }
+      // symbol and truth table
+      $('gSym').innerHTML = gateSVG(v.g, 40, 7, n, names, 'X');
+      const cur = inp.slice(0, n).map(r => r[cursor]);
+      let h = '<tr>' + names.slice(0, n).map(c => '<th>' + c + '</th>').join('') + '<th>X</th></tr>';
+      for (let c = 0; c < (1 << n); c++) {
+        const bits = Array.from({ length: n }, (_, i) => (c >> (n - 1 - i)) & 1), isCur = bits.every((b, i) => b === cur[i]);
+        h += '<tr' + (isCur ? ' class="cur"' : '') + '>' + bits.map(b => '<td>' + b + '</td>').join('') + '<td>' + evalG(v.g, bits) + '</td></tr>';
+      }
+      $('gTab').innerHTML = h;
+      $('roGate').innerHTML = 'X = <b>' + exprs[v.g](n) + '</b> &nbsp; bit time <b>' + (cursor + 1) + '</b>: ' + cur.map((b, i) => names[i] + ' = <b>' + b + '</b>').join(', ') + ' → X = <b>' + out[cursor] + '</b>';
+    }
+    return draw;
+  });
+})();
+</script>
+</body>
+</html>

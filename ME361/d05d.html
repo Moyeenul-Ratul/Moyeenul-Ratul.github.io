@@ -1,0 +1,1007 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bits, Words and Converters</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="deck.css">
+<style>
+  .tbl.compact th,.tbl.compact td{padding:5px 10px;font-size:.88rem}
+  .readout{display:block;line-height:1.9}
+  .define{display:block}
+  .define::before{display:block;margin-bottom:4px}
+  svg .w{stroke:var(--ink);stroke-width:1.5;fill:none}
+  .bits{display:flex;gap:6px;flex-wrap:wrap}
+  .bits > button,.bits > span{min-width:2.4em;display:inline-flex;flex-direction:column;align-items:center;gap:1px;padding:.3em .35em;
+    border:1.5px solid var(--rule);border-radius:6px;background:var(--paper);color:var(--ink);font:600 1rem var(--f-mono);cursor:pointer}
+  .bits small{font:400 .62rem var(--f-mono);color:var(--muted)}
+  @media (max-width:480px){.bits{gap:4px}.bits > button,.bits > span{min-width:2em;padding:.25em .15em;font-size:.88rem}}
+  .bits .on{border-color:var(--acc);background:var(--acc-soft);color:var(--acc)}
+  .bits .cur{outline:2px solid var(--blu);outline-offset:1px}
+  .saplog{max-height:190px;overflow-y:auto}
+  .btnrow{display:flex;flex-wrap:wrap;gap:6px}
+  .btnrow .btn{font-size:.82rem;padding:.45em .75em}
+</style>
+<script>window.DECK = { num: "05d", title: "Bits, Words and Converters" };</script>
+<script src="deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+
+<!-- 1 · Cover -->
+<section class="slide cover center" id="cover" data-title="Cover">
+  <p class="num">TOPIC 05 · PART D OF 6</p>
+  <h1>Bits, Words and Converters</h1>
+  <p class="lead">Every sample from part C must become a whole number before a computer can keep it. Converters build the bridge between volts and bits, and the size of their smallest step decides what you can and cannot see.</p>
+  <div class="parts"><a href="d05a.html">A · Number systems, codes and logic gates</a><a href="d05b.html">B · Boolean algebra, combinational logic and flip-flops</a><a href="d05c.html">C · Sampling and aliasing</a><span>D · Bits, words and converters</span><a href="d05e.html">E · DAQ systems and communication</a><a href="d05f.html">F · Industrial transmission and digital filtering</a></div>
+  <canvas class="bigtrace" id="coverQ" data-h="120" aria-label="Animated sine wave being converted into a staircase of discrete levels"></canvas>
+  <ol class="agenda">
+    <li>Bits, words and binary codes</li>
+    <li>Negative numbers and two's complement</li>
+    <li>HIGH and LOW: bits on wires</li>
+    <li>The digital-to-analog converter</li>
+    <li>Resolution, quantization error and SNR</li>
+    <li>Successive-approximation, integrating and flash converters</li>
+  </ol>
+</section>
+
+<!-- 2 · Where we are -->
+<section class="slide" id="where" data-title="Where we are">
+  <p class="eyebrow">Where we are</p>
+  <h2>Part C decided <i>when</i> to sample; this part decides <i>what number</i> each sample becomes</h2>
+  <div class="cols">
+    <div>
+      <p>In part C a conditioned analog voltage was sampled every \(\delta t\) seconds. Three rules came out of it: sample faster than twice the highest frequency present (\(f_s &gt; 2f_m\)), put an analog low-pass (anti-alias) filter in front of the sampler, and make the record hold whole periods so the spectrum does not leak.</p>
+      <p>But a sample is still an analog value, for example 6.372 V. A computer can only store whole numbers of a fixed length. Two devices make the crossing between the two worlds:</p>
+      <p class="define"><dfn>Analog-to-digital converter</dfn> (A/D converter, ADC): turns one held voltage into an integer code. This rounding of a continuous value onto a finite set of levels is called <dfn>quantization</dfn>.</p>
+      <p class="define"><dfn>Digital-to-analog converter</dfn> (D/A converter, DAC): turns an integer code back into a voltage, for example to drive a valve or a motor.</p>
+    </div>
+    <div>
+      <div class="grid-cards">
+        <div class="card"><span class="tag">Slides 3–5 · recap</span><h3>Storing numbers</h3><p>A short recap of part A (bits, words, hex, 2's complement, logic levels), plus the bipolar codes converters use.</p></div>
+        <div class="card"><span class="tag">Slides 6–7</span><h3>Number → voltage</h3><p>The D/A converter, built from switches, resistors and one op-amp.</p></div>
+        <div class="card"><span class="tag">Slides 8–16</span><h3>Voltage → number</h3><p>Resolution, quantization error, and three ways to build an A/D converter.</p></div>
+      </div>
+      <div class="analogy"><p>Sampling decides how often you photograph a scene. Quantization decides how many shades of grey each photograph may use. Part C was about the shutter; part D is about the shades.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 · Bits and words -->
+<section class="slide" id="bits" data-title="Bits and words">
+  <p class="eyebrow">Recap of part A</p>
+  <h2>A word is a row of switches, and each switch is worth twice its right-hand neighbour</h2>
+  <div class="cols">
+    <div>
+      <p class="define"><dfn>Bit</dfn> (binary digit): the smallest unit of information, either 0 or 1, like a switch that is off or on. A <dfn>word</dfn> is an ordered row of \(M\) bits; a <dfn>byte</dfn> is a word of 8 bits. The memory location that holds a word is a <dfn>register</dfn>.</p>
+      <p>Reading from the right, the bits are worth 1, 2, 4, 8, … A bit that is 1 adds its weight; a bit that is 0 adds nothing. In <dfn>straight binary</dfn> the value of the word is</p>
+      <div class="eq"><span class="label">Value of an M-bit straight-binary word</span>
+        $$X=\sum_{k=0}^{M-1} b_k\,2^{k},\qquad 0\le X\le 2^M-1$$
+      </div>
+      <div class="symbols">
+        <span>\(b_k\)</span><span>value (0 or 1) of bit \(k\); bit 0 is on the right</span>
+        <span>\(M\)</span><span>number of bits in the word</span>
+        <span>\(2^M\)</span><span>number of different words: 256 for 8 bits, 4096 for 12, 65 536 for 16</span>
+      </div>
+      <p>Bit \(M-1\) carries the largest weight and is the <dfn>most significant bit</dfn> (MSB); bit 0 is the <dfn>least significant bit</dfn> (LSB). Long words are often written in <dfn>hexadecimal</dfn>: each group of 4 bits becomes one digit 0–9 or A–F (A = 10 … F = 15).</p>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 142" aria-label="An 8-bit register holding 1 0 1 1 0 0 1 1 with weights 128 down to 1 above each cell; the ones add to 179">
+<rect x="40" y="34" width="40" height="36" rx="3" class="box-acc"/>
+<text x="60" y="58" text-anchor="middle" class="t-mono t-acc" font-size="17">1</text>
+<text x="60" y="26" text-anchor="middle" class="t-mono t-muted" font-size="10.5">128</text>
+<text x="60" y="84" text-anchor="middle" class="t-mono t-muted" font-size="10">b7</text>
+<rect x="80" y="34" width="40" height="36" rx="3" class="box"/>
+<text x="100" y="58" text-anchor="middle" class="t-mono" font-size="17">0</text>
+<text x="100" y="26" text-anchor="middle" class="t-mono t-muted" font-size="10.5">64</text>
+<text x="100" y="84" text-anchor="middle" class="t-mono t-muted" font-size="10">b6</text>
+<rect x="120" y="34" width="40" height="36" rx="3" class="box-acc"/>
+<text x="140" y="58" text-anchor="middle" class="t-mono t-acc" font-size="17">1</text>
+<text x="140" y="26" text-anchor="middle" class="t-mono t-muted" font-size="10.5">32</text>
+<text x="140" y="84" text-anchor="middle" class="t-mono t-muted" font-size="10">b5</text>
+<rect x="160" y="34" width="40" height="36" rx="3" class="box-acc"/>
+<text x="180" y="58" text-anchor="middle" class="t-mono t-acc" font-size="17">1</text>
+<text x="180" y="26" text-anchor="middle" class="t-mono t-muted" font-size="10.5">16</text>
+<text x="180" y="84" text-anchor="middle" class="t-mono t-muted" font-size="10">b4</text>
+<rect x="200" y="34" width="40" height="36" rx="3" class="box"/>
+<text x="220" y="58" text-anchor="middle" class="t-mono" font-size="17">0</text>
+<text x="220" y="26" text-anchor="middle" class="t-mono t-muted" font-size="10.5">8</text>
+<text x="220" y="84" text-anchor="middle" class="t-mono t-muted" font-size="10">b3</text>
+<rect x="240" y="34" width="40" height="36" rx="3" class="box"/>
+<text x="260" y="58" text-anchor="middle" class="t-mono" font-size="17">0</text>
+<text x="260" y="26" text-anchor="middle" class="t-mono t-muted" font-size="10.5">4</text>
+<text x="260" y="84" text-anchor="middle" class="t-mono t-muted" font-size="10">b2</text>
+<rect x="280" y="34" width="40" height="36" rx="3" class="box-acc"/>
+<text x="300" y="58" text-anchor="middle" class="t-mono t-acc" font-size="17">1</text>
+<text x="300" y="26" text-anchor="middle" class="t-mono t-muted" font-size="10.5">2</text>
+<text x="300" y="84" text-anchor="middle" class="t-mono t-muted" font-size="10">b1</text>
+<rect x="320" y="34" width="40" height="36" rx="3" class="box-acc"/>
+<text x="340" y="58" text-anchor="middle" class="t-mono t-acc" font-size="17">1</text>
+<text x="340" y="26" text-anchor="middle" class="t-mono t-muted" font-size="10.5">1</text>
+<text x="340" y="84" text-anchor="middle" class="t-mono t-muted" font-size="10">b0</text>
+<text x="34" y="26" text-anchor="end" class="t-muted" font-size="10">weight</text>
+<text x="34" y="84" text-anchor="end" class="t-muted" font-size="10">bit</text>
+<text x="40" y="102" text-anchor="start" class="t-mono t-blu" font-size="10.5">MSB</text>
+<text x="360" y="102" text-anchor="end" class="t-mono t-blu" font-size="10.5">LSB</text>
+<text x="200" y="132" text-anchor="middle" class="t-mono" font-size="12">128 + 32 + 16 + 2 + 1 = 179 (decimal) = B3 (hex)</text>
+        </svg>
+        <figcaption>An 8-bit register. Only the cells holding 1 (orange) contribute their weight.</figcaption>
+      </figure>
+      <div class="example">
+        <p class="given">A 4-bit register holds 0101 in straight binary. What decimal number is it?</p>
+        <ol class="steps" data-open>
+          <li>Weights from the left: 8, 4, 2, 1. Value \(=0\cdot 8+1\cdot 4+0\cdot 2+1\cdot 1=5\).</li>
+        </ol>
+      </div>
+      <div class="quiz" data-correct="1">
+        <p class="q">A 12-bit register holds straight-binary words. How many different words, and what is the largest value?</p>
+        <div class="opts">
+          <button class="opt" data-why="That is \(2^{11}\). Twelve bits give \(2^{12}\) words.">2048 words, largest 2047</button>
+          <button class="opt" data-why="\(2^{12}=4096\) words, numbered 0 to 4095. The top value is one less than the count because 0 uses up one word.">4096 words, largest 4095</button>
+          <button class="opt" data-why="4096 is the count of words, but counting starts at 0, so the largest is 4095.">4096 words, largest 4096</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 · Signed codes -->
+<section class="slide" id="signed" data-title="Negative numbers and two's complement">
+  <p class="eyebrow">Binary codes</p>
+  <h2>Negative numbers: let the top bit carry the sign</h2>
+  <div class="cols">
+    <div>
+      <p>Straight binary is a <dfn>unipolar</dfn> code: every value has the same sign, which suits a 0 to 10 V input. A <dfn>bipolar</dfn> code also represents negative values (a ±5 V input, a signed temperature difference). In all the bipolar codes below the MSB acts as the sign bit.</p>
+      <div class="tbl compact"><table>
+        <tr><th>4 bits</th><th>Straight</th><th>Offset</th><th>Two's</th><th>Ones'</th><th>Sign + mag.</th></tr>
+        <tr><td>0000</td><td>0</td><td>−7</td><td>+0</td><td>+0</td><td>+0</td></tr>
+        <tr><td>0001</td><td>1</td><td>−6</td><td>+1</td><td>+1</td><td>+1</td></tr>
+        <tr><td>0011</td><td>3</td><td>−4</td><td>+3</td><td>+3</td><td>+3</td></tr>
+        <tr><td>0111</td><td>7</td><td>−0</td><td>+7</td><td>+7</td><td>+7</td></tr>
+        <tr><td>1000</td><td>8</td><td>+0</td><td>−8</td><td>−7</td><td>−0</td></tr>
+        <tr><td>1001</td><td>9</td><td>+1</td><td>−7</td><td>−6</td><td>−1</td></tr>
+        <tr><td>1100</td><td>12</td><td>+4</td><td>−4</td><td>−3</td><td>−4</td></tr>
+        <tr><td>1110</td><td>14</td><td>+6</td><td>−2</td><td>−1</td><td>−6</td></tr>
+        <tr><td>1111</td><td>15</td><td>+7</td><td>−1</td><td>−0</td><td>−7</td></tr>
+      </table></div>
+      <p class="small muted"><b>Offset binary</b> cuts a bipolar range into 16 equal bins; true zero lies between 0111 and 1000, labelled −0 and +0. <b>Ones' complement</b> negates by inverting every bit. <b>Sign + magnitude</b> puts the sign in the MSB and the size in straight binary (1100 = −4). <b>BCD</b> (binary-coded decimal), used in digital readouts, codes each decimal digit separately: 532 → 0101 0011 0010.</p>
+    </div>
+    <div>
+      <p><dfn>Two's complement</dfn> is the code computers use for signed integers. Reveal why it works:</p>
+      <ol class="steps">
+        <li>An \(M\)-bit register can only hold \(2^M\) values, so arithmetic wraps round: for \(M=4\), \(15+1\) gives 0000 with the carry lost.</li>
+        <li>So store \(-x\) as \(2^M-x\). For \(M=4\): \(-3\to16-3=13=1101\).</li>
+        <li>Quick recipe: invert every bit and add 1. \(0011\to1100\to1101\). Same answer.</li>
+        <li>Check by adding: \(5+(-3)\): \(0101+1101=1\,0010\). Drop the carry out of bit 3 and you get 0010 = 2. Ordinary binary addition just works, which is why hardware likes this code.</li>
+        <li>Range: \(-2^{M-1}\) to \(2^{M-1}-1\). With 8 bits, −128 to +127. There is one more negative value than positive because zero uses a code with MSB = 0.</li>
+      </ol>
+      <div class="analogy"><p>A car's 4-digit odometer driven backwards one kilometre from 0000 shows 9999. Read 9999 as −1 and you have ten's complement. Two's complement is the same trick on an odometer whose wheels only carry 0 and 1.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 · Register sim & HIGH/LOW -->
+<section class="slide" id="register" data-title="HIGH and LOW signals; register simulator">
+  <p class="eyebrow">Simulator · a register on the wires</p>
+  <h2>HIGH and LOW: how a word travels on wires</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simReg">
+      <div class="simhead"><span>8-bit register</span><span class="legend"><span><i style="background:var(--acc)"></i>HIGH (1)</span><span><i style="background:var(--muted)"></i>LOW (0)</span></span></div>
+      <div class="bits" id="regBits" aria-label="Eight bit switches, most significant on the left; click to toggle"></div>
+      <canvas id="cvReg" data-h="250" aria-label="Left: eight parallel wires at 5 V or 0 V. Right: the same word sent serially on one wire, most significant bit first"></canvas>
+      <div class="btnrow"><button class="btn" type="button" id="regInc">Add 1</button><button class="btn" type="button" id="regNeg">Negate (invert, add 1)</button><button class="btn" type="button" id="regClr">Clear</button><button class="btn" type="button" id="reg179">Load 10110011</button></div>
+      <div class="readout" id="roReg"></div>
+    </div>
+    <div>
+      <p>Electronics represents a bit by a voltage. In 5 V <dfn>TTL</dfn> (transistor–transistor logic) a HIGH of about 5 V means 1 and a LOW of about 0 V means 0. A receiver accepts anything from 2 to 5.5 V as HIGH and anything below about 0.8 V as LOW. The undefined gap in between is a <dfn>noise margin</dfn>: a half-volt spike on a LOW line still reads LOW.</p>
+      <p><dfn>Parallel</dfn> transmission uses one wire per bit, so the whole word arrives at once. <dfn>Serial</dfn> transmission uses one wire and sends the bits one after another, each held for a fixed time \(\delta t\), so a word takes \(M\,\delta t\).</p>
+      <div class="analogy"><p>Parallel is an eight-lane bridge: a whole word crosses side by side. Serial is a single-lane bridge: the bits queue up, but you only have to build one lane.</p></div>
+      <div class="try"><p>Press <b>Load 10110011</b>: unsigned 179, two's complement −77. Press <b>Negate</b>: 01001101 = +77. Now set 01111111 (+127) and press <b>Add 1</b>. The pattern becomes 10000000, which two's complement reads as −128: integer overflow wraps round, it does not stop at the top.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · DAC -->
+<section class="slide" id="dac" data-title="The D/A converter">
+  <p class="eyebrow">Digital-to-analog conversion</p>
+  <h2>The D/A converter: each bit switches in half the current of the bit before it</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 232" aria-label="Weighted-resistor D/A converter: a reference source feeds four switches; closed switches connect resistors R, 2R, 4R and 8R to a summing node at the inverting input of an op-amp with feedback resistor R r; output E o">
+<circle cx="26" cy="112" r="15" class="fill-panel" style="stroke:var(--ink);stroke-width:1.5"/>
+<text x="26" y="106" text-anchor="middle" font-size="12">+</text><text x="26" y="124" text-anchor="middle" font-size="12">−</text>
+<text x="26" y="148" text-anchor="middle" font-size="12">E<tspan baseline-shift="-3" font-size="78%">ref</tspan></text>
+<path d="M26 97 L26 22 L66 22 L66 175" class="w"/>
+<path d="M26 127 L26 196" class="w"/><path d="M26 196 L26 202" class="w"/><path d="M17 202 L35 202" class="w"/><path d="M20 206 L32 206" class="w"/><path d="M23 210 L29 210" class="w"/>
+<circle cx="66" cy="40" r="2.6" class="fill-ink"/>
+<path d="M66 40 L78 40" class="w"/>
+<circle cx="80" cy="40" r="2.4" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/><circle cx="108" cy="40" r="2.4" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/><path d="M80 40 L107 40" class="ln-acc"/>
+<path d="M108 40 L118 40" class="w"/>
+<path d="M118 40 L127 40 L130.5 35 L137.5 45 L144.5 35 L151.5 45 L158.5 35 L165.5 45 L169 40 L178 40" class="w"/>
+<text x="148" y="31" text-anchor="middle" class="t-mono" font-size="11">R</text>
+<path d="M178 40 L216 40" class="w"/>
+<circle cx="216" cy="40" r="2.6" class="fill-ink"/>
+<text x="94" y="57" text-anchor="middle" class="t-mono t-acc" font-size="9.5">c = 1</text>
+<text x="59" y="44" text-anchor="end" class="t-mono t-blu" font-size="9.5">MSB</text>
+<circle cx="66" cy="85" r="2.6" class="fill-ink"/>
+<path d="M66 85 L78 85" class="w"/>
+<circle cx="80" cy="85" r="2.4" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/><circle cx="108" cy="85" r="2.4" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/><path d="M80 85 L105 73" class="w"/>
+<path d="M108 85 L118 85" class="w"/>
+<path d="M118 85 L127 85 L130.5 80 L137.5 90 L144.5 80 L151.5 90 L158.5 80 L165.5 90 L169 85 L178 85" class="w"/>
+<text x="148" y="76" text-anchor="middle" class="t-mono" font-size="11">2R</text>
+<path d="M178 85 L216 85" class="w"/>
+<circle cx="216" cy="85" r="2.6" class="fill-ink"/>
+<text x="94" y="102" text-anchor="middle" class="t-mono t-muted" font-size="9.5">c = 0</text>
+<circle cx="66" cy="130" r="2.6" class="fill-ink"/>
+<path d="M66 130 L78 130" class="w"/>
+<circle cx="80" cy="130" r="2.4" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/><circle cx="108" cy="130" r="2.4" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/><path d="M80 130 L107 130" class="ln-acc"/>
+<path d="M108 130 L118 130" class="w"/>
+<path d="M118 130 L127 130 L130.5 125 L137.5 135 L144.5 125 L151.5 135 L158.5 125 L165.5 135 L169 130 L178 130" class="w"/>
+<text x="148" y="121" text-anchor="middle" class="t-mono" font-size="11">4R</text>
+<path d="M178 130 L216 130" class="w"/>
+<circle cx="216" cy="130" r="2.6" class="fill-ink"/>
+<text x="94" y="147" text-anchor="middle" class="t-mono t-acc" font-size="9.5">c = 1</text>
+<circle cx="66" cy="175" r="2.6" class="fill-ink"/>
+<path d="M66 175 L78 175" class="w"/>
+<circle cx="80" cy="175" r="2.4" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/><circle cx="108" cy="175" r="2.4" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/><path d="M80 175 L105 163" class="w"/>
+<path d="M108 175 L118 175" class="w"/>
+<path d="M118 175 L127 175 L130.5 170 L137.5 180 L144.5 170 L151.5 180 L158.5 170 L165.5 180 L169 175 L178 175" class="w"/>
+<text x="148" y="166" text-anchor="middle" class="t-mono" font-size="11">8R</text>
+<path d="M178 175 L216 175" class="w"/>
+<circle cx="216" cy="175" r="2.6" class="fill-ink"/>
+<text x="94" y="192" text-anchor="middle" class="t-mono t-muted" font-size="9.5">c = 0</text>
+<text x="59" y="179" text-anchor="end" class="t-mono t-blu" font-size="9.5">LSB</text>
+<path d="M216 40 L216 175" class="w"/>
+<path d="M216 115.5 L262 115.5" class="w"/>
+<circle cx="240" cy="115.5" r="2.6" class="fill-ink"/>
+<path d="M240 115.5 L240 72 L262 72" class="w"/>
+<path d="M262 72 L269.5 72 L272.4 67 L278.2 77 L284.1 67 L289.9 77 L295.8 67 L301.6 77 L304.5 72 L312 72" class="w"/>
+<text x="287" y="62" text-anchor="middle" class="t-mono" font-size="11">R<tspan baseline-shift="-3" font-size="78%">r</tspan></text>
+<path d="M312 72 L334 72 L334 130" class="w"/>
+<path d="M262 144.5 L250 144.5 L250 196" class="w"/><path d="M250 196 L250 202" class="w"/><path d="M241 202 L259 202" class="w"/><path d="M244 206 L256 206" class="w"/><path d="M247 210 L253 210" class="w"/>
+<path d="M262 101 L314 130 L262 159 Z" class="box"/><text x="271" y="119.5" text-anchor="middle" font-size="13">−</text><text x="271" y="148.5" text-anchor="middle" font-size="13">+</text>
+<path d="M314 130 L372 130" class="w"/><circle cx="374" cy="130" r="3.2" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/>
+<text x="374" y="116" text-anchor="middle" font-size="12">E<tspan baseline-shift="-3" font-size="78%">o</tspan></text>
+<path d="M222 102 L238 102" class="ln-acc"/><path d="M238 102 L231 98.5 L231 105.5 Z" class="fill-acc"/>
+<text x="230" y="96" text-anchor="middle" class="t-acc" font-size="12">I</text>
+<text x="216" y="225" text-anchor="middle" class="t-muted" font-size="10">summing node (virtual 0 V)</text>
+        </svg>
+        <figcaption>A 4-bit weighted-resistor D/A converter holding the word 1010: the MSB and the third switch are closed (orange). Each resistor is twice the one above it.</figcaption>
+      </figure>
+      <div class="symbols">
+        <span>\(E_{ref}\)</span><span>stable reference voltage, V</span>
+        <span>\(c_m\)</span><span>state of bit \(m\) (1 = switch closed); \(m=1\) is the MSB</span>
+        <span>\(R,\ R_r\)</span><span>MSB resistor and feedback resistor, Ω</span>
+        <span>\(X\)</span><span>the word read as a straight-binary integer</span>
+      </div>
+    </div>
+    <div>
+      <p>The problem: turn an \(M\)-bit word into a proportional voltage. Reveal the circuit's logic line by line.</p>
+      <ol class="steps">
+        <li>An ideal op-amp with negative feedback holds its two inputs at the same voltage. The + input is grounded, so the − input sits at 0 V: a <dfn>virtual ground</dfn>.</li>
+        <li>A closed switch therefore puts the full \(E_{ref}\) across its resistor. Bit \(m\) carries \(c_m E_{ref}/(2^{m-1}R)\): the MSB the most, each lower bit half as much.</li>
+        <li>No current enters the op-amp, so all branch currents add and flow on through \(R_r\): $$I=E_{ref}\sum_{m=1}^{M}\frac{c_m}{2^{m-1}R},\qquad E_o=-I R_r$$</li>
+        <li>The word as an integer is \(X=\sum c_m 2^{M-m}\), so \(\sum c_m 2^{1-m}=2X/2^M\) and \(|E_o|=E_{ref}\,(2R_r/R)\,X/2^M\).</li>
+        <li>Choose \(R_r=R/2\): the output is the reference scaled by the fraction \(X/2^M\).</li>
+      </ol>
+      <div class="eq"><span class="label">D/A converter output</span>
+        $$|E_o|=E_{ref}\,\frac{X}{2^M}$$
+      </div>
+      <p class="small">Assumes an ideal op-amp, exact resistor ratios and zero-resistance switches. The minus sign only reflects the inverting amplifier. Typical full-scale ranges are 0–10 V or ±5 V, with \(M\) = 8, 12, 16 or 18 bits.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 7 · DAC worked example + R-2R -->
+<section class="slide" id="dac-ex" data-title="Worked example: a 4-bit DAC; the R-2R ladder">
+  <p class="eyebrow">Worked example</p>
+  <h2>Output of a 4-bit weighted-resistor converter</h2>
+  <div class="cols wide-l">
+    <div class="example">
+      <p class="given">The converter on the previous slide has \(E_{ref}=10\) V, \(R=10\) kΩ (so the branches are 10, 20, 40 and 80 kΩ) and \(R_r=5\) kΩ. It holds the word 1010. Find the summing current, the output voltage, the size of one output step and the largest output.</p>
+      <p><b>Known</b> \(M=4\), word 1010, \(E_{ref}=10\) V, \(R=10\) kΩ, \(R_r=5\) kΩ. <b>Find</b> \(I\), \(|E_o|\), one LSB, maximum output. <b>Assumptions</b> ideal op-amp and switches.</p>
+      <ol class="steps">
+        <li>Closed switches: the MSB (10 kΩ) and the third bit (40 kΩ). Their currents are \(10/10\,000=1.00\) mA and \(10/40\,000=0.25\) mA.</li>
+        <li>Summing current: \(I=1.00+0.25=1.25\) mA.</li>
+        <li>Output: \(|E_o|=IR_r=1.25\ \text{mA}\times5\ \text{k}\Omega=6.25\) V (the inverting stage gives −6.25 V).</li>
+        <li>Check with the output law: \(X=1010_2=8+2=10\), so \(E_{ref}X/2^M=10\times10/16=6.25\) V.</li>
+        <li>One LSB changes the output by \(10/16=0.625\) V. The largest word, 1111, gives \(15\times0.625=9.375\) V, one step short of \(E_{ref}\).</li>
+      </ol>
+      <p><b>What this means:</b> a 4-bit converter can only output 16 voltages, 0.625 V apart. Anything in between is unreachable, which is why real D/A converters use 12 or more bits.</p>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 140" aria-label="R-2R ladder: series resistors R along the top between four nodes; from each node a 2R leg goes down to a bit switch; a 2R terminating resistor to ground at the LSB end">
+<path d="M4 40 L110 40" class="w"/>
+<text x="4" y="32" text-anchor="start" class="t-muted" font-size="9.5">to summing node</text>
+<circle cx="110" cy="40" r="2.6" class="fill-ink"/>
+<path d="M110 40 L110 46.9 L105 49.6 L115 55 L105 60.3 L115 65.7 L105 71 L115 76.4 L110 79.1 L110 86" class="w"/>
+<text x="118" y="67" text-anchor="start" class="t-mono" font-size="10">2R</text>
+<text x="110" y="102" text-anchor="middle" class="t-mono t-muted" font-size="9.5">b3 MSB</text>
+<circle cx="180" cy="40" r="2.6" class="fill-ink"/>
+<path d="M180 40 L180 46.9 L175 49.6 L185 55 L175 60.3 L185 65.7 L175 71 L185 76.4 L180 79.1 L180 86" class="w"/>
+<text x="188" y="67" text-anchor="start" class="t-mono" font-size="10">2R</text>
+<text x="180" y="102" text-anchor="middle" class="t-mono t-muted" font-size="9.5">b2</text>
+<circle cx="250" cy="40" r="2.6" class="fill-ink"/>
+<path d="M250 40 L250 46.9 L245 49.6 L255 55 L245 60.3 L255 65.7 L245 71 L255 76.4 L250 79.1 L250 86" class="w"/>
+<text x="258" y="67" text-anchor="start" class="t-mono" font-size="10">2R</text>
+<text x="250" y="102" text-anchor="middle" class="t-mono t-muted" font-size="9.5">b1</text>
+<circle cx="320" cy="40" r="2.6" class="fill-ink"/>
+<path d="M320 40 L320 46.9 L315 49.6 L325 55 L315 60.3 L325 65.7 L315 71 L325 76.4 L320 79.1 L320 86" class="w"/>
+<text x="328" y="67" text-anchor="start" class="t-mono" font-size="10">2R</text>
+<text x="320" y="102" text-anchor="middle" class="t-mono t-muted" font-size="9.5">b0 LSB</text>
+<path d="M110 40 L120.5 40 L124.6 35 L132.8 45 L140.9 35 L149.1 45 L157.2 35 L165.4 45 L169.5 40 L180 40" class="w"/>
+<text x="145" y="31" text-anchor="middle" class="t-mono" font-size="10">R</text>
+<path d="M180 40 L190.5 40 L194.6 35 L202.8 45 L210.9 35 L219.1 45 L227.2 35 L235.4 45 L239.5 40 L250 40" class="w"/>
+<text x="215" y="31" text-anchor="middle" class="t-mono" font-size="10">R</text>
+<path d="M250 40 L260.5 40 L264.6 35 L272.8 45 L280.9 35 L289.1 45 L297.2 35 L305.4 45 L309.5 40 L320 40" class="w"/>
+<text x="285" y="31" text-anchor="middle" class="t-mono" font-size="10">R</text>
+<path d="M320 40 L370 40" class="w"/>
+<path d="M370 40 L370 46.9 L365 49.6 L375 55 L365 60.3 L375 65.7 L365 71 L375 76.4 L370 79.1 L370 86" class="w"/>
+<text x="378" y="67" text-anchor="start" class="t-mono" font-size="10">2R</text>
+<path d="M370 86 L370 92" class="w"/><path d="M370 92 L370 98" class="w"/><path d="M361 98 L379 98" class="w"/><path d="M364 102 L376 102" class="w"/><path d="M367 106 L373 106" class="w"/>
+<text x="205" y="128" text-anchor="middle" class="t-muted" font-size="10">each 2R leg is switched to E<tspan baseline-shift="-3" font-size="78%">ref</tspan> (bit = 1) or to 0 V (bit = 0)</text>
+        </svg>
+        <figcaption>The R-2R ladder needs only two resistor values.</figcaption>
+      </figure>
+      <p>Weighted resistors need a spread of \(2^{M-1}\): a 16-bit version would need resistors from \(R\) to \(32\,768R\), all matched to better than 1 part in 65 536. Practical converters use the <dfn>R-2R ladder</dfn>. Looking to the right from any node you see exactly \(2R\), so the current splits in half at every node and each bit again contributes half of the bit before. The output law \(E_{ref}X/2^M\) is unchanged.</p>
+      <div class="quiz" data-correct="1">
+        <p class="q">An 8-bit D/A converter outputs 3.58 V for 10110011. What does it output for 01100100?</p>
+        <div class="opts">
+          <button class="opt" data-why="Convert both words to integers first: 10110011 = 179 and 01100100 = 100.">1.79 V</button>
+          <button class="opt" data-why="Output is proportional to \(X\): \(3.58/179 = 0.0200\) V per count, and \(100\times0.0200 = 2.00\) V.">2.00 V</button>
+          <button class="opt" data-why="That assumes 3.58 V is full scale. It is the output for 179 counts, not for 255.">1.40 V</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 · ADC staircase -->
+<section class="slide" id="adc" data-title="A/D resolution and the staircase">
+  <p class="eyebrow">Analog-to-digital conversion</p>
+  <h2>The A/D converter: a staircase with steps of size Q</h2>
+  <div class="cols">
+    <div>
+      <p>An A/D converter has an analog side and a digital side. The analog side accepts inputs within its <dfn>full-scale range</dfn> \(E_{FSR}\): the span from the lowest to the highest input, for example 0 to 10 V (unipolar) or −5 to +5 V (bipolar), both \(E_{FSR}=10\) V. The digital side delivers an \(M\)-bit word, so it can only report \(2^M\) different values. The span is therefore cut into \(2^M\) equal steps:</p>
+      <div class="eq"><span class="label">A/D converter resolution</span>
+        $$Q=\frac{E_{FSR}}{2^M}$$
+      </div>
+      <div class="symbols">
+        <span>\(Q\)</span><span>resolution: the input change that moves the output by one LSB, V</span>
+        <span>\(E_{FSR}\)</span><span>full-scale range (span), V</span>
+        <span>\(M\)</span><span>number of bits</span>
+      </div>
+      <p>For \(E_{FSR}=10\) V: 8 bits give \(Q=10/256=39.1\) mV; 12 bits give \(10/4096=2.44\) mV.</p>
+      <p>Two encoding schemes are common. A <b>truncating</b> converter changes code at \(Q, 2Q, 3Q,\dots\), so the output is always 0 to 1 LSB below the input (usual in digital readouts). A converter with a <b>½-LSB bias</b> shifts the input internally by \(Q/2\), so the steps fall at \(Q/2, 3Q/2,\dots\) and the output is within ±½ LSB of the input (usual in data-acquisition systems).</p>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 410 262" aria-label="Transfer staircase of a 0 to 4 volt, 2-bit converter: binary output 00 to 11 against analog input from minus 1 to 5 volts, dashed ideal line, steps 1 volt wide, saturated output below 0 and above 3 volts, and a second axis showing the half-LSB-bias version">
+<path d="M44 176 L400 176" class="ln-thin"/>
+<path d="M62 182 L62 20" class="ln-thin"/>
+<path d="M62 176 L62 181" class="ln-thin"/><text x="62" y="193" text-anchor="middle" class="t-mono t-muted" font-size="10">-1</text>
+<path d="M118 176 L118 181" class="ln-thin"/><text x="118" y="193" text-anchor="middle" class="t-mono t-muted" font-size="10">0</text>
+<path d="M174 176 L174 181" class="ln-thin"/><text x="174" y="193" text-anchor="middle" class="t-mono t-muted" font-size="10">1</text>
+<path d="M230 176 L230 181" class="ln-thin"/><text x="230" y="193" text-anchor="middle" class="t-mono t-muted" font-size="10">2</text>
+<path d="M286 176 L286 181" class="ln-thin"/><text x="286" y="193" text-anchor="middle" class="t-mono t-muted" font-size="10">3</text>
+<path d="M342 176 L342 181" class="ln-thin"/><text x="342" y="193" text-anchor="middle" class="t-mono t-muted" font-size="10">4</text>
+<path d="M398 176 L398 181" class="ln-thin"/><text x="398" y="193" text-anchor="middle" class="t-mono t-muted" font-size="10">5</text>
+<text x="230" y="207" text-anchor="middle" font-size="11">analog input E<tspan baseline-shift="-3" font-size="78%">i</tspan> (V)</text>
+<path d="M58 176 L62 176" class="ln-thin"/><text x="54" y="180" text-anchor="end" class="t-mono" font-size="11">00</text>
+<path d="M58 136 L62 136" class="ln-thin"/><text x="54" y="140" text-anchor="end" class="t-mono" font-size="11">01</text>
+<path d="M58 96 L62 96" class="ln-thin"/><text x="54" y="100" text-anchor="end" class="t-mono" font-size="11">10</text>
+<path d="M58 56 L62 56" class="ln-thin"/><text x="54" y="60" text-anchor="end" class="t-mono" font-size="11">11</text>
+<text x="18" y="98" text-anchor="middle" font-size="11" transform="rotate(-90 18 98)">binary output</text>
+<path d="M118 176 L336.4 20" class="ln-thin dash"/>
+<text x="290.4" y="34" text-anchor="end" class="t-muted" font-size="10">ideal</text>
+<path d="M67.6 176 L174 176 L174 136 L230 136 L230 96 L286 96 L286 56 L395.2 56" class="ln-acc"/>
+<path d="M174 144 L174 149 L230 149 L230 144" class="ln-blu"/>
+<text x="202" y="163" text-anchor="middle" class="t-blu t-mono" font-size="11">Q = 1 V</text>
+<text x="358.8" y="46" text-anchor="middle" class="t-acc" font-size="10.5">saturated</text>
+<text x="92.8" y="166" text-anchor="middle" class="t-acc" font-size="10.5">saturated</text>
+<text x="260.8" y="88" text-anchor="middle" class="t-acc" font-size="10.5">actual</text>
+<path d="M44 226 L400 226" class="ln-thin"/>
+<path d="M90 226 L90 231" class="ln-thin"/><text x="90" y="242" text-anchor="middle" class="t-mono t-blu" font-size="10">-1</text>
+<path d="M146 226 L146 231" class="ln-thin"/><text x="146" y="242" text-anchor="middle" class="t-mono t-blu" font-size="10">0</text>
+<path d="M202 226 L202 231" class="ln-thin"/><text x="202" y="242" text-anchor="middle" class="t-mono t-blu" font-size="10">1</text>
+<path d="M258 226 L258 231" class="ln-thin"/><text x="258" y="242" text-anchor="middle" class="t-mono t-blu" font-size="10">2</text>
+<path d="M314 226 L314 231" class="ln-thin"/><text x="314" y="242" text-anchor="middle" class="t-mono t-blu" font-size="10">3</text>
+<path d="M370 226 L370 231" class="ln-thin"/><text x="370" y="242" text-anchor="middle" class="t-mono t-blu" font-size="10">4</text>
+<text x="230" y="256" text-anchor="middle" class="t-blu" font-size="10.5">with a ½-LSB bias the steps fall at 0.5, 1.5, 2.5 V</text>
+        </svg>
+        <figcaption>A 0–4 V, 2-bit converter: <i>Q</i> = 4/2<sup>2</sup> = 1 V. Inputs of 0.0 V and 0.9 V both give 00; 1.1 V gives 01. Above 3 V the output is stuck at 11, below 0 V at 00.</figcaption>
+      </figure>
+      <div class="analogy"><p>Quantizing is measuring with a ruler that has only centimetre marks and no millimetres. A 1 m plank is measured well; a 3 mm washer reads as 0 cm. You can buy a ruler with finer marks (more bits) or make the object bigger before measuring (amplify).</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 · Errors and SNR -->
+<section class="slide" id="qerr" data-title="Quantization error, saturation and SNR">
+  <p class="eyebrow">Converter errors</p>
+  <h2>Quantization error, saturation and the signal-to-noise ratio</h2>
+  <div class="cols">
+    <div>
+      <p class="define"><dfn>Quantization error</dfn> \(e_Q\): the difference between the analog input and the value represented by the output code. Its span is always one LSB: \(0\) to \(Q\) for a truncating converter, \(\pm Q/2\) with a ½-LSB bias. In an uncertainty analysis the resolution uncertainty is \(u_Q=e_Q\), usually \(\tfrac12 Q\).</p>
+      <p>As a varying signal climbs the staircase, \(e_Q\) traces a sawtooth between its limits that is unrelated to the signal itself. It therefore behaves like <b>noise</b> added to the record. Its absolute size is fixed, so it matters most for small signals.</p>
+      <p class="define"><dfn>Saturation error</dfn>: an input outside \(E_{FSR}\) leaves the output stuck at the end code (all 0s or all 1s); the error is the difference between the input and that end value. Prevent it by conditioning the signal so it stays inside the range.</p>
+      <p><dfn>Conversion errors</dfn> from the converter's own imperfections come on slide 12.</p>
+    </div>
+    <div>
+      <p>Resolution is often quoted as a <dfn>signal-to-noise ratio</dfn> (SNR). Where it comes from:</p>
+      <ol class="steps">
+        <li>The largest signal spans \(E_{FSR}\); the smallest change the converter can resolve is \(Q=E_{FSR}/2^M\).</li>
+        <li>Electrical power goes as \(E^2/R\), so the ratio of the two powers is \((E_{FSR}/Q)^2=(2^M)^2\).</li>
+        <li>In decibels: \(\text{SNR}=10\log_{10}(2^M)^2=20\log_{10}2^M\).</li>
+        <li>Since \(20\log_{10}2=6.02\), every extra bit adds 6.02 dB.</li>
+      </ol>
+      <div class="eq"><span class="label">Signal-to-noise ratio of an M-bit converter</span>
+        $$\text{SNR}=20\log_{10}2^M\approx6.02\,M\ \text{dB}$$
+      </div>
+      <div class="tbl compact"><table>
+        <tr><th>M</th><th>Q for E<sub>FSR</sub> = 10 V</th><th>SNR (dB)</th></tr>
+        <tr><td>2</td><td>2.5 V</td><td>12</td></tr>
+        <tr><td>4</td><td>0.625 V</td><td>24</td></tr>
+        <tr><td>8</td><td>39.1 mV</td><td>48</td></tr>
+        <tr><td>12</td><td>2.44 mV</td><td>72</td></tr>
+        <tr><td>16</td><td>0.153 mV</td><td>96</td></tr>
+        <tr><td>18</td><td>0.0381 mV</td><td>108</td></tr>
+      </table></div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 · Quantization sim -->
+<section class="slide" id="quant" data-title="Quantization simulator">
+  <p class="eyebrow">Simulator · quantization</p>
+  <h2>How many bits does your signal need?</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simQ">
+      <div class="simhead"><span>A/D converter</span><span class="legend"><span><i style="background:var(--muted)"></i>analog input</span><span><i style="background:var(--acc)"></i>converter output</span><span><i style="background:var(--blu)"></i>error e<sub>Q</sub></span></span></div>
+      <canvas id="cvQ" data-h="210" aria-label="Analog sine input and the quantized staircase output; red bands mark inputs outside the range"></canvas>
+      <canvas id="cvQe" data-h="140" aria-label="Quantization error against time with its theoretical band"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="qM">Bits M <output data-for="M"></output></label>
+          <input type="range" id="qM" data-key="M" min="1" max="16" step="1" value="4" data-fmt="0"></div>
+        <div class="ctl"><label for="qR">Input range</label>
+          <select id="qR" data-key="R"><option value="u10" selected>0 to 10 V</option><option value="b5">−5 to +5 V</option><option value="b10">−10 to +10 V</option></select></div>
+        <div class="ctl"><label for="qA">Signal amplitude <output data-for="A"></output></label>
+          <input type="range" id="qA" data-key="A" data-scale="log" data-min="0.01" data-max="12" min="0" max="1000" value="858" data-fmt="-1" data-unit=" V"></div>
+        <div class="ctl"><label for="qo">Signal mean <output data-for="o"></output></label>
+          <input type="range" id="qo" data-key="o" min="-10" max="10" step="0.05" value="5" data-fmt="2" data-unit=" V"></div>
+        <div class="ctl"><label for="qs">Scheme</label>
+          <select id="qs" data-key="s"><option value="r" selected>½-LSB bias (round)</option><option value="t">Truncate</option></select></div>
+      </div>
+      <div class="readout" id="roQ"></div>
+    </div>
+    <div>
+      <div class="try"><p>Start at 4 bits: the staircase has 16 levels and the error is a sawtooth inside the blue ±Q/2 band. Raise M to 8 and 12 and watch Q and the error shrink by 2 for every bit. Then set M = 8 and shrink the amplitude to 0.05 V: the sine turns into two or three steps and the relative error reaches tens of percent. Finally push the amplitude past 5 V with mean 5 V: the red bands show saturation, where the output flattens.</p></div>
+      <div class="example">
+        <p class="given">A 0–10 V converter with a ½-LSB bias reads a 100 mV and a 1 V signal. Find the relative quantization error \(e_Q/E_i\) for 8 and 12 bits.</p>
+        <ol class="steps">
+          <li>\(Q_8=10/256=39.1\) mV and \(Q_{12}=10/4096=2.44\) mV.</li>
+          <li>\(e_Q=\tfrac12Q\): 19.5 mV (8-bit) and 1.22 mV (12-bit).</li>
+          <li>100 mV signal: 19.5 % (8-bit), 1.2 % (12-bit).</li>
+          <li>1 V signal: 1.95 % (8-bit), 0.12 % (12-bit).</li>
+        </ol>
+        <p><b>What this means:</b> the same absolute error hurts a small signal ten times more. Amplify first.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 11 · Worked example ±10 V -->
+<section class="slide" id="ex-range" data-title="Worked example: resolution on a ±10 V range">
+  <p class="eyebrow">Worked example</p>
+  <h2>Can a ±10 V data card see a one-degree change?</h2>
+  <div class="cols wide-l">
+    <div class="example">
+      <p class="given">A temperature transducer produces 0.1 mV/°C. It is wired directly to a data card whose A/D converter has an input range of −10 to +10 V and a ½-LSB bias. Find the resolution \(Q\), the quantization error and the smallest temperature step the card can see for (a) a 12-bit and (b) a 16-bit converter. (c) What amplifier gain lets the 16-bit card resolve 0.05 °C, and does a 0–500 °C range still fit?</p>
+      <p><b>Known</b> \(K=0.1\) mV/°C; range ±10 V; \(M=12\) or 16. <b>Find</b> \(Q\), \(e_Q\), step in °C, gain \(G\). <b>Assumptions</b> ideal converter, so only quantization matters.</p>
+      <ol class="steps">
+        <li>The span is \(E_{FSR}=+10-(-10)=20\) V, not 10 V.</li>
+        <li>(a) 12-bit: \(Q=20/4096=4.88\) mV, \(e_Q=\pm2.44\) mV. In temperature: \(4.88/0.1=48.8\) °C per step, ±24.4 °C. Useless for this sensor.</li>
+        <li>(b) 16-bit: \(Q=20/65\,536=0.305\) mV, \(e_Q=\pm0.153\) mV, i.e. 3.05 °C per step, ±1.53 °C.</li>
+        <li>(c) An amplifier of gain \(G\) before the converter divides the input-referred step by \(G\). A 0.05 °C step is \(0.05\times0.1=5\ \mu\text{V}\), so \(G\ge0.305\ \text{mV}/5\ \mu\text{V}=61\). Take \(G=100\): step \(=3.05\ \mu\)V \(=0.031\) °C.</li>
+        <li>Range check: 500 °C gives 50 mV, times 100 is 5 V, inside ±10 V with margin. (\(G=200\) would put 500 °C exactly at the 10 V limit.)</li>
+      </ol>
+      <p><b>What this means:</b> extra bits alone rarely rescue a millivolt signal. Gain before the converter, sized so the largest expected signal nearly fills the range, does.</p>
+    </div>
+    <div>
+      <div class="quiz" data-correct="1">
+        <p class="q">A 10-bit converter has an input range of ±5 V. Its resolution is…</p>
+        <div class="opts">
+          <button class="opt" data-why="That uses 5 V as \(E_{FSR}\). The span from −5 to +5 V is 10 V.">4.88 mV</button>
+          <button class="opt" data-why="\(Q=10/2^{10}=10/1024=9.77\) mV.">9.77 mV</button>
+          <button class="opt" data-why="That uses 20 V. The span of ±5 V is 10 V.">19.5 mV</button>
+        </div>
+      </div>
+      <div class="pitfall"><p>Taking \(E_{FSR}\) as the "+" limit of a bipolar range halves \(Q\) on paper. The converter still spreads its \(2^M\) codes over the whole span from the negative to the positive limit.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 12 · Conversion error -->
+<section class="slide" id="ex-conv" data-title="Worked example: conversion error">
+  <p class="eyebrow">Worked example · conversion errors</p>
+  <h2>When the converter itself is imperfect</h2>
+  <div class="cols wide-l">
+    <div class="example">
+      <p class="given">A 0–10 V, 12-bit A/D converter has a linearity error of 3 bits and a temperature drift error of 1 bit per 5 °C. It will work where its temperature may change by 10 °C. Estimate the design-stage uncertainty in its digital value of an analog voltage.</p>
+      <p><b>Known</b> \(E_{FSR}=10\) V, \(M=12\), linearity 3 LSB, drift 1 LSB/5 °C, \(\Delta T=10\) °C. <b>Find</b> \(u_d\). <b>Assumptions</b> ½-LSB scheme; the error sources are independent, so they combine by root-sum-squares.</p>
+      <ol class="steps">
+        <li>One LSB: \(Q=10/4096=2.44\) mV.</li>
+        <li>Quantization: \(u_0=\tfrac12Q=1.22\) mV.</li>
+        <li>Linearity: \(u_2=3\ \text{LSB}\times2.44\ \text{mV}=7.32\) mV.</li>
+        <li>Temperature: \(u_3=(10/5)\ \text{LSB}\times2.44\ \text{mV}=4.88\) mV.</li>
+        <li>Conversion errors combined: \(u_c=\sqrt{7.32^2+4.88^2}=8.80\) mV.</li>
+        <li>Total: \(u_d=\sqrt{u_0^2+u_c^2}=\sqrt{1.22^2+8.80^2}=8.89\) mV (95 % assumed).</li>
+      </ol>
+      <p><b>What this means:</b> the converter's own errors, not its resolution, dominate. A 12-bit converter with these specifications performs like one of roughly 9 bits.</p>
+    </div>
+    <div>
+      <p class="define"><dfn>Conversion error</dfn>: error from imperfections inside the converter, delineated like any instrument error into linearity, zero, sensitivity, hysteresis and repeatability errors. Causes include settling time, noise during sampling, temperature effects and supply fluctuations.</p>
+      <p><b>Linearity error</b> arises because the \(2^M\) steps are not exactly equal in width, so the staircase wanders from the ideal straight line. Converter errors are quoted <b>in bits (LSB)</b>; multiply by \(Q\) to get volts.</p>
+      <div class="note" data-label="Root-sum-squares (RSS)"><p>Independent uncertainties add like perpendicular vectors: \(u=\sqrt{u_1^2+u_2^2+\dots}\). The largest one dominates; halving a small one changes the total very little.</p></div>
+      <div class="analogy"><p>A ruler with millimetre marks that were printed unevenly, on plastic that stretches in the sun. Finer marks do not help if the marks themselves are in the wrong place.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 13 · SAR -->
+<section class="slide" id="sar-idea" data-title="Successive-approximation converter">
+  <p class="eyebrow">A/D converter types · successive approximation</p>
+  <h2>Successive approximation: a binary guessing game played by hardware</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 230" aria-label="Successive-approximation converter: input E i into a comparator; comparator output to control logic driven by a clock; control logic sets bits of an M-bit register; register drives a D A converter whose output E star is fed back to the comparator; register bits also form the digital output">
+<circle cx="16" cy="52" r="3.2" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/><text x="16" y="40" text-anchor="middle" class="t-mono" font-size="11">E<tspan baseline-shift="-3" font-size="78%">i</tspan></text>
+<text x="4" y="74" text-anchor="start" class="t-mono t-blu" font-size="10">10.1 V</text>
+<path d="M19 52 L70 52" class="w"/>
+<path d="M70 37 L118 62 L70 87 Z" class="box"/><text x="79" y="56" text-anchor="middle" font-size="13">+</text><text x="79" y="80" text-anchor="middle" font-size="13">−</text>
+<text x="94" y="30" text-anchor="middle" class="t-muted" font-size="10">comparator</text>
+<path d="M118 62 L146 62" class="w"/><path d="M146 62 L139 58.5 L139 65.5 Z" class="fill-ink"/>
+<rect x="146" y="44" width="84" height="36" rx="5" class="box"/><text x="188" y="66" text-anchor="middle" font-size="11">control logic</text>
+<rect x="156" y="2" width="64" height="24" rx="5" class="box"/><text x="188" y="18" text-anchor="middle" font-size="11">clock</text><path d="M188 26 L188 44" class="w"/><path d="M188 44 L191.5 37 L184.5 37 Z" class="fill-ink"/>
+<path d="M230 62 L254 62" class="w"/><path d="M254 62 L247 58.5 L247 65.5 Z" class="fill-ink"/>
+<rect x="254" y="46" width="30" height="32" rx="2" class="box-acc"/>
+<text x="269" y="67" text-anchor="middle" class="t-mono t-acc" font-size="14">1</text>
+<rect x="284" y="46" width="30" height="32" rx="2" class="box"/>
+<text x="299" y="67" text-anchor="middle" class="t-mono" font-size="14">0</text>
+<rect x="314" y="46" width="30" height="32" rx="2" class="box-acc"/>
+<text x="329" y="67" text-anchor="middle" class="t-mono t-acc" font-size="14">1</text>
+<rect x="344" y="46" width="30" height="32" rx="2" class="box"/>
+<text x="359" y="67" text-anchor="middle" class="t-mono" font-size="14">0</text>
+<text x="314" y="38" text-anchor="middle" class="t-muted" font-size="10">M-bit register</text>
+<text x="254" y="92" text-anchor="start" class="t-mono t-muted" font-size="9">MSB</text><text x="374" y="92" text-anchor="end" class="t-mono t-muted" font-size="9">LSB</text>
+<path d="M300 78 L300 160" class="ln"/>
+<path d="M300 160 L252 160" class="ln"/><path d="M252 160 L259 163.5 L259 156.5 Z" class="fill-ink"/>
+<path d="M294 125 L306 117" class="w"/><text x="310" y="124" text-anchor="start" class="t-mono t-muted" font-size="9.5">M lines</text>
+<path d="M352 78 L352 206" class="ln"/><path d="M352 206 L355.5 199 L348.5 199 Z" class="fill-ink"/>
+<text x="352" y="222" text-anchor="middle" font-size="11">digital out</text>
+<rect x="150" y="138" width="102" height="44" rx="5" class="box-blu"/><text x="201" y="157" text-anchor="middle" font-size="11">D/A converter</text><text x="201" y="172" text-anchor="middle" class="t-mono" font-size="10">E* = X·Q</text>
+<path d="M150 160 L42 160 L42 74 L70 74" class="w"/><path d="M70 74 L63 70.5 L63 77.5 Z" class="fill-ink"/>
+<text x="38" y="122" text-anchor="end" class="t-mono t-acc" font-size="12">E*</text>
+<text x="48" y="196" text-anchor="start" class="t-muted" font-size="10">trial voltage fed back</text>
+<text x="48" y="210" text-anchor="start" class="t-mono t-acc" font-size="10">E* = 9.375 V</text>
+        </svg>
+        <figcaption>The four parts: a <b>comparator</b> (output HIGH when its + input exceeds its − input), <b>control logic</b> stepped by a clock, an <b>M-bit register</b> that holds the trial word, and a <b>D/A converter</b> that turns the trial word into the trial voltage <i>E</i>*.</figcaption>
+      </figure>
+    </div>
+    <div>
+      <ol>
+        <li>Set the MSB to 1, all other bits 0. The D/A gives \(E^*\). If \(E^*&gt;E_i\) the comparator goes LOW and the bit is reset to 0; otherwise it stays 1.</li>
+        <li>Set the next bit to 1 and repeat the test.</li>
+        <li>Continue to the LSB. The final register is the converted value. One clock tick per bit, so \(M\) ticks per conversion.</li>
+      </ol>
+      <div class="tbl compact"><table>
+        <tr><th>Step (0–15 V, 4-bit, E<sub>i</sub> = 10.1 V)</th><th>Register</th><th>E* (V)</th><th>Result</th></tr>
+        <tr><td>MSB set to 1</td><td>1000</td><td>7.5</td><td>HIGH: keep</td></tr>
+        <tr><td>next bit set to 1</td><td>1100</td><td>11.25</td><td>LOW: reset</td></tr>
+        <tr><td>next bit set to 1</td><td>1010</td><td>9.375</td><td>HIGH: keep</td></tr>
+        <tr><td>LSB set to 1</td><td>1011</td><td>10.3125</td><td>LOW: reset</td></tr>
+        <tr><td>final</td><td>1010</td><td>9.375</td><td>\(e_Q=0.725\) V</td></tr>
+      </table></div>
+      <p class="small">Here \(Q=15/16=0.9375\) V and \(E^*\) for any word is \(X\cdot Q\). The output 9.375 V differs from 10.1 V by the quantization error; more bits would shrink it.</p>
+      <div class="analogy"><p>"I am thinking of a number from 0 to 15." Ask "is it 8 or more?", then "12 or more?", and so on. Four yes/no questions always pin it down. A 4-bit successive-approximation converter asks exactly those four questions.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 · SAR sim -->
+<section class="slide" id="sar" data-title="Successive-approximation simulator">
+  <p class="eyebrow">Simulator · successive approximation</p>
+  <h2>Watch the register close in on the input, one clock tick per bit</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simSar">
+      <div class="simhead"><span>SAR converter, 0–15 V</span><span class="btnrow"><button class="btn primary" id="sarNext" type="button">Next clock tick</button><button class="btn" id="sarAll" type="button">Run all</button><button class="btn" id="sarReset" type="button">Reset</button></span></div>
+      <canvas id="cvSar" data-h="220" aria-label="Trial voltage E star at each clock tick compared with the input voltage"></canvas>
+      <div class="bits" id="sarBits" aria-label="Register bits, MSB on the left"></div>
+      <div class="controls">
+        <div class="ctl"><label for="sE"><span>Input E<sub>i</sub></span> <output data-for="E"></output></label>
+          <input type="range" id="sE" data-key="E" min="0" max="15" step="0.05" value="10.1" data-fmt="2" data-unit=" V"></div>
+        <div class="ctl"><label for="sM">Bits</label>
+          <select id="sM" data-key="M"><option value="4" selected>4</option><option value="8">8</option><option value="12">12</option></select></div>
+      </div>
+      <div class="readout" id="roSar"></div>
+    </div>
+    <div>
+      <div class="tbl compact saplog"><table id="sarLog"></table></div>
+      <div class="try"><p>With 4 bits and 10.1 V press <b>Next clock tick</b> four times and compare with the table on the previous slide. Orange dots are kept guesses, red dots are rejected ones; the green staircase is the register value. Switch to 12 bits: twelve ticks, and the final error drops below 4 mV. Try 7.49 V and 7.51 V: the very first decision differs, so noise near a high-order decision point is this converter's weak spot.</p></div>
+      <p><b>Speed.</b> \(M\) ticks per conversion: a 12-bit converter with a 1 MHz clock needs 12 µs. Typical boards reach 100 kHz to 1 MHz with 12 to 24 bits.</p>
+      <p><b>The input must not move</b> during those \(M\) ticks, or later bits are decided against a different voltage than earlier ones. A <dfn>sample-and-hold circuit</dfn> in front captures the input at the sample instant and holds it constant while the register works.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 15 · Integrating converters -->
+<section class="slide" id="ramp" data-title="Ramp and dual-slope converters">
+  <p class="eyebrow">A/D converter types · integrating</p>
+  <h2>Ramp and dual-slope converters: slow, cheap and very quiet</h2>
+  <div class="cols">
+    <div>
+      <p>A <dfn>ramp converter</dfn> charges a capacitor \(C\) from a constant current \(I\). Since \(q=\int I\,dt\), the capacitor voltage \(q/C\) rises linearly with time. A counter counts clock pulses while a comparator watches; when the ramp reaches \(E_i\) the count stops. The count is the digital value. A full-scale input needs \(2^M\) counts:</p>
+      <div class="eq"><span class="label">Maximum ramp conversion time</span>
+        $$t_{max}=\frac{2^M}{\text{clock frequency}}\quad(\times2\text{ for dual slope})$$
+      </div>
+      <p>Its accuracy depends on \(C\), \(I\) and the clock. The <dfn>dual-slope</dfn> version removes the dependence on \(C\):</p>
+      <ol class="steps">
+        <li>Step 1: integrate \(E_i\) for a fixed time \(t_1\). The integrator output grows at a rate \(\propto E_i\) and reaches \(E^*=E_i t_1/RC\).</li>
+        <li>Step 2: switch the integrator to a reference \(-E_{ref}\). The output falls at the fixed rate \(E_{ref}/RC\) and reaches zero after \(t_m=E^*RC/E_{ref}\).</li>
+        <li>Substitute: \(t_m=E_i t_1/E_{ref}\). The product \(RC\) cancels.</li>
+      </ol>
+      <div class="eq"><span class="label">Dual-slope conversion</span>
+        $$\frac{E_i}{E_{ref}}=\frac{t_m}{t_1}$$
+      </div>
+      <p class="small">Because step 1 integrates, noise averages out. If \(t_1\) is a whole number of mains periods (20 ms at 50 Hz), mains hum integrates to exactly zero. This makes dual-slope converters the choice for low-level (below 1 mV) signals and for digital voltmeters.</p>
+    </div>
+    <div class="sim" id="simDS">
+      <div class="simhead"><span>Dual-slope integrator</span><span class="legend"><span><i style="background:var(--acc)"></i>integrator output</span><span><i style="background:var(--muted)"></i>without hum</span></span></div>
+      <canvas id="cvDS" data-h="230" aria-label="Integrator output rising for fixed time t1 then falling at fixed slope until it reaches zero at t1 plus t m"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="dE"><span>Input E<sub>i</sub> (E<sub>ref</sub> = 10 V)</span> <output data-for="E"></output></label>
+          <input type="range" id="dE" data-key="E" min="0.5" max="10" step="0.01" value="6.37" data-fmt="2" data-unit=" V"></div>
+        <div class="ctl"><label for="dh">50 Hz hum amplitude <output data-for="h"></output></label>
+          <input type="range" id="dh" data-key="h" min="0" max="3" step="0.05" value="1.5" data-fmt="2" data-unit=" V"></div>
+        <div class="ctl"><label for="dt1"><span>Integration time t<sub>1</sub></span></label>
+          <select id="dt1" data-key="t1"><option value="20" selected>20 ms (one mains cycle)</option><option value="15">15 ms</option><option value="40">40 ms</option><option value="25">25 ms</option></select></div>
+        <div class="ctl"><label for="dp">Hum phase <output data-for="p"></output></label>
+          <input type="range" id="dp" data-key="p" min="0" max="360" step="5" value="60" data-fmt="0" data-unit="°"></div>
+      </div>
+      <div class="readout" id="roDS"></div>
+      <div class="try"><p>With \(t_1=20\) ms, raise the hum to 3 V: the rising ramp wiggles, yet the reading stays exact. Switch to 15 ms and move the phase: the reading now errs by up to about 0.9 V. Choose 40 ms: exact again. Whole mains cycles integrate to zero.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 16 · DVM worked example + flash -->
+<section class="slide" id="flash" data-title="Worked example: a ramp voltmeter; flash converters">
+  <p class="eyebrow">Worked example · and the fastest converter</p>
+  <h2>A ramp voltmeter, and the flash converter that decides in one tick</h2>
+  <div class="cols">
+    <div class="example">
+      <p class="given">A 0–10 V digital voltmeter with a three-digit display (x.xx V) uses a 10-bit single-ramp converter and a 100 kHz clock. The input is 6.372 V. What does it display, and how long does the conversion take?</p>
+      <p><b>Known</b> \(E_{FSR}=10\) V, \(M=10\), clock 100 kHz, \(E_i=6.372\) V. <b>Find</b> display, conversion time. <b>Assumptions</b> the ramp rises one LSB per clock tick; the count stops on the step where the ramp first reaches \(E_i\).</p>
+      <ol class="steps">
+        <li>\(Q=10/1024=9.766\) mV, so the ramp climbs 9.766 mV per step.</li>
+        <li>Steps needed: \(6.372/0.009766=652.5\); the ramp first reaches \(E_i\) on step 653.</li>
+        <li>Indicated value: \(653\times9.766\ \text{mV}=6.377\) V, displayed as <b>6.38 V</b>. The difference from 6.372 V is quantization error.</li>
+        <li>Each step takes \(1/100\ \text{kHz}=10\ \mu\)s, so the conversion takes \(653\times10\ \mu\text{s}=6.53\) ms. A dual-slope version needs about twice as long.</li>
+      </ol>
+      <p><b>What this means:</b> a few milliseconds per reading is nothing for a voltmeter but far too slow for vibration data.</p>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 410 262" aria-label="Two-bit flash converter: a ladder of four equal resistors from E ref to ground gives taps at three quarters, one half and one quarter of E ref; each tap feeds the minus input of a comparator whose plus input is E in; the three comparator outputs feed decoder logic producing bit 1 and bit 0">
+<circle cx="44" cy="14" r="3.2" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/><text x="36" y="18" text-anchor="end" class="t-mono" font-size="11">E<tspan baseline-shift="-3" font-size="78%">ref</tspan></text>
+<circle cx="110" cy="14" r="3.2" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/><text x="118" y="18" text-anchor="start" class="t-mono" font-size="11">E<tspan baseline-shift="-3" font-size="78%">in</tspan></text>
+<path d="M44 17 L44 22.2 L39 24.3 L49 28.4 L39 32.5 L49 36.5 L39 40.6 L49 44.7 L44 46.8 L44 52" class="w"/>
+<text x="34" y="38" text-anchor="end" class="t-mono" font-size="10">R</text>
+<path d="M44 52 L44 64" class="w"/>
+<path d="M44 70 L44 77.2 L39 80 L49 85.6 L39 91.2 L49 96.8 L39 102.4 L49 108 L44 110.8 L44 118" class="w"/>
+<path d="M44 64 L44 70" class="w"/><path d="M44 118 L44 126" class="w"/>
+<path d="M44 132 L44 139.2 L39 142 L49 147.6 L39 153.2 L49 158.8 L39 164.4 L49 170 L44 172.8 L44 180" class="w"/>
+<path d="M44 126 L44 132" class="w"/><path d="M44 180 L44 188" class="w"/>
+<path d="M44 194 L44 199.7 L39 201.9 L49 206.3 L39 210.8 L49 215.2 L39 219.6 L49 224.1 L44 226.3 L44 232" class="w"/>
+<path d="M44 188 L44 194" class="w"/><path d="M44 232 L44 236" class="w"/><path d="M44 236 L44 242" class="w"/><path d="M35 242 L53 242" class="w"/><path d="M38 246 L50 246" class="w"/><path d="M41 250 L47 250" class="w"/>
+<text x="34" y="98" text-anchor="end" class="t-mono" font-size="10">R</text>
+<text x="34" y="160" text-anchor="end" class="t-mono" font-size="10">R</text>
+<text x="34" y="216" text-anchor="end" class="t-mono" font-size="10">R</text>
+<path d="M110 17 L110 200" class="w"/>
+<path d="M170 50 L210 70 L170 90 Z" class="box"/><text x="178" y="66" text-anchor="middle" font-size="12">−</text><text x="178" y="85" text-anchor="middle" font-size="12">+</text>
+<circle cx="44" cy="64" r="2.6" class="fill-ink"/><path d="M44 64 L170 64" class="w"/>
+<circle cx="110" cy="80" r="2.6" class="fill-ink"/><path d="M110 80 L170 80" class="w"/>
+<text x="50" y="59" text-anchor="start" class="t-mono t-blu" font-size="9.5">¾ E<tspan baseline-shift="-3" font-size="78%">ref</tspan></text>
+<text x="190" y="102" text-anchor="middle" class="t-muted" font-size="9.5">comparator 3</text>
+<path d="M210 70 L252 70" class="w"/><path d="M252 70 L245 66.5 L245 73.5 Z" class="fill-ink"/>
+<path d="M170 112 L210 132 L170 152 Z" class="box"/><text x="178" y="128" text-anchor="middle" font-size="12">−</text><text x="178" y="147" text-anchor="middle" font-size="12">+</text>
+<circle cx="44" cy="126" r="2.6" class="fill-ink"/><path d="M44 126 L170 126" class="w"/>
+<circle cx="110" cy="142" r="2.6" class="fill-ink"/><path d="M110 142 L170 142" class="w"/>
+<text x="50" y="121" text-anchor="start" class="t-mono t-blu" font-size="9.5">½ E<tspan baseline-shift="-3" font-size="78%">ref</tspan></text>
+<text x="190" y="164" text-anchor="middle" class="t-muted" font-size="9.5">comparator 2</text>
+<path d="M210 132 L252 132" class="w"/><path d="M252 132 L245 128.5 L245 135.5 Z" class="fill-ink"/>
+<path d="M170 174 L210 194 L170 214 Z" class="box"/><text x="178" y="190" text-anchor="middle" font-size="12">−</text><text x="178" y="209" text-anchor="middle" font-size="12">+</text>
+<circle cx="44" cy="188" r="2.6" class="fill-ink"/><path d="M44 188 L170 188" class="w"/>
+<circle cx="110" cy="204" r="2.6" class="fill-ink"/><path d="M110 204 L170 204" class="w"/>
+<text x="50" y="183" text-anchor="start" class="t-mono t-blu" font-size="9.5">¼ E<tspan baseline-shift="-3" font-size="78%">ref</tspan></text>
+<text x="190" y="226" text-anchor="middle" class="t-muted" font-size="9.5">comparator 1</text>
+<path d="M210 194 L252 194" class="w"/><path d="M252 194 L245 190.5 L245 197.5 Z" class="fill-ink"/>
+<rect x="252" y="40" width="56" height="180" rx="5" class="box"/><text x="280" y="126" text-anchor="middle" font-size="11">decoder</text><text x="280" y="140" text-anchor="middle" font-size="11">logic</text>
+<path d="M308 90 L344 90" class="w"/><path d="M344 90 L337 86.5 L337 93.5 Z" class="fill-ink"/><text x="348" y="94" text-anchor="start" class="t-mono" font-size="10">bit 1</text>
+<path d="M308 170 L344 170" class="w"/><path d="M344 170 L337 166.5 L337 173.5 Z" class="fill-ink"/><text x="348" y="174" text-anchor="start" class="t-mono" font-size="10">bit 0</text>
+        </svg>
+        <figcaption>A 2-bit <b>flash</b> (parallel) converter: 2<sup><i>M</i></sup> − 1 = 3 comparators compare <i>E</i><sub>in</sub> with every ladder level at once. Input between ½ and ¾ <i>E</i><sub>ref</sub>: comparators 1 and 2 HIGH, 3 LOW → 10.</figcaption>
+      </figure>
+      <div class="tbl compact"><table>
+        <tr><th>Type</th><th>Speed</th><th>Strength / cost</th></tr>
+        <tr><td>Successive approx.</td><td>\(M\) ticks; 100 kHz–10 MHz</td><td>general-purpose boards; needs S/H</td></tr>
+        <tr><td>Ramp / dual-slope</td><td>up to \(2^M\) (×2) ticks; 1–100 Hz</td><td>rejects noise; cheap; voltmeters</td></tr>
+        <tr><td>Flash</td><td>1 tick; ~150 MHz at 8 bits</td><td>digital oscilloscopes; 255 comparators for 8 bits</td></tr>
+      </table></div>
+    </div>
+  </div>
+</section>
+
+<!-- 17 · Check yourself -->
+<section class="slide" id="check" data-title="Check yourself">
+  <p class="eyebrow">Self-test</p>
+  <h2>Check yourself</h2>
+  <div class="cols c3">
+    <div class="quiz" data-correct="2">
+      <p class="q">You must measure a 0.5 mV thermocouple signal in an electrically noisy plant, a few readings per second. Which converter suits best?</p>
+      <div class="opts">
+        <button class="opt" data-why="Flash converters are built for speed and cost many comparators; they do nothing special about noise.">Flash</button>
+        <button class="opt" data-why="It would work, but it decides each bit at one instant, so noise near a decision point flips bits.">Successive approximation</button>
+        <button class="opt" data-why="Integration averages noise, and an integration time of whole mains cycles cancels hum. Speed is not needed here.">Dual-slope</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="0">
+      <p class="q">A 12-bit, 0–10 V converter with a ½-LSB bias reads 3.000 V. Within what band can the true input lie (quantization only)?</p>
+      <div class="opts">
+        <button class="opt" data-why="\(Q=2.44\) mV, so \(e_Q=\pm1.22\) mV: 2.99878 to 3.00122 V.">3.000 V ± 1.22 mV</button>
+        <button class="opt" data-why="That is a full LSB each way. With a ½-LSB bias the error is ±½ LSB.">3.000 V ± 2.44 mV</button>
+        <button class="opt" data-why="That is the 8-bit value of ½Q (19.5 mV), not 12-bit.">3.000 V ± 19.5 mV</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="1">
+      <p class="q">In 8-bit two's complement, what is 11110110?</p>
+      <div class="opts">
+        <button class="opt" data-why="246 is the straight-binary (unsigned) reading.">246</button>
+        <button class="opt" data-why="MSB = 1, so negative. Invert: 00001001 = 9, add 1: 10. So the word is −10. Equivalently \(246-256=-10\).">−10</button>
+        <button class="opt" data-why="−9 is the ones'-complement reading (invert only, no +1).">−9</button>
+      </div>
+    </div>
+  </div>
+  <div class="reveal-box" data-label="One more: reveal the answer">
+    <p>An 8-bit successive-approximation converter with a range of 0–10 V converts 6.2 V. Which word does it produce, and what voltage does that word stand for?</p>
+    <div class="answer"><p>\(Q=10/256=39.06\) mV, and \(6.2/0.03906=158.7\). The register keeps every trial that stays at or below 6.2 V, so it ends at the largest word not above the input: 158 = 10011110, which stands for \(158\times39.06\ \text{mV}=6.172\) V. The register truncates; a ½-LSB bias in front would round to 159 instead.</p></div>
+  </div>
+</section>
+
+<!-- 18 · Summary -->
+<section class="slide" id="summary" data-title="Summary">
+  <p class="eyebrow">Summary</p>
+  <h2>Bits and converters on one page</h2>
+  <div class="tbl compact"><table>
+    <tr><th>Idea</th><th>Relation</th><th>Remember</th></tr>
+    <tr><td>Straight binary</td><td>\(X=\sum b_k2^k\), \(0\dots2^M-1\)</td><td>MSB has weight \(2^{M-1}\)</td></tr>
+    <tr><td>Two's complement</td><td>\(-x\to2^M-x\) (invert, add 1)</td><td>8 bits: −128 to +127; overflow wraps</td></tr>
+    <tr><td>D/A output</td><td>\(|E_o|=E_{ref}X/2^M\)</td><td>weighted resistors or R-2R ladder</td></tr>
+    <tr><td>A/D resolution</td><td>\(Q=E_{FSR}/2^M\)</td><td>\(E_{FSR}\) is the full span (±10 V → 20 V)</td></tr>
+    <tr><td>Quantization error</td><td>\(e_Q=\pm Q/2\) (bias) or 0 to \(Q\)</td><td>\(u_Q=e_Q\); worst for small signals</td></tr>
+    <tr><td>SNR</td><td>\(20\log 2^M\approx6.02M\) dB</td><td>6 dB per bit</td></tr>
+    <tr><td>Converter speed</td><td>SAR \(M\) ticks; ramp \(2^M\); flash 1</td><td>dual slope ×2, but quiet</td></tr>
+  </table></div>
+  <div class="cols">
+    <div>
+      <h3>You should now be able to…</h3>
+      <ul>
+        <li>read and write straight-binary, two's-complement and hexadecimal words;</li>
+        <li>explain how a D/A converter sums binary-weighted currents, and compute its output;</li>
+        <li>find \(Q\), \(e_Q\) and the smallest detectable change for any range and bit count;</li>
+        <li>step through a successive-approximation conversion and choose a converter type.</li>
+      </ul>
+    </div>
+    <div class="watch">
+      <h3>Watch next</h3>
+      <a href="https://www.youtube.com/results?search_query=two%27s+complement+explained" target="_blank" rel="noopener">Two's complement explained <small>YouTube search</small></a>
+      <a href="https://www.youtube.com/results?search_query=R-2R+ladder+DAC+explained" target="_blank" rel="noopener">The R-2R ladder D/A converter <small>YouTube search</small></a>
+      <a href="https://www.youtube.com/results?search_query=successive+approximation+ADC+explained" target="_blank" rel="noopener">How a successive-approximation ADC works <small>YouTube search</small></a>
+      <a href="https://www.youtube.com/results?search_query=dual+slope+integrating+ADC" target="_blank" rel="noopener">Dual-slope integrating ADC <small>YouTube search</small></a>
+    </div>
+  </div>
+  <p class="further">Further reading: Figliola &amp; Beasley, §7.3–7.5</p>
+  <div class="row"><a class="btn" href="d05c.html">&larr; Part C · Sampling and aliasing</a><a class="btn primary" href="d05e.html">Part E · DAQ systems and communication &rarr;</a></div>
+</section>
+
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const TAU = 2 * Math.PI;
+  const bin = (x, M) => (x >>> 0).toString(2).padStart(M, '0').slice(-M);
+
+  /* ---- cover: sine turned into a staircase ---- */
+  let cT = 0;
+  function drawCover() {
+    const n = 600, lev = 8, tt = Math.min(cT, 1), a = [], q = [];
+    for (let i = 0; i <= n; i++) {
+      const u = i / n; if (u > tt) break;
+      const v = Math.sin(TAU * 1.5 * u) * 0.92;
+      a.push([u, v]);
+      const c = Math.min(lev - 1, Math.floor((v + 1) / 2 * lev));
+      q.push([u, -1 + (c + 0.5) * 2 / lev]);
+    }
+    Deck.plot($('coverQ'), { x: [0, 1], y: [-1.15, 1.15], pad: { l: 8, r: 8, t: 6, b: 6 }, xticks: [], yticks: [],
+      series: [{ pts: a, color: 'muted', width: 1.3 }, { pts: q, color: 'acc', width: 2.4 }] });
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (cT < 1.05) { cT += RM ? 2 : dt * 0.3; drawCover(); } });
+
+  /* ---- register simulator ---- */
+  Deck.onShow('register', () => {
+    const M = 8, box = $('regBits'); let x = 0b10110011;
+    for (let b = M - 1; b >= 0; b--) {
+      const bt = document.createElement('button'); bt.type = 'button'; bt.dataset.b = b;
+      bt.title = 'bit ' + b + ', weight ' + (1 << b);
+      bt.innerHTML = '<b class="v"></b><small>' + (1 << b) + '</small>';
+      bt.style.padding = '.3em .35em';
+      bt.addEventListener('click', () => { x ^= (1 << b); draw(); });
+      box.appendChild(bt);
+    }
+    $('regInc').addEventListener('click', () => { x = (x + 1) & 255; draw(); });
+    $('regNeg').addEventListener('click', () => { x = ((~x) + 1) & 255; draw(); });
+    $('regClr').addEventListener('click', () => { x = 0; draw(); });
+    $('reg179').addEventListener('click', () => { x = 0b10110011; draw(); });
+    function draw() {
+      box.querySelectorAll('button').forEach(bt => { const on = (x >> +bt.dataset.b) & 1; bt.classList.toggle('on', !!on); bt.querySelector('.v').textContent = on; });
+      const cv = $('cvReg'), { ctx, W, H } = Deck.sizeCanvas(cv);
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const split = Math.round(W * 0.38), top = 26, rowH = (H - top - 10) / 8, fs = W < 480 ? 10 : 11.5;
+      ctx.font = Deck.font(fs); ctx.fillStyle = Deck.color('ink'); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+      ctx.fillText('parallel: 8 wires', 6, 16); ctx.fillText('serial: 1 wire, MSB first', split + 10, 16);
+      // parallel lines
+      for (let k = 0; k < 8; k++) {
+        const b = 7 - k, on = (x >> b) & 1, y0 = top + k * rowH, yH = y0 + rowH * 0.22, yL = y0 + rowH * 0.78;
+        ctx.fillStyle = Deck.color('muted'); ctx.font = Deck.font(fs - 1, true); ctx.textAlign = 'left';
+        ctx.fillText('b' + b, 4, (yH + yL) / 2 + 4);
+        ctx.strokeStyle = Deck.color(on ? 'acc' : 'muted'); ctx.lineWidth = on ? 2.6 : 1.6;
+        const y = on ? yH : yL; ctx.beginPath(); ctx.moveTo(28, y); ctx.lineTo(split - 44, y); ctx.stroke();
+        ctx.fillStyle = Deck.color(on ? 'acc' : 'muted'); ctx.textAlign = 'right';
+        ctx.fillText(on ? '5 V' : '0 V', split - 8, (yH + yL) / 2 + 4);
+      }
+      // serial waveform
+      const x0 = split + 14, x1 = W - 8, slot = (x1 - x0) / 10, yH = top + 30, yL = H - 46;
+      ctx.strokeStyle = Deck.color('rule'); ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
+      [yH, yL].forEach(y => { ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke(); });
+      ctx.setLineDash([]);
+      ctx.fillStyle = Deck.color('muted'); ctx.font = Deck.font(fs - 1, true); ctx.textAlign = 'left';
+      ctx.fillText('HIGH 5 V', x0, yH - 6); ctx.fillText('LOW 0 V', x0, yL + 14);
+      ctx.strokeStyle = Deck.color('acc'); ctx.lineWidth = 2.4; ctx.beginPath();
+      let px = x0, py = yL; ctx.moveTo(px, py); px += slot; ctx.lineTo(px, py);
+      for (let k = 0; k < 8; k++) {
+        const on = (x >> (7 - k)) & 1, y = on ? yH : yL;
+        ctx.lineTo(px, y); px += slot; ctx.lineTo(px, y);
+      }
+      ctx.lineTo(px, yL); ctx.lineTo(x1, yL); ctx.stroke();
+      ctx.font = Deck.font(fs + 1, true); ctx.textAlign = 'center';
+      for (let k = 0; k < 8; k++) {
+        const on = (x >> (7 - k)) & 1; ctx.fillStyle = Deck.color(on ? 'acc' : 'muted');
+        ctx.fillText(String(on), x0 + slot * (k + 1.5), (yH + yL) / 2 + 4);
+      }
+      ctx.strokeStyle = Deck.color('blu'); ctx.fillStyle = Deck.color('blu'); ctx.lineWidth = 1.4;
+      const ya = H - 16; ctx.beginPath(); ctx.moveTo(x0 + slot, ya); ctx.lineTo(x0 + 2 * slot, ya);
+      ctx.moveTo(x0 + slot, ya - 5); ctx.lineTo(x0 + slot, ya + 5); ctx.moveTo(x0 + 2 * slot, ya - 5); ctx.lineTo(x0 + 2 * slot, ya + 5); ctx.stroke();
+      ctx.font = Deck.font(fs, true); ctx.textAlign = 'left'; ctx.fillText('δt', x0 + 2 * slot + 6, ya + 4);
+      ctx.fillStyle = Deck.color('muted'); ctx.textAlign = 'right'; ctx.fillText('time →', x1, ya + 4);
+      const s = x >= 128 ? x - 256 : x, hex = x.toString(16).toUpperCase().padStart(2, '0');
+      $('roReg').innerHTML = 'word <b>' + bin(x, 8) + '</b> &nbsp; hex <b>' + hex + '</b> &nbsp; unsigned <b>' + x + '</b> &nbsp; two\'s complement <b>' + (s > 0 ? '+' : '') + s + '</b> &nbsp; 0–10 V D/A output <b>' + (10 * x / 256).toFixed(3) + ' V</b>';
+    }
+    return draw;
+  });
+
+  /* ---- quantization simulator ---- */
+  Deck.onShow('quant', () => {
+    const get = Deck.controls('simQ', draw);
+    function draw() {
+      const v = get(), M = v.M, A = v.A, off = v.o;
+      const rng = { u10: [0, 10], b5: [-5, 5], b10: [-10, 10] }[v.R], lo = rng[0], hi = rng[1];
+      const Q = (hi - lo) / Math.pow(2, M), top = Math.pow(2, M) - 1;
+      const an = [], dg = [], er = []; let emax = 0, sat = false;
+      for (let i = 0; i <= 900; i++) {
+        const t = 2 * i / 900, E = off + A * Math.sin(TAU * t);
+        let c = v.s === 'r' ? Math.floor((E - lo) / Q + 0.5) : Math.floor((E - lo) / Q);
+        if (c > top) { c = top; sat = true; } if (c < 0) { c = 0; sat = true; }
+        const Eo = lo + c * Q, e = E - Eo;
+        an.push([t, E]); dg.push([t, Eo]); er.push([t, e * 1000]);
+        emax = Math.max(emax, Math.abs(e));
+      }
+      const hs = Math.max(A, 2 * Q) * 1.25, ylo = off - hs, yhi = off + hs;
+      Deck.plot($('cvQ'), { x: [0, 2], y: [ylo, yhi], ylabel: 'volts', xticks: [], pad: { b: 10 },
+        bands: [{ y0: hi, y1: 1e3, color: 'red', alpha: .12 }, { y0: -1e3, y1: lo, color: 'red', alpha: .12 }],
+        series: [{ pts: an, color: 'muted', width: 1.4 }, { pts: dg, color: 'acc', width: 2.2, steps: false }] });
+      const band = v.s === 'r' ? [-Q / 2, Q / 2] : [0, Q];
+      const ylim = Math.max(1.6 * Q, Math.min(emax, 50) * 1.1) * 1000;
+      Deck.plot($('cvQe'), { x: [0, 2], y: [-ylim, ylim], xlabel: 'time (signal periods)', ylabel: 'eQ (mV)',
+        bands: [{ y0: band[0] * 1000, y1: band[1] * 1000, color: 'blu', alpha: .14 }], hlines: [{ y: 0, color: 'muted', dash: [2, 3] }],
+        series: [{ pts: er, color: 'blu', width: 1.4 }] });
+      const fmtV = q => q >= 1 ? q.toPrecision(3) + ' V' : q >= 1e-3 ? (q * 1e3).toPrecision(3) + ' mV' : (q * 1e6).toPrecision(3) + ' µV';
+      $('roQ').innerHTML = 'levels 2<sup>M</sup> = <b>' + (top + 1) + '</b> &nbsp; E<sub>FSR</sub> = <b>' + (hi - lo) + ' V</b> &nbsp; Q = <b>' + fmtV(Q) + '</b> &nbsp; theory max |e<sub>Q</sub>| = <b>' + fmtV(v.s === 'r' ? Q / 2 : Q) + '</b> &nbsp; e<sub>Q</sub>/amplitude = <b>' + (100 * (v.s === 'r' ? Q / 2 : Q) / A).toPrecision(3) + ' %</b> &nbsp; SNR = <b>' + (20 * M * Math.log10(2)).toFixed(1) + ' dB</b>' + (sat ? ' &nbsp; <b>SATURATION: input leaves the range</b>' : '');
+    }
+    return draw;
+  });
+
+  /* ---- successive approximation ---- */
+  Deck.onShow('sar', () => {
+    let st = null;
+    const get = Deck.controls('simSar', reset);
+    function reset() { const v = get(); st = { M: +v.M, E: v.E, code: 0, bit: +v.M - 1, trials: [], done: false }; draw(); }
+    function tick() {
+      if (st.done) return;
+      const Q = 15 / Math.pow(2, st.M), trial = st.code | (1 << st.bit), Es = trial * Q, keep = Es <= st.E;
+      st.trials.push({ bit: st.bit, trial, Es, keep });
+      if (keep) st.code = trial;
+      st.bit--; if (st.bit < 0) st.done = true;
+      draw();
+    }
+    $('sarNext').addEventListener('click', tick);
+    $('sarAll').addEventListener('click', () => { while (!st.done) tick(); });
+    $('sarReset').addEventListener('click', reset);
+    function draw() {
+      if (!st) { const v = get(); st = { M: +v.M, E: v.E, code: 0, bit: +v.M - 1, trials: [], done: false }; }
+      const Q = 15 / Math.pow(2, st.M);
+      const kept = [[0, 0]].concat(st.trials.map((t, i) => [i + 1, (t.keep ? t.trial : (t.trial & ~(1 << t.bit))) * Q]));
+      Deck.plot($('cvSar'), { x: [0, st.M + 0.5], y: [0, 15.5], xlabel: 'clock tick', ylabel: 'E* (V)', xticks: Array.from({ length: st.M + 1 }, (_, i) => i),
+        hlines: [{ y: st.E, color: 'blu', width: 2, dash: [6, 3], label: 'Ei = ' + st.E.toFixed(2) + ' V' }],
+        series: [{ pts: kept, color: 'grn', steps: true, width: 2 }],
+        points: st.trials.map((t, i) => ({ x: i + 1, y: t.Es, color: t.keep ? 'acc' : 'red', r: st.M > 8 ? 4 : 5.5 })) });
+      let h = '';
+      for (let b = st.M - 1; b >= 0; b--) {
+        const on = (st.code >> b) & 1, cur = !st.done && b === st.bit;
+        h += '<span class="' + (on ? 'on' : '') + (cur ? ' cur' : '') + '" title="bit ' + b + '">' + on + '</span>';
+      }
+      $('sarBits').innerHTML = h;
+      let rows = '<tr><th>Tick</th><th>Trial</th><th>E* (V)</th><th>Comparator</th></tr>';
+      st.trials.forEach((t, i) => { rows += '<tr><td>' + (i + 1) + '</td><td>' + bin(t.trial, st.M) + '</td><td>' + t.Es.toFixed(4) + '</td><td>' + (t.keep ? 'E* ≤ Ei: HIGH, keep 1' : 'E* &gt; Ei: LOW, reset 0') + '</td></tr>'; });
+      $('sarLog').innerHTML = rows;
+      const out = st.code * Q;
+      $('roSar').innerHTML = 'Q = <b>' + (Q * 1000).toPrecision(4) + ' mV</b> &nbsp; register <b>' + bin(st.code, st.M) + '</b> = <b>' + st.code + '</b> → <b>' + out.toFixed(4) + ' V</b>' + (st.done ? ' &nbsp; done in <b>' + st.M + ' ticks</b> (' + st.M + ' µs at 1 MHz); e<sub>Q</sub> = <b>' + ((st.E - out) * 1000).toFixed(1) + ' mV</b>' : ' &nbsp; next: test bit ' + st.bit);
+    }
+    reset();
+    return draw;
+  });
+
+  /* ---- dual-slope integrator ---- */
+  Deck.onShow('ramp', () => {
+    const get = Deck.controls('simDS', draw);
+    function draw() {
+      const v = get(), Eref = 10, t1 = +v.t1 / 1000, Ei = v.E, h = v.h, ph = v.p * Math.PI / 180, w = TAU * 50;
+      // normalised integrator: y(t) = (1/(Eref t1)) * integral of input  (full scale input -> 1 at t1)
+      const humInt = t => h * (Math.cos(ph) - Math.cos(w * t + ph)) / w;
+      const y1 = t => (Ei * t + humInt(t)) / (Eref * t1), y0 = t => Ei * t / (Eref * t1);
+      const ys = y1(t1), tm = ys * t1, reading = Eref * tm / t1;
+      const tmax = 2.15 * t1, pts = [], ptsC = [];
+      for (let i = 0; i <= 400; i++) { const t = t1 * i / 400; pts.push([t * 1000, y1(t)]); ptsC.push([t * 1000, y0(t)]); }
+      pts.push([(t1 + Math.max(tm, 0)) * 1000, 0]);
+      ptsC.push([(t1 + Ei * t1 / Eref) * 1000, 0]);
+      Deck.plot($('cvDS'), { x: [0, tmax * 1000], y: [Math.min(0, -0.05), 1.15], xlabel: 'time (ms)', ylabel: 'integrator output (norm.)',
+        vlines: [{ x: t1 * 1000, color: 'blu', dash: [4, 3], label: 't1' }, { x: (t1 + tm) * 1000, color: 'acc', dash: [2, 3], label: 't1+tm' }],
+        series: [{ pts: ptsC, color: 'muted', width: 1.4, dash: [5, 4] }, { pts, color: 'acc', width: 2.2 }] });
+      $('roDS').innerHTML = 't<sub>1</sub> = <b>' + (t1 * 1000) + ' ms</b> &nbsp; t<sub>m</sub> = <b>' + (tm * 1000).toFixed(3) + ' ms</b> &nbsp; reading E<sub>ref</sub>t<sub>m</sub>/t<sub>1</sub> = <b>' + reading.toFixed(3) + ' V</b> &nbsp; error = <b>' + ((reading - Ei) * 1000).toFixed(0) + ' mV</b> &nbsp; mains cycles in t<sub>1</sub>: <b>' + (t1 * 50).toFixed(2) + '</b>';
+    }
+    return draw;
+  });
+})();
+</script>
+</body>
+</html>

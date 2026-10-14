@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teaching Sessions · Moyeenul Ratul</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:wght@400..700&display=swap">
+<style>
+:root{--paper:#F3F5F6;--panel:#FCFDFD;--ink:#16202B;--muted:#56636F;--rule:#D3DAE0;--grid:#E4E9ED;--acc:#C9481A;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;--f-body:"Public Sans","Segoe UI",Roboto,Arial,sans-serif;--f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root{--paper:#0E141A;--panel:#141C24;--ink:#E3E9EF;--muted:#94A2AF;--rule:#2B3743;--grid:#19222B;--acc:#FF7D4A;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);line-height:1.55;padding-inline:16px;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px}
+.wrap{max-width:900px;margin:0 auto;padding-block:48px 64px;display:flex;flex-direction:column;gap:28px}
+.eyebrow{font-family:var(--f-mono);font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--acc);margin:0}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(2.4rem,7vw,3.8rem);line-height:1.05;margin:0}
+p{margin:0;max-width:62ch}
+.course{display:flex;flex-direction:column;gap:8px;text-decoration:none;color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:18px 20px}
+.course:hover{border-color:var(--acc)}
+.course .code{font-family:var(--f-mono);font-size:.8rem;color:var(--acc);font-weight:600}
+.course h2{font-family:var(--f-display);font-size:1.8rem;margin:0;line-height:1.1}
+.course .go{font-family:var(--f-mono);font-size:.8rem;color:var(--acc)}
+.muted{color:var(--muted);font-size:.9rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Department of Mechanical Engineering · BUET</p>
+    <h1>Teaching sessions</h1>
+    <p>Interactive slides, simulations and practice questions for my courses. Open a course to begin.</p>
+  </header>
+  <a class="course" href="ME361/">
+    <span class="code">ME 361</span>
+    <h2>Instrumentation and Measurement</h2>
+    <p class="muted">Measurement-system behaviour, sensing elements, and analog and digital signal conditioning: 16 interactive sessions.</p>
+    <span class="go">Open sessions →</span>
+  </a>
+  <p class="muted">Md. Moyeenul Hossain Ratul</p>
+</div>
+</body>
+</html>

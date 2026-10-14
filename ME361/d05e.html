@@ -1,0 +1,929 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DAQ Systems and Communication</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="deck.css">
+<style>
+  .tbl.compact th,.tbl.compact td{padding:5px 10px;font-size:.88rem}
+  .readout{display:block;line-height:1.9}
+  .define{display:block}
+  .define::before{display:block;margin-bottom:4px}
+  svg .w{stroke:var(--ink);stroke-width:1.5;fill:none}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:640px){.duo{grid-template-columns:1fr}}
+  #cvImg{image-rendering:pixelated}
+</style>
+<script>window.DECK = { num: "05e", title: "DAQ Systems and Communication" };</script>
+<script src="deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+
+<!-- 1 · Cover -->
+<section class="slide cover center" id="cover" data-title="Cover">
+  <p class="num">TOPIC 05 · PART E OF 6</p>
+  <h1>DAQ Systems and Communication</h1>
+  <p class="lead">Sensors, filters, a multiplexer, a sample-and-hold, a converter and a computer: put them together and you have a data-acquisition system. How you wire it, and how its numbers travel, decides whether the data can be trusted.</p>
+  <div class="parts"><a href="d05a.html">A · Number systems, codes and logic gates</a><a href="d05b.html">B · Boolean algebra, combinational logic and flip-flops</a><a href="d05c.html">C · Sampling and aliasing</a><a href="d05d.html">D · Bits, words and converters</a><span>E · DAQ systems and communication</span><a href="d05f.html">F · Industrial transmission and digital filtering</a></div>
+  <canvas class="bigtrace" id="coverMux" data-h="120" aria-label="Animated multiplexer scanning four signal channels in turn and storing one sample from each"></canvas>
+  <ol class="agenda">
+    <li>What a data-acquisition system is</li>
+    <li>The components and the multiplexer's time skew</li>
+    <li>Fitting a signal to the converter: gain, dividers, shunts, offsets</li>
+    <li>Single-ended and differential inputs</li>
+    <li>Digital I/O, control loops and communication standards</li>
+    <li>Digital images as a data set</li>
+  </ol>
+</section>
+
+<!-- 2 · Where we are -->
+<section class="slide" id="where" data-title="Where we are">
+  <p class="eyebrow">Where we are</p>
+  <h2>From one converter to a complete acquisition system</h2>
+  <div class="cols">
+    <div>
+      <p>Part C set the timing: sample faster than \(2f_m\), filter out everything above the Nyquist frequency \(f_N=f_s/2\) <i>before</i> sampling, and choose the record length for the frequency resolution you need.</p>
+      <p>Part D set the size of the step. An \(M\)-bit converter spreads its full-scale span \(E_{FSR}\) over \(2^M\) codes, so its resolution is \(Q=E_{FSR}/2^M\) and the quantization error is \(\pm Q/2\). A small signal therefore needs gain before conversion. The common successive-approximation converter needs \(M\) clock ticks and a steady input during them; integrating converters are slow but reject noise; flash converters are fastest.</p>
+      <p>This part assembles these pieces into one system, then asks two practical questions: how to connect a sensor so that ground differences and noise do not enter the reading, and how the finished numbers travel to a computer.</p>
+    </div>
+    <div>
+      <div class="grid-cards">
+        <div class="card"><span class="tag">Slides 3–6</span><h3>Architecture</h3><p>The parts of a DAS and what each one does, including the time skew a multiplexer creates.</p></div>
+        <div class="card"><span class="tag">Slides 7–12</span><h3>Analog inputs</h3><p>Gain and range, dividers and shunts, single-ended versus differential wiring, two design examples.</p></div>
+        <div class="card"><span class="tag">Slides 13–16</span><h3>Digital side</h3><p>Digital I/O and control loops, serial and parallel standards, digital images.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 · What a DAS is -->
+<section class="slide" id="das-what" data-title="What a data-acquisition system is">
+  <p class="eyebrow">Data-acquisition systems</p>
+  <h2>A data-acquisition system quantifies and stores data</h2>
+  <figure style="max-width:600px;width:100%;align-self:center">
+    <svg viewBox="0 0 400 76" aria-label="Chain: physical variable, converted by a transducer into an analog signal, converted by the data-acquisition system into digital words, transferred to data reduction">
+<rect x="2" y="30" width="78" height="38" rx="5" class="box"/><text x="41" y="46.5" text-anchor="middle" font-size="10.5">physical</text><text x="41" y="59.1" text-anchor="middle" font-size="10.5">variable</text>
+<rect x="108" y="30" width="78" height="38" rx="5" class="box"/><text x="147" y="46.5" text-anchor="middle" font-size="10.5">analog</text><text x="147" y="59.1" text-anchor="middle" font-size="10.5">signal</text>
+<rect x="214" y="30" width="78" height="38" rx="5" class="box-blu"/><text x="253" y="46.5" text-anchor="middle" font-size="10.5">digital</text><text x="253" y="59.1" text-anchor="middle" font-size="10.5">words</text>
+<rect x="320" y="30" width="78" height="38" rx="5" class="box"/><text x="359" y="46.5" text-anchor="middle" font-size="10.5">data</text><text x="359" y="59.1" text-anchor="middle" font-size="10.5">reduction</text>
+<path d="M82 49 L106 49" class="w"/><path d="M106 49 L99 45.5 L99 52.5 Z" class="fill-ink"/>
+<text x="94" y="22" text-anchor="middle" class="t-acc" font-size="10.5">transducer</text>
+<path d="M188 49 L212 49" class="w"/><path d="M212 49 L205 45.5 L205 52.5 Z" class="fill-ink"/>
+<text x="200" y="22" text-anchor="middle" class="t-acc" font-size="10.5">DAS</text>
+<path d="M294 49 L318 49" class="w"/><path d="M318 49 L311 45.5 L311 52.5 Z" class="fill-ink"/>
+<text x="306" y="22" text-anchor="middle" class="t-acc" font-size="10.5">transfer</text>
+    </svg>
+  </figure>
+  <div class="cols">
+    <div>
+      <p class="define"><dfn>Data-acquisition system</dfn> (DAS): the part of a measurement system that turns the transducer's analog signal into numbers and stores them. It sits between the transducer and the data reduction.</p>
+      <p>An engineer who reads a pressure gauge, decides "3.2 bar" and writes it in a logbook performs every task of a DAS: sampling (choosing when to look), quantization (reading to the nearest mark) and storage (the logbook). An automated DAS does the same with electronics, thousands of times a second and on many channels.</p>
+    </div>
+    <div>
+      <p>Automated systems come in three common forms:</p>
+      <ul>
+        <li>a <b>dedicated microprocessor</b> or <dfn>programmable logic controller</dfn> (PLC), which measures, stores and controls a process without a PC;</li>
+        <li>a <b>PC-based system</b>: a plug-in data-acquisition board, an external module on USB, or a wireless module, with the PC providing storage, display and network access;</li>
+        <li>a <b>stand-alone instrument</b> (digital voltmeter, oscilloscope) that talks to a computer over a communication bus.</li>
+      </ul>
+      <div class="analogy"><p>A DAS is a court stenographer. The speakers (sensors) talk continuously; the stenographer listens to each in turn, writes down what was said in a fixed shorthand (binary words), and hands over a transcript (the data file). Mishear, fall behind, or confuse two speakers, and the transcript is wrong forever.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 · Architecture -->
+<section class="slide" id="arch" data-title="DAQ architecture">
+  <p class="eyebrow">Data-acquisition systems · architecture</p>
+  <h2>Follow one reading from the sensor to the computer</h2>
+  <div class="cols wide-l">
+    <figure>
+      <svg viewBox="0 0 420 250" aria-label="Signal flow of an automated DAS: four sensors each with an amplifier and filter feed a multiplexer; its output goes through a sample-and-hold to an A D converter, then into a buffer and bus that feed D A outputs, display, storage and an external computer; a controller with clock commands the multiplexer channel, the hold and the conversion start">
+<rect x="4" y="29" width="32" height="22" rx="5" class="box"/><text x="20" y="43.6" text-anchor="middle" font-size="10">S1</text>
+<path d="M36 40 L50 40" class="w"/><path d="M50 40 L43 36.5 L43 43.5 Z" class="fill-ink"/>
+<rect x="50" y="26" width="50" height="28" rx="5" class="box-acc"/><text x="75" y="37.8" text-anchor="middle" font-size="9">amp +</text><text x="75" y="48.6" text-anchor="middle" font-size="9">filter</text>
+<path d="M100 40 L114 40" class="w"/><path d="M114 40 L107 36.5 L107 43.5 Z" class="fill-ink"/>
+<rect x="4" y="69" width="32" height="22" rx="5" class="box"/><text x="20" y="83.6" text-anchor="middle" font-size="10">S2</text>
+<path d="M36 80 L50 80" class="w"/><path d="M50 80 L43 76.5 L43 83.5 Z" class="fill-ink"/>
+<rect x="50" y="66" width="50" height="28" rx="5" class="box-acc"/><text x="75" y="77.8" text-anchor="middle" font-size="9">amp +</text><text x="75" y="88.6" text-anchor="middle" font-size="9">filter</text>
+<path d="M100 80 L114 80" class="w"/><path d="M114 80 L107 76.5 L107 83.5 Z" class="fill-ink"/>
+<rect x="4" y="109" width="32" height="22" rx="5" class="box"/><text x="20" y="123.6" text-anchor="middle" font-size="10">S3</text>
+<path d="M36 120 L50 120" class="w"/><path d="M50 120 L43 116.5 L43 123.5 Z" class="fill-ink"/>
+<rect x="50" y="106" width="50" height="28" rx="5" class="box-acc"/><text x="75" y="117.8" text-anchor="middle" font-size="9">amp +</text><text x="75" y="128.6" text-anchor="middle" font-size="9">filter</text>
+<path d="M100 120 L114 120" class="w"/><path d="M114 120 L107 116.5 L107 123.5 Z" class="fill-ink"/>
+<rect x="4" y="149" width="32" height="22" rx="5" class="box"/><text x="20" y="163.6" text-anchor="middle" font-size="10">S4</text>
+<path d="M36 160 L50 160" class="w"/><path d="M50 160 L43 156.5 L43 163.5 Z" class="fill-ink"/>
+<rect x="50" y="146" width="50" height="28" rx="5" class="box-acc"/><text x="75" y="157.8" text-anchor="middle" font-size="9">amp +</text><text x="75" y="168.6" text-anchor="middle" font-size="9">filter</text>
+<path d="M100 160 L114 160" class="w"/><path d="M114 160 L107 156.5 L107 163.5 Z" class="fill-ink"/>
+<path d="M114 26 L152 52 L152 170 L114 196 Z" class="box"/>
+<text x="133" y="106" text-anchor="middle" font-size="10.5">MUX</text>
+<path d="M152 111 L166 111" class="w"/><path d="M166 111 L159 107.5 L159 114.5 Z" class="fill-ink"/>
+<rect x="166" y="93" width="44" height="36" rx="5" class="box"/><text x="188" y="115" text-anchor="middle" font-size="11">S/H</text>
+<path d="M210 111 L224 111" class="w"/><path d="M224 111 L217 107.5 L217 114.5 Z" class="fill-ink"/>
+<rect x="224" y="91" width="50" height="40" rx="5" class="box-blu"/><text x="249" y="115" text-anchor="middle" font-size="11">A/D</text>
+<path d="M274 111 L290 111" class="w"/><path d="M290 111 L283 107.5 L283 114.5 Z" class="fill-ink"/>
+<rect x="290" y="46" width="48" height="130" rx="5" class="box"/><text x="314" y="108.6" text-anchor="middle" font-size="10">buffer</text><text x="314" y="120.6" text-anchor="middle" font-size="10">+ bus</text>
+<rect x="352" y="24" width="64" height="28" rx="5" class="box"/><text x="384" y="41.4" text-anchor="middle" font-size="9.5">D/A out</text>
+<path d="M338 38 L352 38" class="w"/><path d="M352 38 L345 34.5 L345 41.5 Z" class="fill-ink"/>
+<rect x="352" y="66" width="64" height="28" rx="5" class="box"/><text x="384" y="83.4" text-anchor="middle" font-size="9.5">display</text>
+<path d="M338 80 L352 80" class="w"/><path d="M352 80 L345 76.5 L345 83.5 Z" class="fill-ink"/>
+<rect x="352" y="108" width="64" height="28" rx="5" class="box"/><text x="384" y="125.4" text-anchor="middle" font-size="9.5">storage</text>
+<path d="M338 122 L352 122" class="w"/><path d="M352 122 L345 118.5 L345 125.5 Z" class="fill-ink"/>
+<rect x="352" y="150" width="64" height="28" rx="5" class="box"/><text x="384" y="167.4" text-anchor="middle" font-size="9.5">computer</text>
+<path d="M338 164 L352 164" class="w"/><path d="M352 164 L345 160.5 L345 167.5 Z" class="fill-ink"/>
+<rect x="218" y="8" width="62" height="26" rx="5" class="box"/><text x="249" y="24.4" text-anchor="middle" font-size="9.5">digital in</text>
+<path d="M280 21 L314 21 L314 46" class="w"/><path d="M314 46 L317.5 39 L310.5 39 Z" class="fill-ink"/>
+<rect x="166" y="212" width="172" height="30" rx="5" class="box"/><text x="252" y="230.8" text-anchor="middle" font-size="10.5">controller + clock</text>
+<path d="M133 212 L133 192" class="ln-thin dash"/>
+<text x="137" y="204" text-anchor="start" class="t-mono t-muted" font-size="8.5">channel</text>
+<path d="M188 212 L188 131" class="ln-thin dash"/>
+<text x="192" y="204" text-anchor="start" class="t-mono t-muted" font-size="8.5">hold</text>
+<path d="M249 212 L249 133" class="ln-thin dash"/>
+<text x="253" y="204" text-anchor="start" class="t-mono t-muted" font-size="8.5">start/done</text>
+<path d="M314 212 L314 176" class="ln-thin dash"/>
+<path d="M166 227 L133 227 L133 212" class="ln-thin dash"/>
+      </svg>
+      <figcaption>Signal flow of a multichannel, computer-based DAS. S1–S4 are sensors, each with its own amplifier and anti-alias filter. Solid arrows carry signals and data; dashed lines are control commands from the controller.</figcaption>
+    </figure>
+    <div>
+      <ol class="steps">
+        <li><b>Sensor</b>: produces a small analog voltage or current.</li>
+        <li><b>Conditioning</b>, one per channel: amplifies it and passes it through the analog anti-alias low-pass filter.</li>
+        <li><b>Multiplexer (MUX)</b>: a set of electronic switches that connects one channel at a time to the single converter.</li>
+        <li><b>Sample-and-hold (S/H)</b>: on command, freezes the voltage of the selected channel.</li>
+        <li><b>A/D converter</b>: converts the held voltage into an \(M\)-bit word while the S/H holds it.</li>
+        <li><b>Buffer and bus</b>: memory that holds the words until the computer collects them for display, storage or control outputs.</li>
+        <li><b>Controller and clock</b>: set the sample instants, select the channel and gain, command the hold and start each conversion. Then the MUX steps to the next channel.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- 5 · Component roles -->
+<section class="slide" id="parts" data-title="What each component does">
+  <p class="eyebrow">Data-acquisition systems · components</p>
+  <h2>What each component does, and what to watch out for</h2>
+  <div class="cols wide-l">
+    <div class="tbl wrap compact"><table>
+      <tr><th>Component</th><th>Job</th><th>Watch out for</th></tr>
+      <tr><td><b>Analog filter</b></td><td>anti-alias low-pass, cutoff near \(f_N\), one per channel before the MUX</td><td>many boards have none; you may have to add it</td></tr>
+      <tr><td><b>Amplifier</b></td><td>instrumentation amplifier with selectable gain (often 0.5 to 1000), set by jumper or software</td><td>gain too high saturates; too low wastes resolution</td></tr>
+      <tr><td><b>Multiplexer</b></td><td>switches \(N\) channels to one converter in turn</td><td>each channel gets only \(f_s/N\); channels are not sampled at the same instant</td></tr>
+      <tr><td><b>Sample-and-hold</b></td><td>freezes the input during a conversion</td><td>must hold longer than the conversion time</td></tr>
+      <tr><td><b>A/D converter</b></td><td>successive approximation (100 kHz–10 MHz), flash (beyond 150 MHz), dual-slope (1–100 Hz, low-level signals)</td><td>speed against resolution against noise</td></tr>
+      <tr><td><b>D/A converter</b></td><td>analog outputs to drive valves, motors, set points</td><td>output is a staircase of size \(E_{FSR}/2^M\)</td></tr>
+      <tr><td><b>Digital I/O</b></td><td>TTL lines for switches, relays, alarms, pulse counting and triggers</td><td>5 V logic only; isolate higher voltages</td></tr>
+    </table></div>
+    <div>
+      <div class="why"><p><b>Why the sample-and-hold is not optional.</b> A successive-approximation converter needs time \(t_c\) to decide all its bits. If the input moves by more than \(Q/2\) during \(t_c\), later bits are decided against a different voltage. A sine \(A\sin 2\pi f t\) changes at most at the rate \(2\pi f A\), so without a hold you need</p>
+        <p>$$2\pi f A\,t_c&lt;\frac{Q}{2}\;\Rightarrow\; f&lt;\frac{Q}{4\pi A t_c}$$</p>
+        <p>For a 12-bit, ±5 V converter (\(Q=2.44\) mV) with \(t_c=12\ \mu\)s and a full-scale sine (\(A=5\) V): \(f&lt;3.2\) Hz. With a hold, the limit is set by the sampling theorem instead.</p></div>
+      <p class="define"><dfn>Digital filter</dfn>: a calculation on the stored samples, used to smooth noise or show trends. The simplest is the centred <dfn>moving average</dfn> \(\bar y_i=(y_{i-n}+\dots+y_i+\dots+y_{i+n})/(2n+1)\). For \(y_4=3,\ y_5=4,\ y_6=2\), the three-term average at \(i=5\) is 3. A digital filter acts after sampling, so it can never undo aliasing.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · MUX sim -->
+<section class="slide" id="mux" data-title="Multiplexer simulator: rate and skew">
+  <p class="eyebrow">Simulator · multiplexed scanning</p>
+  <h2>One converter, many channels: the rate is shared and the instants are staggered</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simMux">
+      <div class="simhead"><span>Same signal wired to every channel</span><span class="legend"><span><i style="background:var(--muted)"></i>true signal</span><span><i style="background:var(--acc)"></i>channel 1</span><span><i style="background:var(--blu)"></i>last channel</span></span></div>
+      <canvas id="cvMux" data-h="200" aria-label="Samples stored for channel 1 and for the last channel, plotted against scan time, showing an apparent phase shift"></canvas>
+      <canvas id="cvMuxT" data-h="150" aria-label="Timing diagram: the instant each channel is sampled during the first three scans"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="mfa">Board rate (all channels) <output data-for="fa"></output></label>
+          <input type="range" id="mfa" data-key="fa" data-scale="log" data-min="200" data-max="100000" min="0" max="1000" value="259" data-fmt="-1" data-unit=" S/s"></div>
+        <div class="ctl"><label for="mN">Channels scanned N <output data-for="N"></output></label>
+          <input type="range" id="mN" data-key="N" min="1" max="16" step="1" value="4" data-fmt="0"></div>
+        <div class="ctl"><label for="mf">Signal frequency <output data-for="f"></output></label>
+          <input type="range" id="mf" data-key="f" min="1" max="400" step="1" value="50" data-fmt="0" data-unit=" Hz"></div>
+      </div>
+      <div class="readout" id="roMux"></div>
+    </div>
+    <div>
+      <p>A board quoted at "1000 samples per second" shares that rate among the channels it scans. With \(N\) channels each channel is sampled at</p>
+      <div class="eq"><span class="label">Per-channel rate and channel skew</span>
+        $$f_{s,ch}=\frac{f_{board}}{N},\qquad \Delta t_{1\to N}=\frac{N-1}{f_{board}}$$
+      </div>
+      <p>and the Nyquist frequency of each channel is \(f_{s,ch}/2\). The second effect is subtler: channel \(N\) is read \((N-1)\) switching intervals after channel 1, but the stored scan treats them as simultaneous. For a sine of frequency \(f\) that looks like a phase shift of \(360°\,f\,\Delta t\).</p>
+      <div class="try"><p>Keep 1000 S/s, 4 channels and 50 Hz: each channel gets 250 S/s, and the last channel lags by 3 ms, which appears as a 54° phase shift between two identical signals. Raise the board rate to 100 kS/s: the skew shrinks to 0.03 ms (0.5°). Now return to 1000 S/s and scan 16 channels: each channel gets only 62.5 S/s and the 50 Hz signal aliases. Boards that must compare phases use a separate sample-and-hold on every channel, all triggered together (simultaneous sampling).</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 · Fitting the signal to the converter -->
+<section class="slide" id="fit" data-title="Gain, dividers and shunts">
+  <p class="eyebrow">Analog input · range and gain</p>
+  <h2>Fit the signal to the converter's range</h2>
+  <div class="cols">
+    <div>
+      <p>Every DAS input is range limited: below about one \(Q\) a change is invisible, above \(E_{FSR}\) the converter saturates. An amplifier of gain \(G\) in front divides the step size seen at the input:</p>
+      <div class="eq"><span class="label">Resolution referred to the input</span>
+        $$Q_{in}=\frac{E_{FSR}}{G\,2^M}$$
+      </div>
+      <p>A typical board has a 12-bit converter with a 10 V span: \(Q=2.44\) mV at \(G=1\), but \(10/(1000\times4096)=2.44\ \mu\)V at its maximum gain \(G=1000\). Pick the largest gain that keeps the biggest expected signal inside the range.</p>
+      <p><b>Too big a signal?</b> Attenuate it with a <dfn>voltage divider</dfn> (a): \(E_o=E_i\,R_2/(R_1+R_2)\). With \(R_1=40\) kΩ and \(R_2=10\) kΩ, a 0–50 V signal becomes 0–10 V.</p>
+      <p><b>A current signal?</b> Many industrial transmitters send 4–20 mA, because a current is not reduced by long wire resistance and 0 mA then means a broken wire. A <dfn>shunt resistor</dfn> (b) converts it: \(E_o=IR_{shunt}\); 250 Ω turns 4–20 mA into 1–5 V.</p>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 192" aria-label="(a) Voltage divider: source E i across R1 of 40 kilohm in series with R2 of 10 kilohm; output E o taken across R2. (b) A 4 to 20 milliamp transmitter drives current through a 250 ohm shunt resistor; the voltage across it, 1 to 5 volts, goes to the DAS.">
+<text x="4" y="14" text-anchor="start" font-size="11">(a) voltage divider</text>
+<circle cx="30" cy="92" r="14" class="fill-panel" style="stroke:var(--ink);stroke-width:1.5"/>
+<text x="30" y="88" text-anchor="middle" font-size="11">+</text><text x="30" y="104" text-anchor="middle" font-size="11">−</text>
+<text x="12" y="96" text-anchor="end" font-size="11">E<tspan baseline-shift="-3" font-size="78%">i</tspan></text>
+<path d="M30 78 L30 30 L110 30 L110 36" class="w"/>
+<path d="M110 36 L110 42.9 L105 45.6 L115 51 L105 56.3 L115 61.7 L105 67 L115 72.4 L110 75.1 L110 82" class="w"/>
+<text x="100" y="56" text-anchor="end" class="t-mono" font-size="10">R<tspan baseline-shift="-3" font-size="78%">1</tspan></text><text x="100" y="69" text-anchor="end" class="t-mono" font-size="9.5">40 kΩ</text>
+<circle cx="110" cy="92" r="2.6" class="fill-ink"/><path d="M110 82 L110 102" class="w"/>
+<path d="M110 102 L110 108.9 L105 111.6 L115 117 L105 122.3 L115 127.7 L105 133.1 L115 138.4 L110 141.1 L110 148" class="w"/>
+<text x="100" y="122" text-anchor="end" class="t-mono" font-size="10">R<tspan baseline-shift="-3" font-size="78%">2</tspan></text><text x="100" y="135" text-anchor="end" class="t-mono" font-size="9.5">10 kΩ</text>
+<path d="M30 106 L30 154 L110 154 L110 148" class="w"/>
+<circle cx="110" cy="154" r="2.6" class="fill-ink"/><path d="M110 92 L176 92" class="w"/><path d="M110 154 L176 154" class="w"/>
+<circle cx="178" cy="92" r="3.2" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/><circle cx="178" cy="154" r="3.2" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/>
+<text x="178" y="128" text-anchor="middle" class="t-acc" font-size="12">E<tspan baseline-shift="-3" font-size="78%">o</tspan></text>
+<text x="178" y="172" text-anchor="middle" class="t-muted" font-size="10">to DAS</text>
+<text x="218" y="14" text-anchor="start" font-size="11">(b) shunt resistor</text>
+<circle cx="248" cy="92" r="15" class="fill-panel" style="stroke:var(--ink);stroke-width:1.5"/>
+<path d="M248 102 L248 82" class="w"/><path d="M248 82 L244.5 89 L251.5 89 Z" class="fill-ink"/>
+<text x="228" y="96" text-anchor="end" class="t-acc" font-size="12">I</text>
+<text x="254" y="172" text-anchor="middle" class="t-mono t-acc" font-size="9.5">4–20 mA</text>
+<text x="254" y="184" text-anchor="middle" class="t-muted" font-size="9.5">transmitter</text>
+<path d="M248 77 L248 30 L324 30 L324 66" class="w"/>
+<path d="M324 66 L324 74.4 L319 77.7 L329 84.2 L319 90.7 L329 97.3 L319 103.8 L329 110.3 L324 113.6 L324 122" class="w"/>
+<text x="314" y="90" text-anchor="end" class="t-mono" font-size="10">R<tspan baseline-shift="-3" font-size="78%">shunt</tspan></text>
+<text x="314" y="104" text-anchor="end" class="t-mono" font-size="9.5">250 Ω</text>
+<path d="M248 107 L248 154 L324 154 L324 122" class="w"/>
+<circle cx="324" cy="30" r="2.6" class="fill-ink"/><circle cx="324" cy="154" r="2.6" class="fill-ink"/>
+<path d="M324 30 L382 30" class="w"/><path d="M324 154 L382 154" class="w"/>
+<circle cx="384" cy="30" r="3.2" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/><circle cx="384" cy="154" r="3.2" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/>
+<text x="382" y="88" text-anchor="middle" class="t-acc" font-size="12">E<tspan baseline-shift="-3" font-size="78%">o</tspan></text>
+<text x="380" y="103" text-anchor="middle" class="t-mono t-acc" font-size="9">1–5 V</text>
+<text x="374" y="172" text-anchor="middle" class="t-muted" font-size="10">to DAS</text>
+        </svg>
+      </figure>
+      <div class="pitfall"><p>A divider has its own output resistance, here \(40\ \text{k}\Omega\parallel10\ \text{k}\Omega=8\) kΩ. Into a 1 MΩ converter input that reads \(1/(1+8\ \text{k}/1\ \text{M})-1=-0.8\,\%\) low. Use larger input impedance, a buffer amplifier, or calibrate the divider in place.</p></div>
+      <p><b>A large mean with a small wiggle?</b> Remove the mean before adding gain: subtract an equal and opposite voltage, or pass the signal through a very low cutoff high-pass filter (<dfn>AC coupling</dfn>). A small zero offset of a sensor can likewise be trimmed out with an <dfn>offset-nulling</dfn> circuit, a trim potentiometer in a bridge. The next slide shows why this matters.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 8 · Gain/offset sim -->
+<section class="slide" id="gain" data-title="Gain and offset simulator">
+  <p class="eyebrow">Simulator · gain and offset removal</p>
+  <h2>A small wiggle on a big mean: remove the mean, then amplify</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simGain">
+      <div class="simhead"><span>y(t) = 2 + 0.1 sin 10πt V into a ±5 V converter</span></div>
+      <canvas id="cvGain" data-h="190" aria-label="Converter input after gain and the quantized output, with the plus and minus 5 volt limits"></canvas>
+      <canvas id="cvGain2" data-h="150" aria-label="Recovered wiggle, in millivolts, compared with the true 0.1 volt sine"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="gG">Gain G <output data-for="G"></output></label>
+          <input type="range" id="gG" data-key="G" data-scale="log" data-min="0.5" data-max="100" min="0" max="1000" value="262" data-fmt="-1"></div>
+        <div class="ctl"><label for="gm">Mean removal</label>
+          <select id="gm" data-key="m"><option value="0" selected>none</option><option value="2">subtract 2 V (or AC coupling)</option></select></div>
+        <div class="ctl"><label for="gb">Converter bits</label>
+          <select id="gb" data-key="b"><option value="8" selected>8</option><option value="12">12</option></select></div>
+      </div>
+      <div class="readout" id="roGain"></div>
+    </div>
+    <div class="example">
+      <p class="given">The 5 Hz signal \(y(t)=2+0.1\sin10\pi t\) V is to be recorded by a 12-bit converter with a ±5 V range. Only the wiggle matters. Choose the gain with and without removing the mean, and compare the resolution.</p>
+      <p><b>Known</b> mean 2 V, amplitude 0.1 V, \(E_{FSR}=10\) V, \(M=12\). <b>Find</b> \(G\), \(Q_{in}\). <b>Assumptions</b> ideal amplifier.</p>
+      <ol class="steps">
+        <li>\(Q=10/4096=2.44\) mV.</li>
+        <li>Without mean removal the peak \(2.1G\) must stay below 5 V: \(G\le2.38\). (\(G=2.5\) gives 5.25 V and saturates.)</li>
+        <li>With \(G=2.38\): \(Q_{in}=2.44/2.38=1.03\) mV, and the 0.1 V wiggle spans only \(\pm98\) steps.</li>
+        <li>Subtract 2 V first: the signal is ±0.1 V, so \(G=50\) fills ±5 V. Now \(Q_{in}=2.44\ \text{mV}/50=48.8\ \mu\)V and the wiggle spans ±2048 steps.</li>
+      </ol>
+      <p><b>What this means:</b> removing the mean buys a 21 times finer resolution of the part you care about.</p>
+      <div class="try"><p>In the simulator (8 bits, to make steps visible) raise G with no mean removal: the output staircase is coarse, and above G ≈ 2.4 the peaks hit +5 V. Select "subtract 2 V" and raise G towards 50: the recovered wiggle in the lower panel becomes smooth.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 · Single-ended vs differential -->
+<section class="slide" id="sede" data-title="Single-ended and differential inputs">
+  <p class="eyebrow">Analog input · connections</p>
+  <h2>Single-ended or differential: what is the voltage measured against?</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 190" aria-label="(a) Single-ended: source high lead to the amplifier plus input; the amplifier minus input tied to board ground; source grounded at its own ground; a dashed ground loop joins the two grounds, which differ by delta V g. (b) Differential: source high and low leads run as a twisted pair to the amplifier plus and minus inputs; the low line is tied to board ground through a 10 to 100 kilohm resistor; the output is high minus low.">
+<text x="4" y="14" text-anchor="start" font-size="11">(a) single-ended</text>
+<rect x="96" y="26" width="98" height="140" rx="6" class="ln-thin dash" fill="none"/>
+<text x="145" y="160" text-anchor="middle" class="t-muted" font-size="9.5">DAQ board</text>
+<circle cx="30" cy="76" r="15" class="fill-panel" style="stroke:var(--ink);stroke-width:1.5"/><path d="M22 76 q4 -8 8 0 t8 0" class="w"/>
+<text x="50" y="100" text-anchor="start" class="t-muted" font-size="9.5">source</text>
+<path d="M30 61 L30 40 L120 40 L120 64.5 L132 64.5" class="w"/>
+<text x="100" y="35" text-anchor="start" class="t-mono" font-size="9">CH HI</text>
+<path d="M132 53 L172 76 L132 99 Z" class="box"/><text x="140" y="69" text-anchor="middle" font-size="12">+</text><text x="140" y="92" text-anchor="middle" font-size="12">−</text>
+<path d="M132 87.5 L118 87.5 L118 120" class="w"/><path d="M118 120 L118 126" class="w"/><path d="M109 126 L127 126" class="w"/><path d="M112 130 L124 130" class="w"/><path d="M115 134 L121 134" class="w"/>
+<text x="124" y="148" text-anchor="start" class="t-mono t-muted" font-size="8.5">board GRD</text>
+<path d="M30 91 L30 120" class="w"/><path d="M30 120 L30 126" class="w"/><path d="M21 126 L39 126" class="w"/><path d="M24 130 L36 130" class="w"/><path d="M27 134 L33 134" class="w"/>
+<text x="4" y="148" text-anchor="start" class="t-mono t-muted" font-size="8.5">source GRD</text>
+<path d="M172 76 L190 76" class="w"/>
+<path d="M36 140 Q74 192 112 140" class="ln-acc dash"/>
+<text x="74" y="184" text-anchor="middle" class="t-acc" font-size="10">ΔV_g: ground loop</text>
+<text x="208" y="14" text-anchor="start" font-size="11">(b) differential</text>
+<rect x="302" y="26" width="96" height="140" rx="6" class="ln-thin dash" fill="none"/>
+<text x="350" y="160" text-anchor="middle" class="t-muted" font-size="9.5">DAQ board</text>
+<circle cx="226" cy="76" r="15" class="fill-panel" style="stroke:var(--ink);stroke-width:1.5"/><path d="M218 76 q4 -8 8 0 t8 0" class="w"/>
+<text x="226" y="40" text-anchor="middle" class="t-muted" font-size="9.5">source</text>
+<path d="M226 61 L226 54 L248 54" class="w"/>
+<path d="M226 91 L226 98 L248 98" class="w"/>
+<path d="M248 54 L248.9 54.5 L249.9 55.9 L250.8 58.2 L251.7 61.3 L252.7 65 L253.6 69.2 L254.5 73.7 L255.5 78.3 L256.4 82.8 L257.3 87 L258.3 90.7 L259.2 93.8 L260.1 96.1 L261.1 97.5 L262 98 L262.9 97.5 L263.9 96.1 L264.8 93.8 L265.7 90.7 L266.7 87 L267.6 82.8 L268.5 78.3 L269.5 73.7 L270.4 69.2 L271.3 65 L272.3 61.3 L273.2 58.2 L274.1 55.9 L275.1 54.5 L276 54 L276.9 54.5 L277.9 55.9 L278.8 58.2 L279.7 61.3 L280.7 65 L281.6 69.2 L282.5 73.7 L283.5 78.3 L284.4 82.8 L285.3 87 L286.3 90.7 L287.2 93.8 L288.1 96.1 L289.1 97.5 L290 98 L290.9 97.5 L291.9 96.1 L292.8 93.8 L293.7 90.7 L294.7 87 L295.6 82.8 L296.5 78.3 L297.5 73.7 L298.4 69.2 L299.3 65 L300.3 61.3 L301.2 58.2 L302.1 55.9 L303.1 54.5 L304 54" class="w"/><path d="M248 98 L248.9 97.5 L249.9 96.1 L250.8 93.8 L251.7 90.7 L252.7 87 L253.6 82.8 L254.5 78.3 L255.5 73.7 L256.4 69.2 L257.3 65 L258.3 61.3 L259.2 58.2 L260.1 55.9 L261.1 54.5 L262 54 L262.9 54.5 L263.9 55.9 L264.8 58.2 L265.7 61.3 L266.7 65 L267.6 69.2 L268.5 73.7 L269.5 78.3 L270.4 82.8 L271.3 87 L272.3 90.7 L273.2 93.8 L274.1 96.1 L275.1 97.5 L276 98 L276.9 97.5 L277.9 96.1 L278.8 93.8 L279.7 90.7 L280.7 87 L281.6 82.8 L282.5 78.3 L283.5 73.7 L284.4 69.2 L285.3 65 L286.3 61.3 L287.2 58.2 L288.1 55.9 L289.1 54.5 L290 54 L290.9 54.5 L291.9 55.9 L292.8 58.2 L293.7 61.3 L294.7 65 L295.6 69.2 L296.5 73.7 L297.5 78.3 L298.4 82.8 L299.3 87 L300.3 90.7 L301.2 93.8 L302.1 96.1 L303.1 97.5 L304 98" class="w"/>
+<text x="276" y="120" text-anchor="middle" class="t-muted" font-size="9">twisted pair</text>
+<path d="M304 54 L330 54 L330 64.5 L338 64.5" class="w"/>
+<path d="M304 98 L324 98 L324 87.5 L338 87.5" class="w"/>
+<text x="308" y="48" text-anchor="start" class="t-mono" font-size="9">CH HI</text>
+<text x="332" y="108" text-anchor="start" class="t-mono" font-size="9">CH LO</text>
+<path d="M338 53 L378 76 L338 99 Z" class="box"/><text x="346" y="69" text-anchor="middle" font-size="12">+</text><text x="346" y="92" text-anchor="middle" font-size="12">−</text>
+<path d="M378 76 L396 76" class="w"/>
+<circle cx="324" cy="98" r="2.6" class="fill-ink"/><path d="M324 98 L324 112" class="w"/>
+<path d="M324 112 L324 115 L320 116.8 L328 120.2 L320 123.8 L328 127.2 L324 129 L324 132" class="w"/>
+<path d="M324 132 L324 134" class="w"/><path d="M324 134 L324 140" class="w"/><path d="M315 140 L333 140" class="w"/><path d="M318 144 L330 144" class="w"/><path d="M321 148 L327 148" class="w"/>
+<text x="332" y="128" text-anchor="start" class="t-mono t-muted" font-size="8">10–100 kΩ</text>
+<text x="304" y="186" text-anchor="middle" class="t-acc" font-size="10">board reads HI − LO</text>
+        </svg>
+      </figure>
+      <p class="define"><dfn>Common-mode voltage</dfn> (CMV): a voltage present on both signal leads together, for example the difference between two ground points. A <dfn>ground loop</dfn> forms when a signal is grounded at two points that are not at the same potential: the difference drives a current and adds to the reading.</p>
+    </div>
+    <div>
+      <p><b>Single-ended</b> (a): only the HI line is measured, against the board's ground (GRD), and the return line is tied to that ground. All channels share one ground point. Use it only for large signals on short leads, with every source referenced to the same ground. Long single-ended leads pick up electromagnetic interference, and a grounded source creates a ground loop.</p>
+      <p><b>Differential</b> (b): HI and LO both go to the amplifier, which measures HI − LO. The LO line is isolated from ground, so a common-mode voltage appears on both inputs and cancels. Run the pair twisted: interference then induces nearly the same voltage in both wires, which also cancels. This is the preferred connection for low-level signals. For a floating source, connect a 10–100 kΩ resistor from LO to GRD so the input has a path for its bias current, and keep the common-mode voltage within the board's rated CMV range, or the board can be damaged.</p>
+      <div class="analogy"><p>To find a person's height on a rocking boat, measuring from the dock to the top of their head (single-ended) includes the boat's motion. Measuring from their feet to the top of their head (differential) does not care how the boat moves.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 · SE/diff sim -->
+<section class="slide" id="sede-sim" data-title="Wiring simulator: single-ended versus differential">
+  <p class="eyebrow">Simulator · wiring and noise</p>
+  <h2>The same 10 mV signal, wired three ways</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simSE">
+      <div class="simhead"><span>2 Hz, 10 mV sensor signal</span><span class="legend"><span><i style="background:var(--muted)"></i>true signal</span><span><i style="background:var(--acc)"></i>what the board reads</span></span></div>
+      <canvas id="cvSE" data-h="250" aria-label="True 10 millivolt signal and the reading obtained with the chosen wiring, over one second"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="sw">Wiring</label>
+          <select id="sw" data-key="w"><option value="se" selected>single-ended, grounded source</option><option value="du">differential, untwisted leads</option><option value="dt">differential, twisted pair</option></select></div>
+        <div class="ctl"><label for="sg">Ground potential difference (50 Hz) <output data-for="g"></output></label>
+          <input type="range" id="sg" data-key="g" min="0" max="100" step="1" value="30" data-fmt="0" data-unit=" mV"></div>
+        <div class="ctl"><label for="sL">Lead length <output data-for="L"></output></label>
+          <input type="range" id="sL" data-key="L" min="1" max="30" step="1" value="10" data-fmt="0" data-unit=" m"></div>
+      </div>
+      <div class="readout" id="roSE"></div>
+    </div>
+    <div>
+      <p>The model behind the plot: the sensor gives a 2 Hz, 10 mV sine. A 50 Hz ground potential difference appears between the source ground and the board ground. Each lead picks up 0.5 mV of 50 Hz interference per metre. The differential amplifier rejects common-mode voltage by 80 dB (a factor of 10 000). Untwisted leads run apart, so the LO lead picks up only half of what the HI lead does; a twisted pair picks up the same within 2 %.</p>
+      <div class="try"><p>Start single-ended with 30 mV of ground difference and 10 m of lead: the 10 mV signal is buried in 50 Hz hum. Switch to differential, untwisted: the ground difference disappears, but half the lead pickup remains. Switch to twisted pair: the reading sits on the true signal. Now drag the lead length to 30 m: only the single-ended reading gets much worse. (The pickup and rejection values are illustrative; real ones depend on the installation and the amplifier.)</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 11 · Worked example: strain channel -->
+<section class="slide" id="ex-strain" data-title="Worked example: setting up a strain channel">
+  <p class="eyebrow">Worked example</p>
+  <h2>Setting up one strain channel: gain, filter and wiring</h2>
+  <div class="cols wide-l">
+    <div class="example">
+      <p class="given">A strain transducer has a static sensitivity of 2.5 V per unit strain (2.5 µV/µε) and needs a 5 V DC supply. It feeds a DAS with a ±5 V, 12-bit converter sampling at 1000 Hz. The expected range is 1 to 500 µε. Specify the amplifier gain, the filter, and the connections.</p>
+      <p><b>Known</b> \(K=2.5\ \mu\text{V}/\mu\varepsilon\), range 1–500 µε, \(E_{FSR}=10\) V, \(M=12\), \(f_s=1000\) Hz. <b>Find</b> \(G\), filter type and \(f_c\), wiring. <b>Assumptions</b> the signal content of interest lies below 500 Hz.</p>
+      <ol class="steps">
+        <li>Signal range: \(1\times2.5=2.5\ \mu\)V up to \(500\times2.5=1.25\) mV.</li>
+        <li>Resolution: \(Q=10/4096=2.44\) mV. Unamplified, even the largest strain is below one step.</li>
+        <li>Upper limit: \(1.25\ \text{mV}\times G\le5\) V, so \(G\le4000\).</li>
+        <li>\(G=1000\) gives 2.5 mV to 1.25 V: the low end is only about 1 \(Q\), lost in quantization noise. \(G=3000\) gives 7.5 mV (about 3 \(Q\)) to 3.75 V (25 % headroom). Choose \(G=3000\).</li>
+        <li>Filter: \(f_N=1000/2=500\) Hz. Use an analog Butterworth low-pass of 12 dB/octave (two poles) with \(f_c=500\) Hz, between amplifier and board.</li>
+        <li>Wiring: as drawn, with board excitation, shielded leads, and a twisted pair into channel 0 as a differential input to reduce noise.</li>
+      </ol>
+      <p><b>What this means:</b> gain is chosen from both ends of the range, resolution at the bottom and saturation at the top.</p>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 410 182" aria-label="Wiring: transducer with +5 V excitation, signal plus and minus, and ground terminals. Signal leads run in a shielded cable to an amplifier and filter of gain G, then as a twisted pair to the CH0 HI and CH0 LO terminals of the board's connector block. Excitation comes from the board's +5 V output; grounds are joined to the board ground.">
+<rect x="4" y="30" width="64" height="120" rx="5" class="box"/>
+<text x="36" y="24" text-anchor="middle" class="t-muted" font-size="10">transducer</text>
+<text x="8" y="50" text-anchor="start" class="t-mono" font-size="8">+5 V EXC</text><circle cx="68" cy="46" r="2.6" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/>
+<text x="8" y="86" text-anchor="start" class="t-mono" font-size="8">SIG +</text><circle cx="68" cy="82" r="2.6" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/>
+<text x="8" y="106" text-anchor="start" class="t-mono" font-size="8">SIG −</text><circle cx="68" cy="102" r="2.6" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/>
+<text x="8" y="140" text-anchor="start" class="t-mono" font-size="8">GRD</text><circle cx="68" cy="136" r="2.6" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/>
+<path d="M71 82 L150 82" class="w"/><path d="M71 102 L150 102" class="w"/>
+<rect x="88" y="72" width="44" height="40" rx="12" class="ln-thin dash" fill="none"/>
+<text x="110" y="66" text-anchor="middle" class="t-muted" font-size="9">shield</text>
+<path d="M150 69 L194 92 L150 115 Z" class="box"/><text x="168.5" y="96" text-anchor="middle" font-size="10">G</text>
+<text x="172" y="132" text-anchor="middle" class="t-muted" font-size="9">amplifier</text><text x="172" y="143" text-anchor="middle" class="t-muted" font-size="9">+ filter</text>
+<path d="M194 86 L214 86" class="w"/><path d="M194 98 L214 98" class="w"/>
+<path d="M214 86 L215 86.3 L216 87.1 L217 88.5 L218 90.1 L219 92 L220 93.9 L221 95.5 L222 96.9 L223 97.7 L224 98 L225 97.7 L226 96.9 L227 95.5 L228 93.9 L229 92 L230 90.1 L231 88.5 L232 87.1 L233 86.3 L234 86 L235 86.3 L236 87.1 L237 88.5 L238 90.1 L239 92 L240 93.9 L241 95.5 L242 96.9 L243 97.7 L244 98 L245 97.7 L246 96.9 L247 95.5 L248 93.9 L249 92 L250 90.1 L251 88.5 L252 87.1 L253 86.3 L254 86 L255 86.3 L256 87.1 L257 88.5 L258 90.1 L259 92 L260 93.9 L261 95.5 L262 96.9 L263 97.7 L264 98 L265 97.7 L266 96.9 L267 95.5 L268 93.9 L269 92 L270 90.1 L271 88.5 L272 87.1 L273 86.3 L274 86" class="w"/><path d="M214 98 L215 97.7 L216 96.9 L217 95.5 L218 93.9 L219 92 L220 90.1 L221 88.5 L222 87.1 L223 86.3 L224 86 L225 86.3 L226 87.1 L227 88.5 L228 90.1 L229 92 L230 93.9 L231 95.5 L232 96.9 L233 97.7 L234 98 L235 97.7 L236 96.9 L237 95.5 L238 93.9 L239 92 L240 90.1 L241 88.5 L242 87.1 L243 86.3 L244 86 L245 86.3 L246 87.1 L247 88.5 L248 90.1 L249 92 L250 93.9 L251 95.5 L252 96.9 L253 97.7 L254 98 L255 97.7 L256 96.9 L257 95.5 L258 93.9 L259 92 L260 90.1 L261 88.5 L262 87.1 L263 86.3 L264 86 L265 86.3 L266 87.1 L267 88.5 L268 90.1 L269 92 L270 93.9 L271 95.5 L272 96.9 L273 97.7 L274 98" class="w"/>
+<text x="244" y="120" text-anchor="middle" class="t-muted" font-size="9">twisted pair</text>
+<path d="M274 86 L300 86 L300 80 L312 80" class="w"/><path d="M274 98 L300 98 L300 104 L312 104" class="w"/>
+<rect x="290" y="8" width="116" height="164" rx="6" class="ln-thin dash" fill="none"/>
+<text x="374" y="166" text-anchor="middle" class="t-muted" font-size="9.5">DAQ board</text>
+<rect x="312" y="30" width="26" height="128" rx="3" class="box"/>
+<circle cx="312" cy="46" r="2.6" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/><text x="342" y="50" text-anchor="start" class="t-mono" font-size="8.5">+5 V OUT</text>
+<circle cx="312" cy="80" r="2.6" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/><text x="342" y="84" text-anchor="start" class="t-mono" font-size="8.5">CH0 HI</text>
+<circle cx="312" cy="104" r="2.6" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/><text x="342" y="108" text-anchor="start" class="t-mono" font-size="8.5">CH0 LO</text>
+<circle cx="312" cy="140" r="2.6" class="fill-panel" style="stroke:var(--ink);stroke-width:1.4"/><text x="342" y="144" text-anchor="start" class="t-mono" font-size="8.5">GRD</text>
+<path d="M68 46 L90 46 L90 16 L300 16 L300 46 L309 46" class="w"/>
+<path d="M68 136 L90 136 L90 160 L300 160 L300 140 L309 140" class="w"/>
+<circle cx="110" cy="160" r="2.6" class="fill-ink"/><path d="M110 112 L110 160" class="ln-thin"/>
+<text x="200" y="12" text-anchor="middle" class="t-muted" font-size="9">excitation from board</text>
+<text x="200" y="176" text-anchor="middle" class="t-muted" font-size="9">common ground</text>
+        </svg>
+      </figure>
+      <div class="reveal-box" data-label="Follow-up: is input loading a problem? Reveal">
+        <p>A device with 600 Ω output impedance drives the 1 MΩ input of a 0–10 V, 12-bit converter at 2 V. How large is the loading error?</p>
+        <div class="answer"><p>The input and source form a divider: \(E_m=E_1/(1+Z_1/Z_m)\). So \(e_I=E_m-E_1=2\big(\tfrac{1}{1+600/10^6}-1\big)=-1.2\) mV. That is below the converter's step of \(10/4096=2.44\) mV, so loading is negligible here.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 12 · Worked example: anti-alias to Q level -->
+<section class="slide" id="ex-filter" data-title="Worked example: anti-alias filter order">
+  <p class="eyebrow">Worked example</p>
+  <h2>How steep must the anti-alias filter be?</h2>
+  <div class="cols wide-l">
+    <div class="example">
+      <p class="given">A signal is sampled at 200 Hz by a 12-bit converter with a −10 to +10 V range. It contains an unwanted 200 Hz component of 100 mV amplitude. Specify a Butterworth low-pass filter that shrinks this component to the converter's resolution and also serves as the anti-alias filter.</p>
+      <p><b>Known</b> \(f_s=200\) Hz, \(f_1=200\) Hz, \(A_1=100\) mV, \(E_{FSR}=20\) V, \(M=12\). <b>Find</b> \(f_c\) and the number of poles \(k\). <b>Assumptions</b> Butterworth (maximally flat) response.</p>
+      <ol class="steps">
+        <li>\(f_N=200/2=100\) Hz, so set \(f_c=100\) Hz.</li>
+        <li>Unfiltered, the 200 Hz tone sits exactly at \(f_s\): its alias is 0 Hz, a false constant offset in the record.</li>
+        <li>Resolution: \(Q=20/4096=4.88\) mV. Required magnitude ratio at 200 Hz: \(M(200)\le4.88/100=0.0488\) (−26.2 dB).</li>
+        <li>Butterworth: \(M=[1+(f/f_c)^{2k}]^{-1/2}\) with \(f/f_c=2\). Need \(1+2^{2k}\ge1/0.0488^2=419\), so \(2k\ge\log_2 418=8.71\) and \(k\ge4.35\).</li>
+        <li>Round up: \(k=5\). Check: \(M=1/\sqrt{1+2^{10}}=0.0312\), so 100 mV becomes 3.1 mV, below \(Q\). With \(k=4\): \(M=0.0624\), 6.2 mV, still above \(Q\).</li>
+      </ol>
+      <p><b>What this means:</b> because \(f_c\) sits at \(f_N\), a component only one octave above it still needs a fifth-order filter to vanish below one LSB.</p>
+    </div>
+    <div>
+      <div class="eq"><span class="label">Butterworth low-pass magnitude ratio</span>
+        $$M(f)=\frac{1}{\sqrt{1+(f/f_c)^{2k}}}$$
+      </div>
+      <div class="symbols">
+        <span>\(f_c\)</span><span>cutoff frequency, where \(M=0.707\) (−3 dB), Hz</span>
+        <span>\(k\)</span><span>number of poles (filter order); roll-off \(6k\) dB per octave</span>
+      </div>
+      <div class="tbl compact"><table>
+        <tr><th>k</th><th>M at f = 2f<sub>c</sub></th><th>100 mV becomes</th></tr>
+        <tr><td>2</td><td>0.243</td><td>24.3 mV</td></tr>
+        <tr><td>3</td><td>0.124</td><td>12.4 mV</td></tr>
+        <tr><td>4</td><td>0.0624</td><td>6.24 mV</td></tr>
+        <tr><td>5</td><td>0.0312</td><td>3.12 mV</td></tr>
+        <tr><td>6</td><td>0.0156</td><td>1.56 mV</td></tr>
+      </table></div>
+      <div class="quiz" data-correct="1">
+        <p class="q">Why not simply put \(f_c\) well below \(f_N\), say at 50 Hz?</p>
+        <div class="opts">
+          <button class="opt" data-why="The filter order needed would actually drop, because 200 Hz would be two octaves above \(f_c\). Cost is not the issue.">It needs more poles</button>
+          <button class="opt" data-why="Right. The filter also attenuates wanted content: at 100 Hz a 5-pole filter with \(f_c=50\) Hz passes only 3 %. Lowering \(f_c\) narrows the useful band.">It removes wanted signal between 50 and 100 Hz</button>
+          <button class="opt" data-why="Aliasing depends on what reaches the sampler above \(f_N\); a lower \(f_c\) reduces that further.">It causes aliasing</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 13 · Digital I/O and control -->
+<section class="slide" id="dio" data-title="Digital I/O, triggering and closed-loop control">
+  <p class="eyebrow">Digital input–output</p>
+  <h2>Digital lines count, trigger and close the control loop</h2>
+  <div class="cols">
+    <div>
+      <p>Digital I/O lines carry only HIGH or LOW, usually as 5 V TTL. A <b>single state</b> can switch a relay, power equipment on or off, raise an alarm or report whether a door is shut. A <b>series of pulses</b> carries more:</p>
+      <ul>
+        <li><dfn>Gate-pulse counting</dfn>: count the pulses arriving during a fixed gate time to get a frequency. A shaft encoder giving 60 pulses per revolution that produces 1500 counts in a 1 s gate is turning at 25 rev/s (1500 rpm).</li>
+        <li><dfn>Pulse stepping</dfn>: send a set number of pulses to a stepper motor. A 200 step/rev motor given 50 pulses turns 90°.</li>
+        <li><dfn>Triggering</dfn>: start an acquisition by software command, by an external TTL pulse, or from the on-board clock, or send TTL pulses that synchronise other instruments.</li>
+      </ul>
+      <p>Several lines grouped together send a whole word in parallel.</p>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 190" aria-label="Closed loop: set point and measured value enter compare, which gives the error; decide applies the control law; a D A output drives an actuator acting on the process; a sensor, conditioning and an A D sample return the measured value">
+<rect x="4" y="20" width="72" height="32" rx="5" class="box"/><text x="40" y="39.4" text-anchor="middle" font-size="9.5">set point</text>
+<rect x="100" y="20" width="92" height="32" rx="5" class="box"/><text x="146" y="33.7" text-anchor="middle" font-size="9.5">compare:</text><text x="146" y="45.1" text-anchor="middle" font-size="9.5">error</text>
+<rect x="214" y="20" width="82" height="32" rx="5" class="box"/><text x="255" y="33.7" text-anchor="middle" font-size="9.5">decide:</text><text x="255" y="45.1" text-anchor="middle" font-size="9.5">control law</text>
+<rect x="320" y="20" width="76" height="32" rx="5" class="box-blu"/><text x="358" y="39.4" text-anchor="middle" font-size="9.5">D/A out</text>
+<rect x="320" y="86" width="76" height="32" rx="5" class="box"/><text x="358" y="105.4" text-anchor="middle" font-size="9.5">actuator</text>
+<rect x="320" y="152" width="76" height="32" rx="5" class="box-acc"/><text x="358" y="171.4" text-anchor="middle" font-size="9.5">process</text>
+<rect x="214" y="152" width="82" height="32" rx="5" class="box"/><text x="255" y="171.4" text-anchor="middle" font-size="9.5">sensor</text>
+<rect x="100" y="152" width="92" height="32" rx="5" class="box"/><text x="146" y="171.4" text-anchor="middle" font-size="9.5">conditioning</text>
+<rect x="4" y="152" width="72" height="32" rx="5" class="box-blu"/><text x="40" y="165.7" text-anchor="middle" font-size="9.5">A/D:</text><text x="40" y="177.1" text-anchor="middle" font-size="9.5">sample</text>
+<path d="M76 36 L100 36" class="w"/><path d="M100 36 L93 32.5 L93 39.5 Z" class="fill-ink"/><path d="M192 36 L214 36" class="w"/><path d="M214 36 L207 32.5 L207 39.5 Z" class="fill-ink"/><path d="M296 36 L320 36" class="w"/><path d="M320 36 L313 32.5 L313 39.5 Z" class="fill-ink"/>
+<path d="M358 52 L358 86" class="w"/><path d="M358 86 L361.5 79 L354.5 79 Z" class="fill-ink"/><path d="M358 118 L358 152" class="w"/><path d="M358 152 L361.5 145 L354.5 145 Z" class="fill-ink"/>
+<path d="M320 168 L296 168" class="w"/><path d="M296 168 L303 171.5 L303 164.5 Z" class="fill-ink"/><path d="M214 168 L192 168" class="w"/><path d="M192 168 L199 171.5 L199 164.5 Z" class="fill-ink"/><path d="M100 168 L76 168" class="w"/><path d="M76 168 L83 171.5 L83 164.5 Z" class="fill-ink"/>
+<path d="M40 152 L40 104 L146 104 L146 52" class="w"/><path d="M146 52 L142.5 59 L149.5 59 Z" class="fill-ink"/>
+<text x="48" y="98" text-anchor="start" class="t-muted" font-size="9">measured value</text>
+<text x="244" y="104" text-anchor="middle" class="t-acc" font-size="10">sample → compare</text>
+<text x="244" y="120" text-anchor="middle" class="t-acc" font-size="10">→ decide → correct</text>
+        </svg>
+      </figure>
+      <p>In <dfn>closed-loop control</dfn> the DAS measures the controlled variable, compares it with the <dfn>set point</dfn> to form the <dfn>error signal</dfn>, applies a control law to decide the correction, and sends it out through a D/A converter or a digital line to an actuator. The cycle sample–compare–decide–correct repeats every sample period. Control loops are a subject of their own (control engineering).</p>
+      <div class="analogy"><p>Driving in your lane: glance at the lane markings (sample), see you have drifted left (compare), decide on a small right turn (decide), move the wheel (correct), and glance again.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 · Serial communication -->
+<section class="slide" id="serial" data-title="Serial communication and RS-232">
+  <p class="eyebrow">Digital communication · serial</p>
+  <h2>Serial links: one bit at a time, wrapped in a handshake</h2>
+  <div class="cols">
+    <div>
+      <p><dfn>Serial</dfn> communication sends data bit by bit on one line; <dfn>parallel</dfn> communication sends groups of bits (often a byte) at once on several lines. Both use a <dfn>handshake</dfn>: a protocol that starts, permits and ends each transfer.</p>
+      <p><b>RS-232C</b> is the classic serial standard between a computer (data terminal equipment, DTE) and an instrument (data communication equipment, DCE). It needs at minimum three wires: transmit, receive and signal ground, on a 9- or 25-pin connector; the other pins are optional handshake lines. 1 and 0 are pulses of opposite polarity between 3 and 25 V. Speed is in <dfn>baud</dfn>, signal pulses per second. Half-duplex lets one side talk at a time; full-duplex lets both talk at once.</p>
+      <figure>
+        <svg viewBox="0 0 400 96" aria-label="Asynchronous serial frame for the byte 0 1 0 0 1 0 1 1: line idle high, start bit low, eight data bits sent least significant first, an even-parity bit of 0, a stop bit high">
+<path d="M30 26 L30 72" class="ln-thin dash"/>
+<text x="45.5" y="88" text-anchor="middle" class="t-mono t-blu" font-size="9.5">start</text>
+<text x="45.5" y="22" text-anchor="middle" class="t-mono" font-size="10">0</text>
+<path d="M61 26 L61 72" class="ln-thin dash"/>
+<text x="76.5" y="88" text-anchor="middle" class="t-mono t-muted" font-size="9.5">b0</text>
+<text x="76.5" y="22" text-anchor="middle" class="t-mono" font-size="10">1</text>
+<path d="M92 26 L92 72" class="ln-thin dash"/>
+<text x="107.5" y="88" text-anchor="middle" class="t-mono t-muted" font-size="9.5">b1</text>
+<text x="107.5" y="22" text-anchor="middle" class="t-mono" font-size="10">1</text>
+<path d="M123 26 L123 72" class="ln-thin dash"/>
+<text x="138.5" y="88" text-anchor="middle" class="t-mono t-muted" font-size="9.5">b2</text>
+<text x="138.5" y="22" text-anchor="middle" class="t-mono" font-size="10">0</text>
+<path d="M154 26 L154 72" class="ln-thin dash"/>
+<text x="169.5" y="88" text-anchor="middle" class="t-mono t-muted" font-size="9.5">b3</text>
+<text x="169.5" y="22" text-anchor="middle" class="t-mono" font-size="10">1</text>
+<path d="M185 26 L185 72" class="ln-thin dash"/>
+<text x="200.5" y="88" text-anchor="middle" class="t-mono t-muted" font-size="9.5">b4</text>
+<text x="200.5" y="22" text-anchor="middle" class="t-mono" font-size="10">0</text>
+<path d="M216 26 L216 72" class="ln-thin dash"/>
+<text x="231.5" y="88" text-anchor="middle" class="t-mono t-muted" font-size="9.5">b5</text>
+<text x="231.5" y="22" text-anchor="middle" class="t-mono" font-size="10">0</text>
+<path d="M247 26 L247 72" class="ln-thin dash"/>
+<text x="262.5" y="88" text-anchor="middle" class="t-mono t-muted" font-size="9.5">b6</text>
+<text x="262.5" y="22" text-anchor="middle" class="t-mono" font-size="10">1</text>
+<path d="M278 26 L278 72" class="ln-thin dash"/>
+<text x="293.5" y="88" text-anchor="middle" class="t-mono t-muted" font-size="9.5">b7</text>
+<text x="293.5" y="22" text-anchor="middle" class="t-mono" font-size="10">0</text>
+<path d="M309 26 L309 72" class="ln-thin dash"/>
+<text x="324.5" y="88" text-anchor="middle" class="t-mono t-blu" font-size="9.5">P</text>
+<text x="324.5" y="22" text-anchor="middle" class="t-mono" font-size="10">0</text>
+<path d="M340 26 L340 72" class="ln-thin dash"/>
+<text x="355.5" y="88" text-anchor="middle" class="t-mono t-blu" font-size="9.5">stop</text>
+<text x="355.5" y="22" text-anchor="middle" class="t-mono" font-size="10">1</text>
+<path d="M6 34 L30 34 L30 64 L61 64 L61 34 L92 34 L92 34 L123 34 L123 64 L154 64 L154 34 L185 34 L185 64 L216 64 L216 64 L247 64 L247 34 L278 34 L278 64 L309 64 L309 64 L340 64 L340 34 L371 34 L371 34 L395 34" class="ln-acc"/>
+<text x="6" y="22" text-anchor="middle" font-size="9"></text>
+        </svg>
+        <figcaption>One asynchronous frame for the byte 01001011 (hex 4B), sent LSB first: start bit, 8 data bits, an even-parity bit, a stop bit. Logic levels shown.</figcaption>
+      </figure>
+      <p class="small">The start and stop bits frame each byte so the receiver can resynchronise its clock: this is <dfn>asynchronous</dfn> transmission, where bytes may come at random intervals. The <dfn>parity bit</dfn> makes the number of 1s even (or odd), a simple error check: the byte above has four 1s, so even parity adds 0. A receiver with a nearly full buffer can send XOFF to pause the sender and XON to resume.</p>
+    </div>
+    <div class="example">
+      <p class="given">A test records 4 channels at 1000 samples/s each for 25 s with a 16-bit converter (2 bytes per sample). How long does sending the record take over RS-232 at 9600 and at 115 200 baud (10-bit frames: start, 8 data, stop), and over USB 2.0 at 480 Mb/s? Can 9600 baud keep up in real time?</p>
+      <p><b>Known</b> 4 channels, 1000 S/s, 25 s, 2 bytes per sample. <b>Find</b> transfer times, real-time rate. <b>Assumptions</b> no protocol overhead beyond the frame bits; ideal USB rate.</p>
+      <ol class="steps">
+        <li>Samples: \(4\times1000\times25=100\,000\); bytes: \(200\,000\).</li>
+        <li>9600 baud with 10 bits per byte moves \(960\) bytes/s: \(200\,000/960=208\) s, about 3.5 min.</li>
+        <li>115 200 baud moves 11 520 bytes/s: 17.4 s.</li>
+        <li>USB 2.0: \(200\,000\times8\) bits \(/\,480\times10^6\) bit/s \(=3.3\) ms (real throughput is lower, but still far faster).</li>
+        <li>Real time needs \(4\times1000\times2=8000\) bytes/s. 9600 baud (960 bytes/s) cannot keep up; 115 200 baud (11 520 bytes/s) can, just.</li>
+      </ol>
+      <p><b>What this means:</b> check the link's byte rate against the acquisition rate before you start, or the buffer overflows and data are lost.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 15 · Buses and wireless -->
+<section class="slide" id="buses" data-title="USB, GPIB, Ethernet and wireless">
+  <p class="eyebrow">Digital communication · buses and networks</p>
+  <h2>USB, GPIB, Ethernet and Bluetooth</h2>
+  <div class="cols wide-l">
+    <div>
+      <div class="tbl wrap compact"><table>
+        <tr><th>Standard</th><th>Type</th><th>Key facts</th></tr>
+        <tr><td><b>USB</b></td><td>serial bus</td><td>one host, up to 127 devices in a tiered star; hot-swappable; 12 Mb/s (1.1), 480 Mb/s (2.0), about 3.2 Gb/s achievable (3.0); 4 wires: power, signal +, signal −, ground; cables ≤ 5 m; can power the device</td></tr>
+        <tr><td><b>FireWire (IEEE 1394)</b></td><td>serial bus</td><td>built for audio and video; 6 wires (two signal pairs, two power); cables ≤ 4.5 m</td></tr>
+        <tr><td><b>GPIB (IEEE-488)</b></td><td>parallel bus</td><td>8 data lines + 8 handshake and management lines, byte-serial; one controller (the PC) and up to 15 devices, each with an address; up to about 8 MB/s; cables about 4 m; widely used for lab instruments</td></tr>
+        <tr><td><b>Ethernet / Wi-Fi</b></td><td>network</td><td>local-area network (IEEE 802.3 wired, 802.11 wireless); 100 Mb/s or 1 Gb/s wired links up to 100 m per cable; data can be sent on over the Internet</td></tr>
+        <tr><td><b>Bluetooth</b></td><td>wireless</td><td>2.402–2.480 GHz radio; no line of sight needed; up to 8 devices within about 10 m in a personal area network; about 3 Mb/s (version 2.0)</td></tr>
+      </table></div>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 160" aria-label="USB tiered star: host computer, root hub, two hubs and a device on the second tier, and four devices on the third tier">
+<rect x="145" y="4" width="110" height="24" rx="5" class="box-blu"/><text x="200" y="19.6" text-anchor="middle" font-size="10">host computer</text>
+<rect x="160" y="44" width="80" height="24" rx="5" class="box"/><text x="200" y="59.6" text-anchor="middle" font-size="10">root hub</text>
+<path d="M200 28 L200 44" class="w"/>
+<rect x="40" y="92" width="70" height="22" rx="5" class="box"/><text x="75" y="106.6" text-anchor="middle" font-size="10">hub</text>
+<path d="M200 68 L75 92" class="w"/>
+<rect x="165" y="92" width="70" height="22" rx="5" class="box-acc"/><text x="200" y="106.6" text-anchor="middle" font-size="10">device</text>
+<path d="M200 68 L200 92" class="w"/>
+<rect x="290" y="92" width="70" height="22" rx="5" class="box"/><text x="325" y="106.6" text-anchor="middle" font-size="10">hub</text>
+<path d="M200 68 L325 92" class="w"/>
+<rect x="4" y="136" width="64" height="20" rx="5" class="box-acc"/><text x="36" y="149.4" text-anchor="middle" font-size="9.5">device</text>
+<path d="M75 114 L36 136" class="w"/>
+<rect x="82" y="136" width="64" height="20" rx="5" class="box-acc"/><text x="114" y="149.4" text-anchor="middle" font-size="9.5">device</text>
+<path d="M75 114 L114 136" class="w"/>
+<rect x="254" y="136" width="64" height="20" rx="5" class="box-acc"/><text x="286" y="149.4" text-anchor="middle" font-size="9.5">device</text>
+<path d="M325 114 L286 136" class="w"/>
+<rect x="332" y="136" width="64" height="20" rx="5" class="box-acc"/><text x="364" y="149.4" text-anchor="middle" font-size="9.5">device</text>
+<path d="M325 114 L364 136" class="w"/>
+<text x="396" y="62" text-anchor="end" class="t-muted" font-size="9.5">≤ 5 m per cable</text>
+        </svg>
+        <figcaption>USB's tiered star: every device hangs below one host through hubs.</figcaption>
+      </figure>
+      <div class="analogy"><p>RS-232 is a private phone line between two people. GPIB is a meeting with a chairperson who decides who speaks next. USB is a company switchboard: one operator (host), extensions branching through sub-exchanges (hubs). Ethernet is the postal network: any address, any distance.</p></div>
+      <div class="quiz" data-correct="2">
+        <p class="q">A byte 1011 0010 is sent with odd parity. What is the parity bit?</p>
+        <div class="opts">
+          <button class="opt" data-why="The byte has four 1s, an even count. Odd parity needs the total to be odd.">0</button>
+          <button class="opt" data-why="Parity is a single bit, not a count.">4</button>
+          <button class="opt" data-why="Four 1s is even; adding a 1 makes five, an odd total.">1</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 16 · Images -->
+<section class="slide" id="images" data-title="Digital images">
+  <p class="eyebrow">Simulator · digital image acquisition</p>
+  <h2>A digital image is a two-dimensional data set</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simImg">
+      <div class="simhead"><span>160 × 100 pixel, 8-bit image of five coins</span></div>
+      <canvas id="cvImg" data-h="250" aria-label="Synthetic grayscale image of five coins on a textured background, shown as grayscale, thresholded, or as detected edges"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="iv">View</label>
+          <select id="iv" data-key="v"><option value="g" selected>grayscale</option><option value="t">thresholded</option><option value="e">edges of grayscale</option><option value="et">edges after thresholding</option></select></div>
+        <div class="ctl"><label for="ith">Threshold <output data-for="th"></output></label>
+          <input type="range" id="ith" data-key="th" min="0" max="255" step="1" value="127" data-fmt="0"></div>
+        <div class="ctl"><label for="ie">Edge sensitivity (gradient limit) <output data-for="eg"></output></label>
+          <input type="range" id="ie" data-key="eg" min="40" max="400" step="5" value="120" data-fmt="0"></div>
+      </div>
+      <div class="readout" id="roImg"></div>
+    </div>
+    <div>
+      <p>A digital image is an \(m\times n\) array of <dfn>pixels</dfn>. In an 8-bit grayscale image each pixel holds an integer from 0 (black) to 255 (white). The sensor is usually a <dfn>charge-coupled device</dfn> (CCD): an array of tiny capacitors that collect charge while exposed to light, one per pixel; after the exposure each charge is converted to a number. Cameras range from about 0.3 to over 20 million pixels; a <dfn>frame grabber</dfn> board can acquire up to about 200 000 frames per second, but such short exposures need intense lighting.</p>
+      <p>To find and size the coins, find their edges. An edge lies where the intensity <b>gradient</b> is largest, so the computer estimates the gradient in \(x\) and \(y\) from neighbouring pixels (the Sobel method) and marks pixels whose gradient magnitude exceeds a limit. The Canny method first smooths the image and uses two limits. <dfn>Thresholding</dfn> first, setting every pixel above a level to white and the rest to black, removes texture that would produce false edges.</p>
+      <div class="try"><p>View "edges of grayscale": the coin reliefs and the background texture create clutter. Switch to "thresholded" at 127, then "edges after thresholding": five clean circles, and the readout counts five objects. Drop the threshold to 100: the bright background joins in. Pixels are spatial samples, so stripes finer than two pixels would alias, just like time signals.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 17 · Check yourself -->
+<section class="slide" id="check" data-title="Check yourself">
+  <p class="eyebrow">Self-test</p>
+  <h2>Check yourself</h2>
+  <div class="cols c3">
+    <div class="quiz" data-correct="1">
+      <p class="q">A 2 mV thermocouple signal must travel 20 m through a workshop to the DAS. How should it be connected?</p>
+      <div class="opts">
+        <button class="opt" data-why="Long single-ended leads pick up interference and any ground difference adds directly to a 2 mV signal.">Single-ended, any cable</button>
+        <button class="opt" data-why="Differential rejects common-mode voltage, and twisting makes the interference nearly equal in both wires so it cancels too.">Differential, shielded twisted pair</button>
+        <button class="opt" data-why="Gain amplifies the noise along with the signal; the connection is the problem.">Single-ended with high gain</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="0">
+      <p class="q">A board samples at 100 kS/s in total and scans 8 channels. What is the highest signal frequency each channel can record without aliasing?</p>
+      <div class="opts">
+        <button class="opt" data-why="Each channel gets \(100\,000/8=12\,500\) S/s, so its Nyquist frequency is 6.25 kHz.">6.25 kHz</button>
+        <button class="opt" data-why="That is the board's Nyquist frequency, as if one channel had all the samples.">50 kHz</button>
+        <button class="opt" data-why="12.5 kHz is the per-channel sample rate; the Nyquist frequency is half of it.">12.5 kHz</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="2">
+      <p class="q">A 4–20 mA transmitter feeds a 250 Ω shunt into a 0–10 V, 12-bit converter. What is the current resolution?</p>
+      <div class="opts">
+        <button class="opt" data-why="2.44 mV is the voltage step; divide by the shunt resistance to get current.">2.44 mA</button>
+        <button class="opt" data-why="Check the conversion: 2.44 mV ÷ 250 Ω, not × 250.">0.61 A</button>
+        <button class="opt" data-why="\(Q=10/4096=2.44\) mV, and \(I=Q/R=2.44\ \text{mV}/250\ \Omega=9.77\ \mu\)A per step.">9.77 µA</button>
+      </div>
+    </div>
+  </div>
+  <div class="reveal-box" data-label="One more: reveal the answer">
+    <p>A board with a 16-channel multiplexer and one converter is used to measure the phase between the input and output of a vibrating system at 200 Hz. Channels 0 and 15 are used, and the board runs at 50 kS/s in total. What goes wrong, and how do you fix it?</p>
+    <div class="answer"><p>Channel 15 is read \(15/50\,000=0.3\) ms after channel 0, which at 200 Hz is a false phase of \(360\times200\times0.0003=21.6°\). Fix it by scanning only the two channels needed (skew \(1/50\,000=20\ \mu\)s, 1.4°), by correcting the known skew in software, or by using a board with simultaneous sample-and-hold on every channel.</p></div>
+  </div>
+</section>
+
+<!-- 18 · Summary -->
+<section class="slide" id="summary" data-title="Summary">
+  <p class="eyebrow">Summary</p>
+  <h2>Data-acquisition systems on one page</h2>
+  <div class="tbl compact"><table>
+    <tr><th>Idea</th><th>Relation</th><th>Remember</th></tr>
+    <tr><td>Signal chain</td><td>sensor → filter/amp → MUX → S/H → A/D → buffer</td><td>anti-alias filter before the MUX</td></tr>
+    <tr><td>Multiplexed rate</td><td>\(f_{s,ch}=f_{board}/N\); skew \((N-1)/f_{board}\)</td><td>phase error \(360°f\Delta t\)</td></tr>
+    <tr><td>Hold needed</td><td>\(f&lt;Q/(4\pi A t_c)\) without S/H</td><td>a few Hz for 12 bits</td></tr>
+    <tr><td>Input resolution</td><td>\(Q_{in}=E_{FSR}/(G\,2^M)\)</td><td>remove mean, then gain</td></tr>
+    <tr><td>Divider / shunt</td><td>\(E_o=E_iR_2/(R_1+R_2)\); \(E_o=IR_{shunt}\)</td><td>250 Ω: 4–20 mA → 1–5 V</td></tr>
+    <tr><td>Connections</td><td>single-ended vs differential</td><td>differential + twisted pair for low levels</td></tr>
+    <tr><td>Serial byte rate</td><td>baud / 10 bytes/s (async frame)</td><td>check against acquisition rate</td></tr>
+  </table></div>
+  <div class="cols">
+    <div>
+      <h3>You should now be able to…</h3>
+      <ul>
+        <li>draw a multichannel DAS and say what each block does;</li>
+        <li>work out per-channel rate and channel skew for a multiplexed board;</li>
+        <li>choose gain, attenuation, shunt or offset removal to fit a signal to the converter;</li>
+        <li>choose single-ended or differential wiring, and size an anti-alias filter;</li>
+        <li>compare serial, parallel and network links, and check a link's data rate.</li>
+      </ul>
+    </div>
+    <div class="watch">
+      <h3>Watch next</h3>
+      <a href="https://www.youtube.com/results?search_query=data+acquisition+system+basics+multiplexer+sample+and+hold" target="_blank" rel="noopener">DAQ basics: multiplexer and sample-and-hold <small>YouTube search</small></a>
+      <a href="https://www.youtube.com/results?search_query=single+ended+vs+differential+measurement+ground+loop" target="_blank" rel="noopener">Single-ended vs differential, ground loops <small>YouTube search</small></a>
+      <a href="https://www.youtube.com/results?search_query=RS232+serial+communication+start+stop+parity+bits" target="_blank" rel="noopener">RS-232 framing: start, stop and parity bits <small>YouTube search</small></a>
+      <a href="https://www.youtube.com/results?search_query=sobel+edge+detection+explained" target="_blank" rel="noopener">Sobel edge detection explained <small>YouTube search</small></a>
+    </div>
+  </div>
+  <p class="further">Further reading: Figliola &amp; Beasley, §7.6–7.10</p>
+  <div class="row"><a class="btn" href="d05d.html">&larr; Part D · Bits, words and converters</a><a class="btn primary" href="d05f.html">Part F · Industrial transmission and digital filtering &rarr;</a></div>
+</section>
+
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const TAU = 2 * Math.PI;
+
+  /* ---- cover: multiplexer scanning four channels ---- */
+  let cT = 0;
+  const CF = [0.55, 0.9, 0.35, 1.3], CA = [0.8, 0.6, 0.9, 0.7];
+  function drawCover() {
+    const cv = $('coverMux'), { ctx, W, H } = Deck.sizeCanvas(cv);
+    ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+    const rows = 4, rh = H / rows, x0 = 10, x1 = W - 10, span = 8, tNow = Math.min(cT, span);
+    const step = 0.125; // seconds between switch positions
+    for (let c = 0; c < rows; c++) {
+      const yc = rh * (c + 0.5), amp = rh * 0.36 * CA[c];
+      ctx.strokeStyle = Deck.color('rule'); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x0, yc); ctx.lineTo(x1, yc); ctx.stroke();
+      ctx.strokeStyle = Deck.color('muted'); ctx.lineWidth = 1.2; ctx.beginPath();
+      for (let i = 0; i <= 500; i++) { const t = span * i / 500; const x = x0 + (x1 - x0) * t / span, y = yc - amp * Math.sin(TAU * CF[c] * t + c); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+      ctx.stroke();
+      ctx.fillStyle = Deck.color(c === 0 ? 'acc' : c === 3 ? 'blu' : 'ink');
+      for (let k = 0; ; k++) {
+        const t = (k * rows + c) * step; if (t > tNow) break;
+        const x = x0 + (x1 - x0) * t / span, y = yc - amp * Math.sin(TAU * CF[c] * t + c);
+        ctx.beginPath(); ctx.arc(x, y, 3.2, 0, 7); ctx.fill();
+      }
+    }
+    const kk = Math.floor(tNow / step), ch = kk % rows, xs = x0 + (x1 - x0) * Math.min(tNow, span) / span;
+    ctx.strokeStyle = Deck.color('acc'); ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(xs, 2); ctx.lineTo(xs, H - 2); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = Deck.color('acc'); ctx.beginPath(); ctx.moveTo(1, rh * (ch + 0.5) - 6); ctx.lineTo(8, rh * (ch + 0.5)); ctx.lineTo(1, rh * (ch + 0.5) + 6); ctx.fill();
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (cT < 8.1) { cT += RM ? 9 : dt * 1.2; drawCover(); } });
+
+  /* ---- multiplexer skew ---- */
+  Deck.onShow('mux', () => {
+    const get = Deck.controls('simMux', draw);
+    function draw() {
+      const v = get(), fa = +v.fa.toPrecision(3), N = Math.round(v.N), f = v.f, dt = 1 / fa, fch = fa / N, skew = (N - 1) * dt;
+      const Tw = 2 / f, s1 = [], sN = [];
+      for (let k = 0; k * N * dt <= Tw + 1e-12 && k < 4000; k++) {
+        const ts = k * N * dt;
+        s1.push([ts * 1000, Math.sin(TAU * f * ts)]);
+        sN.push([ts * 1000, Math.sin(TAU * f * (ts + skew))]);
+      }
+      const ser = [{ f: t => Math.sin(TAU * f * t / 1000), color: 'muted', width: 1.2, n: 600 }];
+      ser.push({ pts: s1, color: 'acc', width: 1.8, dots: s1.length < 120, r: 3 });
+      if (N > 1) ser.push({ pts: sN, color: 'blu', width: 1.8, dots: sN.length < 120, r: 3, dash: [5, 3] });
+      Deck.plot($('cvMux'), { x: [0, Tw * 1000], y: [-1.3, 1.3], xlabel: 'scan time (ms)', ylabel: 'stored value', yticks: [-1, 0, 1], series: ser });
+      // timing diagram: first three scans
+      const tw = 3 * N * dt * 1000, pts = [];
+      for (let k = 0; k < 3; k++) for (let j = 0; j < N; j++) pts.push({ x: (k * N + j) * dt * 1000, y: j + 1, color: j === 0 ? 'acc' : (j === N - 1 ? 'blu' : 'muted'), r: 4 });
+      const yt = N <= 8 ? Array.from({ length: N }, (_, i) => i + 1) : [1, Math.round(N / 2), N];
+      Deck.plot($('cvMuxT'), { x: [-0.02 * tw, tw * 1.02], y: [0.3, N + 0.7], xlabel: 'time (ms): when each channel is read', ylabel: 'channel', yticks: yt, points: pts, noGrid: false });
+      const ph = (360 * f * skew) % 360, alias = f > fch / 2;
+      const fa2 = Math.abs(f - fch * Math.round(f / fch));
+      $('roMux').innerHTML = 'per-channel rate <b>' + (+fch.toPrecision(4)) + ' S/s</b> &nbsp; per-channel f<sub>N</sub> <b>' + (+(fch / 2).toPrecision(4)) + ' Hz</b> &nbsp; skew ch 1 → ch ' + N + ' <b>' + (skew * 1000).toPrecision(3) + ' ms</b> &nbsp; apparent phase shift <b>' + ph.toFixed(1) + '°</b>' + (alias ? ' &nbsp; <b>ALIASED: f &gt; f<sub>N</sub>, appears at ' + fa2.toFixed(1) + ' Hz</b>' : '');
+    }
+    return draw;
+  });
+
+  /* ---- gain and offset ---- */
+  Deck.onShow('gain', () => {
+    const get = Deck.controls('simGain', draw);
+    function draw() {
+      const v = get(), G = v.G, m = +v.m, M = +v.b, Q = 10 / Math.pow(2, M), top = Math.pow(2, M) - 1;
+      const inp = [], out = [], rec = [], tru = []; let sat = false;
+      for (let i = 0; i <= 800; i++) {
+        const t = 0.4 * i / 800, y = 2 + 0.1 * Math.sin(TAU * 5 * t), u = G * (y - m);
+        let c = Math.floor((u + 5) / Q + 0.5); if (c > top) { c = top; sat = true; } if (c < 0) { c = 0; sat = true; }
+        const o = -5 + c * Q;
+        inp.push([t, u]); out.push([t, o]); rec.push([t, (o / G + m - 2) * 1000]); tru.push([t, 100 * Math.sin(TAU * 5 * t)]);
+      }
+      Deck.plot($('cvGain'), { x: [0, 0.4], y: [-6.5, 6.5], ylabel: 'converter input (V)', yticks: [-5, 0, 5], xticks: [], pad: { b: 10 },
+        bands: [{ y0: 5, y1: 99, color: 'red', alpha: .12 }, { y0: -99, y1: -5, color: 'red', alpha: .12 }],
+        series: [{ pts: inp, color: 'muted', width: 1.4 }, { pts: out, color: 'acc', width: 2 }] });
+      const ymax = Math.max(160, Math.min(2000, Math.max(...rec.map(p => Math.abs(p[1]))) * 1.1));
+      Deck.plot($('cvGain2'), { x: [0, 0.4], y: [-ymax, ymax], xlabel: 'time (s)', ylabel: 'wiggle (mV)',
+        series: [{ pts: tru, color: 'muted', width: 1.4 }, { pts: rec, color: 'blu', width: 2 }] });
+      const qin = Q / G, fq = q => q >= 1e-3 ? (q * 1000).toPrecision(3) + ' mV' : (q * 1e6).toPrecision(3) + ' µV';
+      $('roGain').innerHTML = 'Q = <b>' + fq(Q) + '</b> &nbsp; Q<sub>in</sub> = Q/G = <b>' + fq(qin) + '</b> &nbsp; wiggle spans <b>±' + Math.round(0.1 / qin) + ' steps</b> &nbsp; peak input <b>' + (G * (2.1 - m)).toFixed(2) + ' V</b>' + (sat ? ' &nbsp; <b>SATURATED</b>' : '');
+    }
+    return draw;
+  });
+
+  /* ---- single-ended vs differential ---- */
+  Deck.onShow('sede-sim', () => {
+    const get = Deck.controls('simSE', draw);
+    function draw() {
+      const v = get(), g = v.g / 1000, L = v.L, k = 0.5e-3, w = TAU * 50;
+      const tru = [], rd = []; let se2 = 0, n = 0, ymx = 0.012;
+      for (let i = 0; i <= 1500; i++) {
+        const t = i / 1500, s = 0.01 * Math.sin(TAU * 2 * t), nh = k * L * Math.sin(w * t + 0.4), vg = g * Math.sin(w * t + 1.1);
+        let r;
+        if (v.w === 'se') r = s + nh + vg;
+        else { const nl = nh * (v.w === 'dt' ? 0.98 : 0.5); r = s + (nh - nl) + 1e-4 * (vg + (nh + nl) / 2); }
+        tru.push([t, s * 1000]); rd.push([t, r * 1000]); se2 += (r - s) * (r - s); n++; ymx = Math.max(ymx, Math.abs(r));
+      }
+      const ym = Math.ceil(ymx * 1100 / 5) * 5;
+      Deck.plot($('cvSE'), { x: [0, 1], y: [-ym, ym], xlabel: 'time (s)', ylabel: 'voltage (mV)',
+        series: [{ pts: rd, color: 'acc', width: 1.2 }, { pts: tru, color: 'muted', width: 2.4 }] });
+      const rms = Math.sqrt(se2 / n) * 1000;
+      $('roSE').innerHTML = 'rms error <b>' + rms.toPrecision(3) + ' mV</b> &nbsp; signal amplitude <b>10 mV</b> &nbsp; error / signal rms <b>' + (100 * rms / (10 / Math.SQRT2)).toPrecision(3) + ' %</b>';
+    }
+    return draw;
+  });
+
+  /* ---- digital image ---- */
+  Deck.onShow('images', () => {
+    const IW = 160, IH = 100, img = new Float32Array(IW * IH);
+    let seed = 12345; const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+    const coins = [[30, 35, 14], [70, 62, 17], [112, 30, 12], [128, 72, 15], [38, 79, 11]];
+    for (let y = 0; y < IH; y++) for (let x = 0; x < IW; x++) {
+      let v = 60 + 45 * x / IW + 10 * Math.sin(x * 0.35 + y * 0.12) + (rnd() - 0.5) * 14;
+      for (const [cx, cy, r] of coins) {
+        const dx = x - cx, dy = y - cy, d = Math.hypot(dx, dy);
+        if (d < r + 0.5) {
+          const a = Math.min(1, r + 0.5 - d);
+          let c = 185 + 15 * (-dx - dy) / (r * 1.41) + (rnd() - 0.5) * 14;
+          const u = d / r; if (u > 0.62 && u < 0.74) c -= 30;
+          if (u < 0.3 && ((x + y) % 5 === 0)) c -= 20;
+          v = v * (1 - a) + c * a;
+        }
+      }
+      img[y * IW + x] = Math.max(0, Math.min(255, v));
+    }
+    const off = document.createElement('canvas'); off.width = IW; off.height = IH;
+    const octx = off.getContext('2d'), id = octx.createImageData(IW, IH);
+    const get = Deck.controls('simImg', draw);
+    function sobel(a) {
+      const g = new Float32Array(IW * IH);
+      for (let y = 1; y < IH - 1; y++) for (let x = 1; x < IW - 1; x++) {
+        const p = (i, j) => a[(y + j) * IW + (x + i)];
+        const gx = p(1, -1) + 2 * p(1, 0) + p(1, 1) - p(-1, -1) - 2 * p(-1, 0) - p(-1, 1);
+        const gy = p(-1, 1) + 2 * p(0, 1) + p(1, 1) - p(-1, -1) - 2 * p(0, -1) - p(1, -1);
+        g[y * IW + x] = Math.hypot(gx, gy);
+      }
+      return g;
+    }
+    function count(b) {
+      const seen = new Uint8Array(IW * IH); let nObj = 0;
+      for (let i = 0; i < IW * IH; i++) {
+        if (!b[i] || seen[i]) continue;
+        let area = 0; const st = [i]; seen[i] = 1;
+        while (st.length) { const q = st.pop(); area++; const x = q % IW, y = (q - x) / IW;
+          [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([a, c]) => { const X = x + a, Y = y + c; if (X >= 0 && X < IW && Y >= 0 && Y < IH) { const k = Y * IW + X; if (b[k] && !seen[k]) { seen[k] = 1; st.push(k); } } }); }
+        if (area >= 40) nObj++;
+      }
+      return nObj;
+    }
+    function draw() {
+      const v = get(), th = v.th, eg = v.eg;
+      const bin = new Float32Array(IW * IH), bb = new Uint8Array(IW * IH); let above = 0;
+      for (let i = 0; i < IW * IH; i++) { const on = img[i] > th; bin[i] = on ? 255 : 0; bb[i] = on ? 1 : 0; above += on; }
+      let show, nEdge = 0;
+      if (v.v === 'g') show = img;
+      else if (v.v === 't') show = bin;
+      else {
+        const gm = sobel(v.v === 'e' ? img : bin); show = new Float32Array(IW * IH);
+        for (let i = 0; i < IW * IH; i++) { const e = gm[i] > eg; show[i] = e ? 255 : 0; nEdge += e; }
+      }
+      for (let i = 0; i < IW * IH; i++) { const c = show[i]; id.data[4 * i] = c; id.data[4 * i + 1] = c; id.data[4 * i + 2] = c; id.data[4 * i + 3] = 255; }
+      octx.putImageData(id, 0, 0);
+      const cv = $('cvImg'), { ctx, W, H } = Deck.sizeCanvas(cv);
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const sc = Math.min(W / IW, H / IH), dw = IW * sc, dh = IH * sc;
+      ctx.imageSmoothingEnabled = false; ctx.drawImage(off, (W - dw) / 2, (H - dh) / 2, dw, dh);
+      $('roImg').innerHTML = 'pixels above threshold <b>' + (100 * above / (IW * IH)).toFixed(1) + ' %</b> &nbsp; objects in thresholded image (≥ 40 px) <b>' + count(bb) + '</b>' + (v.v === 'e' || v.v === 'et' ? ' &nbsp; edge pixels <b>' + nEdge + '</b>' : '');
+    }
+    return draw;
+  });
+})();
+</script>
+</body>
+</html>

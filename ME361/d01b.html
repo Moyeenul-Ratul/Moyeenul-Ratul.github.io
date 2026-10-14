@@ -1,0 +1,911 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fourier Series and Spectrum</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="deck.css">
+<script>window.DECK = { num: "01b", title: "Fourier Series and the Frequency Spectrum" };</script>
+<script src="deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+<style>
+  .presets{display:flex;gap:8px;flex-wrap:wrap}
+  svg .fill-soft{fill:var(--acc-soft)}
+  svg .t-small{font-size:11.5px}
+  svg .fill-red{fill:var(--red)}
+  svg .t-red{fill:var(--red)}
+</style>
+</head>
+<body>
+<main class="deck">
+
+<!-- 1 · Cover -->
+<section class="slide cover center" id="cover" data-title="Cover">
+  <p class="num">TOPIC 01 · PART B OF 2</p>
+  <h1>Fourier Series and the Frequency Spectrum</h1>
+  <p class="lead">A clarinet and a trumpet can play the same note, yet you never confuse them. A healthy fan and one with a loose bearing can turn at the same speed, yet an accelerometer tells them apart. The difference is which frequencies the signal contains, and how strongly. This part teaches you to find them.</p>
+  <div class="parts"><a href="d01a.html">A · Signal types, mean and RMS</a><span>B · Fourier series and the frequency spectrum</span></div>
+  <canvas class="bigtrace" id="coverTrace" data-h="120" aria-label="A square wave being built up from more and more sine harmonics"></canvas>
+  <ol class="agenda">
+    <li>Why split a signal into sines</li>
+    <li>Periodic signals, fundamental and harmonics</li>
+    <li>Fourier coefficients from orthogonality</li>
+    <li>Even and odd shortcuts; two complete examples</li>
+    <li>The amplitude spectrum and the Fourier transform</li>
+    <li>The DFT for sampled data, and reading a vibration spectrum</li>
+  </ol>
+</section>
+
+<!-- 2 · Where we are + why decompose -->
+<section class="slide" id="recap" data-title="Where we are: why split a signal into sines">
+  <p class="eyebrow">Where we are</p>
+  <h2>From one sine to many</h2>
+  <div class="cols">
+    <div>
+      <p>Part A reduced a signal to a few numbers. The <b>mean</b> \(\bar y\) is its DC level, the <b>RMS</b> measures its overall size, and \(y_\text{rms}^2 = \bar y^2 + y'^2_\text{rms}\) splits it into DC and AC parts. You also met the <b>simple periodic</b> signal \(y = A_0 + C\sin(\omega t + \phi)\), fixed by an amplitude \(C\), a circular frequency \(\omega = 2\pi f\) and a phase \(\phi\).</p>
+      <p>This part asks: when a measured waveform is <i>not</i> a single sine, which sines is it made of? There are two practical reasons to care.</p>
+      <p><b>1. Predicting instrument response.</b> Many measuring systems (a thermometer, a pressure transducer, a spring-mass accelerometer) answer a sine input with a sine output of the same frequency, only scaled and delayed. For such <dfn>linear</dfn> systems the <dfn>superposition principle</dfn> holds: the response to a sum of inputs is the sum of the responses. Split any input into sines and you can predict the output. Topic 02 is built on this.</p>
+      <p><b>2. Diagnosis and bandwidth.</b> The frequencies present point to their physical sources (shaft speed, blade passing, mains hum) and tell you how fast an instrument must be.</p>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 420 230" aria-label="Left: three sines at f0, 3f0 and 5f0 that add up to a squarish wave. Right: the same information as three vertical bars at f0, 3f0 and 5f0">
+          <text x="10" y="14" class="t-muted t-small">Time domain: y against t</text>
+          <path d="M20 40 H220 M20 85 H220 M20 130 H220 M20 192 H220" class="ln-thin"/>
+          <path data-fn="c1" data-map="0,1,20,220,40,18,200" class="ln-blu"/>
+          <path data-fn="c3" data-map="0,1,20,220,85,18,300" class="ln-blu"/>
+          <path data-fn="c5" data-map="0,1,20,220,130,18,400" class="ln-blu"/>
+          <path data-fn="csum" data-map="0,1,20,220,192,24,500" class="ln-acc"/>
+          <text x="224" y="44" class="t-small t-blu">f₀</text><text x="224" y="89" class="t-small t-blu">3f₀</text><text x="224" y="134" class="t-small t-blu">5f₀</text>
+          <text x="6" y="64" class="t-mono">+</text><text x="6" y="109" class="t-mono">+</text><text x="6" y="164" class="t-mono">=</text>
+          <text x="20" y="226" class="t-small t-acc">sum: a complex periodic signal</text>
+          <text x="262" y="14" class="t-muted t-small">Frequency domain</text>
+          <path d="M262 190 H412 M262 190 V40" class="ln-thin"/>
+          <path d="M290 190 V60 M340 190 V146.7 M390 190 V164" class="ln-blu" style="stroke-width:6"/>
+          <text x="290" y="54" text-anchor="middle" class="t-small">1</text><text x="340" y="141" text-anchor="middle" class="t-small">1/3</text><text x="390" y="158" text-anchor="middle" class="t-small">1/5</text>
+          <text x="290" y="206" text-anchor="middle" class="t-small">f₀</text><text x="340" y="206" text-anchor="middle" class="t-small">3f₀</text><text x="390" y="206" text-anchor="middle" class="t-small">5f₀</text>
+          <text x="410" y="222" text-anchor="end" class="t-muted t-small">frequency</text>
+          <text x="268" y="36" class="t-muted t-small">amplitude</text>
+        </svg>
+        <figcaption>Two views of the same signal. Left: its <dfn>time domain</dfn> picture, value against time. Right: its <dfn>frequency domain</dfn> picture, one bar per sine, height equal to that sine’s amplitude.</figcaption>
+      </figure>
+      <div class="analogy"><p>A prism splits white light into a band of colours. Each colour is light of one frequency, and its brightness is its amplitude. Fourier analysis is a prism for signals: a complex waveform goes in, a list of frequencies and amplitudes comes out.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 · Periodic signals and harmonics -->
+<section class="slide" id="harmonics" data-title="Fundamental and harmonics">
+  <p class="eyebrow">Periodic signals</p>
+  <h2>Fundamental and harmonics: why a guitar is not a violin</h2>
+  <div class="cols wide-l">
+    <div>
+      <p class="define"><span>A signal is <dfn>periodic</dfn> with period \(T\) if \(y(t + T) = y(t)\) for every \(t\). If \(y_1\) and \(y_2\) both have period \(T\), so does \(a\,y_1 + b\,y_2\) for any constants \(a, b\).</span></p>
+      <p>A sine of frequency \(n f_0\) (\(n\) a whole number, \(f_0 = 1/T\)) completes exactly \(n\) cycles in \(T\), so any sum of such sines repeats every \(T\).</p>
+      <p class="define"><span>The <dfn>fundamental</dfn> is the component at \(f_0 = 1/T\). The component at \(n f_0\) is the <dfn>n-th harmonic</dfn>.</span></p>
+      <p>A plucked string vibrates in several <dfn>mode shapes</dfn> at once; mode \(n\) has \(n\) half-waves and frequency \(n f_0\). Plucked at its centre, it holds only odd modes, with amplitudes falling as \(1/n^2\): each even mode has a <dfn>node</dfn> (a point that never moves) at the centre, and a pluck at a node cannot excite it. Plucked at one fifth of its length, modes 5, 10, 15 are missing for the same reason.</p>
+      <p>The ear hears the fundamental as <b>pitch</b> and the harmonic mix as <b>timbre</b>. A clarinet’s B-flat peaks at 231, 693, 1155, 1617 Hz (odd harmonics only); a brass section near 700 Hz shows 700, 1400, 2100, 2800 Hz (all harmonics).</p>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 420 160" aria-label="String plucked at its centre: triangular starting shape, and the mode shapes 1, 3, 5 and 7 with relative amplitudes 1, 1/9, 1/25, 1/49">
+          <g class="t-small">
+            <text x="4" y="26">starting shape</text><text x="4" y="56">mode 1 · f₀</text><text x="4" y="86">mode 3 · 3f₀</text><text x="4" y="116">mode 5 · 5f₀</text><text x="4" y="146">mode 7 · 7f₀</text>
+            <text x="342" y="56" class="t-muted">amp. 1</text><text x="342" y="86" class="t-muted">amp. 1/9</text><text x="342" y="116" class="t-muted">amp. 1/25</text><text x="342" y="146" class="t-muted">amp. 1/49</text>
+          </g>
+          <path d="M120 30 H330 M120 60 H330 M120 90 H330 M120 120 H330 M120 150 H330" class="ln-thin dash" style="opacity:.5"/>
+          <path data-fn="tri" data-map="0,1,120,330,30,16,2" class="ln-acc"/>
+          <path data-fn="m1" data-map="0,1,120,330,60,11,100" class="ln-blu"/>
+          <path data-fn="m3" data-map="0,1,120,330,90,11,150" class="ln-blu"/>
+          <path data-fn="m5" data-map="0,1,120,330,120,11,200" class="ln-blu"/>
+          <path data-fn="m7" data-map="0,1,120,330,150,11,250" class="ln-blu"/>
+          <path d="M225 6 V156" class="ln-thin dash"/><text x="229" y="10" class="t-muted t-small">centre</text>
+        </svg>
+        <figcaption>Centre pluck: only odd modes. Shapes drawn at equal height; relative amplitudes on the right.</figcaption>
+      </figure>
+      <figure>
+        <svg viewBox="0 0 420 165" aria-label="Bar spectrum, in decibels, of a string plucked one fifth of the way along: harmonics 5, 10 and 15 are missing">
+          <g id="pluckBars"></g>
+        </svg>
+        <figcaption>Pluck at one fifth of the length: mode amplitudes are proportional to |sin(nπ/5)|/n², shown in decibels relative to mode 1 (20 log₁₀ of the ratio). Modes 5, 10, 15 vanish.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- 4 · Fourier series statement -->
+<section class="slide" id="series" data-title="The Fourier series">
+  <p class="eyebrow">Fourier series</p>
+  <h2>Any periodic signal as a constant plus harmonics</h2>
+  <div class="cols">
+    <div>
+      <p>Take a periodic signal \(y(t)\) with period \(T\). Its fundamental circular frequency is \(\omega = 2\pi/T\). Fourier’s claim is that the signal can be written as a constant plus cosines and sines at \(\omega, 2\omega, 3\omega, \dots\):</p>
+      <div class="eq"><span class="label">Trigonometric Fourier series</span>
+        $$y(t) = A_0 + \sum_{n=1}^{\infty}\big(A_n\cos n\omega t + B_n\sin n\omega t\big)$$
+      </div>
+      <div class="symbols">
+        <span>\(A_0\)</span><span>constant term: the DC level, same unit as \(y\)</span>
+        <span>\(A_n,\ B_n\)</span><span><dfn>Fourier coefficients</dfn>: how much cosine and sine of harmonic \(n\) the signal holds</span>
+        <span>\(\omega\)</span><span>fundamental circular frequency \(2\pi/T\), rad/s; harmonic \(n\) sits at \(n\omega\)</span>
+      </div>
+      <p>Part A showed that \(A\cos + B\sin\) at one frequency is a single shifted sine. Applied to each harmonic:</p>
+      <div class="eq"><span class="label">Amplitude–phase form</span>
+        $$y(t) = A_0 + \sum_{n=1}^{\infty} C_n\sin(n\omega t + \phi_n^*)$$
+        $$C_n = \sqrt{A_n^2 + B_n^2},\qquad \tan\phi_n^* = \frac{A_n}{B_n}$$
+      </div>
+    </div>
+    <div>
+      <p>\(C_n\) is the <b>amplitude of harmonic \(n\)</b>. A list of the \(C_n\) is what a spectrum plots.</p>
+      <div class="note" data-label="When the series works"><p>The signal must be <b>piecewise continuous</b> over a period (any jumps are finite and few) and have a left- and right-hand slope at every point. Practically every engineering signal qualifies. The series then equals \(y(t)\) everywhere, except at a jump, where it converges to the <b>midpoint</b> of the jump.</p></div>
+      <div class="analogy"><p>A Fourier series is a recipe: a pinch of DC, this much fundamental, that much third harmonic. Two signals with the same period differ only in their recipe, just as two cakes from the same oven differ only in the ingredients.</p></div>
+      <div class="quiz" data-correct="1">
+        <p class="q">A pressure signal repeats exactly every 20 ms. Which frequencies can its Fourier series contain?</p>
+        <div class="opts">
+          <button class="opt" data-why="A signal that repeats every 20 ms cannot contain 30 Hz: 30 Hz does not complete a whole number of cycles in 20 ms (it completes 0.6).">Any frequency at all</button>
+          <button class="opt" data-why="Yes. \(f_0 = 1/T = 1/0.020 = 50\) Hz, so only DC and whole multiples of 50 Hz can appear: 0, 50, 100, 150 Hz …">0, 50, 100, 150 Hz, …</button>
+          <button class="opt" data-why="20 ms is the period; the frequency is its inverse, 50 Hz, and multiples of it.">20, 40, 60 Hz, …</button>
+          <button class="opt" data-why="Only a pure sine has a single frequency. A general periodic signal also has harmonics.">Only 50 Hz</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 · Orthogonality -->
+<section class="slide" id="orth" data-title="Orthogonality">
+  <p class="eyebrow">The key idea · orthogonality</p>
+  <h2>Products of different harmonics average to zero</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simOrth">
+      <div class="simhead"><span>Orthogonality explorer, T = 1 s</span><span class="legend"><span><i style="background:var(--acc)"></i>first</span><span><i style="background:var(--blu)"></i>second</span><span><i style="background:var(--grn)"></i>+ area</span><span><i style="background:var(--red)"></i>− area</span></span></div>
+      <canvas id="cvOrA" data-h="125" aria-label="The two chosen sines or cosines over one period"></canvas>
+      <canvas id="cvOrB" data-h="150" aria-label="Their product over one period, with positive area shaded green and negative area red"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="oType">Pair</label>
+          <select id="oType" data-key="ty"><option value="ss" selected>sin nωt · sin mωt</option><option value="cc">cos nωt · cos mωt</option><option value="sc">sin nωt · cos mωt</option></select></div>
+        <div class="ctl"><label for="oN">Harmonic n <output data-for="n"></output></label>
+          <input type="range" id="oN" data-key="n" min="1" max="6" step="1" value="2" data-fmt="0"></div>
+        <div class="ctl"><label for="oM">Harmonic m <output data-for="m"></output></label>
+          <input type="range" id="oM" data-key="m" min="1" max="6" step="1" value="3" data-fmt="0"></div>
+      </div>
+      <div class="readout" id="roOrth"></div>
+      <div class="try"><p>Default n = 2, m = 3: green and red areas balance, integral 0. Set m = 2: the product never goes negative and the integral is 0.5 s = T/2. Now pick sin·cos with n = m = 2: zero again; a sine never “contains” a cosine.</p></div>
+    </div>
+    <div>
+      <p>To pull one harmonic out of a sum: <b>multiply by a sine or cosine of that harmonic, then integrate over one period</b>. It works because (\(n, m = 1, 2, 3, \dots\)):</p>
+      <div class="eq"><span class="label">Orthogonality over one period</span>
+        $$\int_0^T\!\cos n\omega t\,dt = \int_0^T\!\sin n\omega t\,dt = 0$$
+        $$\int_0^T\!\cos n\omega t\,\cos m\omega t\,dt = \begin{cases}0 & n \ne m\\ T/2 & n = m\end{cases}$$
+        $$\int_0^T\!\sin n\omega t\,\sin m\omega t\,dt:\ \text{the same}$$
+        $$\int_0^T\!\sin n\omega t\,\cos m\omega t\,dt = 0\ \text{ for all } n, m$$
+      </div>
+      <div class="why"><p>\(\cos a\cos b = \tfrac12[\cos(a-b) + \cos(a+b)]\). With \(a = n\omega t\), \(b = m\omega t\) these are harmonics \(n-m\) and \(n+m\): whole cycles in \(T\), zero net area. Only for \(n = m\) is the first term \(\cos 0 = 1\), adding \(\tfrac12 T\).</p></div>
+      <div class="analogy"><p>The \(x\)-component of a force is its dot product with \(\hat{\imath}\); the \(y\) and \(z\) parts drop out because the axes are perpendicular. The integral of a product is the dot product for functions, and different harmonics are “perpendicular”: <dfn>orthogonal</dfn>.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · Deriving the coefficients -->
+<section class="slide" id="euler" data-title="Deriving the Fourier coefficients">
+  <p class="eyebrow">Fourier coefficients</p>
+  <h2>Multiply, integrate, and only one term survives</h2>
+  <div class="cols">
+    <div>
+      <ol class="steps">
+        <li>Start from \(y = A_0 + \sum_n (A_n\cos n\omega t + B_n\sin n\omega t)\) and integrate both sides over one period. Every sine and cosine encloses zero area, leaving \(\int_0^T y\,dt = A_0 T\). So \(A_0 = \frac1T\int_0^T y\,dt\): the mean value of Part A.</li>
+        <li>Pick a harmonic \(m\). Multiply both sides by \(\cos m\omega t\) and integrate over a period. The left side becomes \(\int_0^T y\cos m\omega t\,dt\). The right side splits into three kinds of integral:
+          $$A_0\!\int_0^T\!\cos m\omega t\,dt,\qquad A_n\!\int_0^T\!\cos n\omega t\,\cos m\omega t\,dt,$$
+          $$B_n\!\int_0^T\!\sin n\omega t\,\cos m\omega t\,dt\quad\text{for every } n.$$</li>
+        <li>Orthogonality wipes the right side clean: the \(A_0\) term is zero, every sin·cos term is zero, and every cos·cos term is zero except \(n = m\), which gives \(A_m\,T/2\).</li>
+        <li>Therefore \(A_m = \frac2T\int_0^T y\cos m\omega t\,dt\). Multiplying by \(\sin m\omega t\) instead isolates \(B_m\) in exactly the same way.</li>
+      </ol>
+      <div class="analogy"><p>A radio picks one station out of hundreds by mixing the antenna signal with its own oscillator at that station’s frequency and averaging. All other stations average away. The coefficient formulas “tune in” to harmonic \(n\) the same way.</p></div>
+    </div>
+    <div>
+      <div class="eq"><span class="label">Fourier coefficients (Euler formulas)</span>
+        $$A_0 = \frac1T\int_{t_0}^{t_0+T} y(t)\,dt$$
+        $$A_n = \frac2T\int_{t_0}^{t_0+T} y(t)\cos n\omega t\,dt$$
+        $$B_n = \frac2T\int_{t_0}^{t_0+T} y(t)\sin n\omega t\,dt$$
+      </div>
+      <p class="small">The integral may run over <b>any</b> interval one period long, \(t_0\) to \(t_0 + T\): 0 to \(T\), or \(-T/2\) to \(T/2\). Choose whichever makes the algebra easiest.</p>
+      <div class="why"><p>\(A_n\) and \(B_n\) carry \(2/T\) rather than \(1/T\) because \(\cos^2\) and \(\sin^2\) average to \(\tfrac12\) over a period; the 2 undoes that half. \(A_0\) multiplies a constant, whose square averages to 1, so it keeps \(1/T\).</p></div>
+      <div class="reveal-box" data-label="Quick number: the Fourier series of cos² ωt">
+        <div class="answer"><p>\(A_0 = \frac1T\int_0^T\cos^2\omega t\,dt = \tfrac12\). For \(A_2\): \(\cos^2\omega t\cos 2\omega t = (\tfrac12 + \tfrac12\cos 2\omega t)\cos 2\omega t\), whose average is \(\tfrac12\cdot\tfrac12 = \tfrac14\); times 2 gives \(A_2 = \tfrac12\). \(A_1\) and all others are zero. So \(\cos^2\omega t = \tfrac12 + \tfrac12\cos 2\omega t\): squaring a signal of frequency \(f\) produced DC and \(2f\), and no \(f\) at all. Remember this when you meet the rectifier.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 · Even and odd -->
+<section class="slide" id="evenodd" data-title="Even and odd functions">
+  <p class="eyebrow">Symmetry shortcuts</p>
+  <h2>Even signals need only cosines; odd signals only sines</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 420 160" aria-label="Left: an even pulse train, mirror symmetric about t = 0. Right: an odd square wave, unchanged by a half-turn about the origin">
+          <text x="10" y="14" class="t-small">Even: g(−t) = g(t)</text><text x="216" y="14" class="t-small">Odd: h(−t) = −h(t)</text>
+          <path d="M10 120 H200 M216 85 H410" class="ln-thin"/>
+          <path d="M105 24 V140 M313 24 V140" class="ln-thin dash"/>
+          <path data-fn="evn" data-map="-1,1,10,200,120,80,300" class="ln-acc"/>
+          <path data-fn="odd" data-map="-1,1,216,410,85,45,600" class="ln-acc"/>
+          <text x="105" y="154" text-anchor="middle" class="t-mono t-small">t = 0</text><text x="313" y="154" text-anchor="middle" class="t-mono t-small">t = 0</text>
+          <path d="M80 34 Q105 22 130 34" class="ln-blu"/><path d="M124 29 L131 35 L122 37" class="ln-blu"/>
+          <text x="138" y="36" class="t-blu t-small">mirror</text>
+          <circle cx="313" cy="85" r="18" class="ln-blu" style="fill:none"/><text x="410" y="30" text-anchor="end" class="t-blu t-small">half-turn about origin</text>
+        </svg>
+      </figure>
+      <p class="define"><span>A function is <dfn>even</dfn> if \(g(-t) = g(t)\): its left half is the mirror image of its right half (\(\cos n\omega t\) is even). It is <dfn>odd</dfn> if \(h(-t) = -h(t)\): a half-turn about the origin leaves it unchanged (\(\sin n\omega t\) is odd). Many functions are neither.</span></p>
+      <p>Products follow sign rules: even × even = even, odd × odd = even, even × odd = <b>odd</b>. Over \(-T/2\) to \(T/2\) an odd function’s left area cancels its right area, so its integral is zero; an even function’s integral is twice that over \(0\) to \(T/2\).</p>
+    </div>
+    <div>
+      <div class="tbl wrap"><table>
+        <tr><th>If y(t) is</th><th>Then</th><th>Remaining coefficients</th></tr>
+        <tr><td>Even</td><td>\(y\sin n\omega t\) is odd, so all \(B_n = 0\)</td><td>\(A_0 = \frac2T\int_0^{T/2}\!y\,dt\), \(A_n = \frac4T\int_0^{T/2}\!y\cos n\omega t\,dt\)</td></tr>
+        <tr><td>Odd</td><td>\(y\cos n\omega t\) and \(y\) are odd, so \(A_0 = A_n = 0\)</td><td>\(B_n = \frac4T\int_0^{T/2}\!y\sin n\omega t\,dt\)</td></tr>
+        <tr><td>Neither</td><td>no shortcut</td><td>both sines and cosines</td></tr>
+      </table></div>
+      <div class="pitfall"><p>Evenness depends on where you put \(t = 0\). Shift a square wave by a quarter period and its sine series becomes a cosine series; the amplitudes \(C_n\) do not change, only the phases. Adding a constant to an odd wave spoils the oddness, but only \(A_0\) changes.</p></div>
+      <div class="quiz" data-correct="0">
+        <p class="q">The full-wave rectified sine \(|\sin t|\) is mirror symmetric about \(t = 0\). Which coefficients can be non-zero?</p>
+        <div class="opts">
+          <button class="opt" data-why="Correct. It is even, so every \(B_n = 0\). It never goes negative, so its mean \(A_0\) is positive.">\(A_0\) and \(A_n\) only</button>
+          <button class="opt" data-why="Sines are odd; an even waveform contains none of them.">\(B_n\) only</button>
+          <button class="opt" data-why="Even symmetry forces every sine coefficient to vanish.">All of \(A_0\), \(A_n\), \(B_n\)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 · Worked example: square wave -->
+<section class="slide" id="ex-square" data-title="Worked example: the square wave">
+  <p class="eyebrow">Worked example</p>
+  <h2>Fourier series of a square wave</h2>
+  <div class="cols wide-l">
+    <div class="example">
+      <p class="given">A square-wave voltage is \(y = -5\) V for \(-\pi &lt; t &lt; 0\) and \(y = +5\) V for \(0 &lt; t &lt; \pi\), repeating every \(2\pi\) s. Find its Fourier coefficients, write the series, and check it at \(t = \pi/2\) and at the jump \(t = 0\).</p>
+      <p class="small"><b>Known:</b> amplitude 5 V, \(T = 2\pi\) s. <b>Find:</b> \(A_0\), \(A_n\), \(B_n\). <b>Assume:</b> ideal jumps; series conditions met (finite jumps).</p>
+      <ol class="steps">
+        <li>\(\omega = 2\pi/T = 1\) rad/s. Symmetry: \(y(-t) = -y(t)\), so the wave is odd. Hence \(A_0 = 0\) and every \(A_n = 0\).</li>
+        <li>Odd-function formula: \(\displaystyle B_n = \frac4T\int_0^{T/2}\! y\sin n\omega t\,dt = \frac{4}{2\pi}\int_0^{\pi}\! 5\sin nt\,dt = \frac{10}{\pi}\Big[-\frac{\cos nt}{n}\Big]_0^{\pi}\)</li>
+        <li>\(\displaystyle B_n = \frac{10}{n\pi}(1 - \cos n\pi)\). Since \(\cos n\pi = (-1)^n\): for even \(n\), \(1 - 1 = 0\); for odd \(n\), \(1 + 1 = 2\), so \(B_n = 20/(n\pi)\).</li>
+        <li>\(\displaystyle y(t) = \frac{20}{\pi}\Big(\sin t + \tfrac13\sin 3t + \tfrac15\sin 5t + \dots\Big)\) V, with \(B_1 = 6.37\), \(B_3 = 2.12\), \(B_5 = 1.27\), \(B_7 = 0.91\) V.</li>
+        <li>Check at \(t = \pi/2\): \(\sin t = 1\), \(\sin 3t = -1\), \(\sin 5t = 1\), … so \(5 = \frac{20}{\pi}(1 - \tfrac13 + \tfrac15 - \tfrac17 + \dots)\), i.e. \(\frac\pi4 = 1 - \tfrac13 + \tfrac15 - \dots\), a known series for \(\pi\) (Leibniz, 1673). ✓ At \(t = 0\) every sine is zero: the series gives 0 V, the midpoint of the jump from −5 to +5 V.</li>
+      </ol>
+      <p class="small"><b>What this means:</b> a square wave holds only odd harmonics, with amplitudes falling as \(1/n\). The 5th harmonic is still 20 % of the fundamental, so an instrument that must show the sharp corners needs to follow many times the fundamental frequency.</p>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 420 200" aria-label="Square wave between minus 5 and plus 5 over two periods, with the one-term and three-term Fourier partial sums">
+          <path d="M40 100 H412 M132.5 18 V182" class="ln-thin"/>
+          <path data-fn="sq5" data-map="-0.5,1.5,40,410,100,13,800" class="ln" style="stroke-width:1.6"/>
+          <path data-fn="ps1" data-map="-0.5,1.5,40,410,100,13,300" class="ln-blu dash" style="stroke-width:1.8"/>
+          <path data-fn="ps3" data-map="-0.5,1.5,40,410,100,13,600" class="ln-acc"/>
+          <g class="t-mono t-small">
+            <text x="34" y="39" text-anchor="end">+5</text><text x="34" y="169" text-anchor="end">−5</text>
+            <text x="40" y="196" text-anchor="middle">−π</text><text x="132" y="196" text-anchor="middle">0</text><text x="225" y="196" text-anchor="middle">π</text><text x="317" y="196" text-anchor="middle">2π</text><text x="404" y="196" text-anchor="middle">3π</text>
+          </g>
+          <path d="M36 35 H40 M36 165 H40" class="ln-thin"/>
+          <text x="44" y="16" class="t-small t-blu">blue: 1 term</text>
+          <text x="44" y="30" class="t-small t-acc">orange: 3 terms</text>
+        </svg>
+        <figcaption>Black: the square wave. Dashed blue: the fundamental alone. Orange: fundamental plus 3rd and 5th harmonics, already squarish, with three humps per half-cycle.</figcaption>
+      </figure>
+      <div class="takeaway"><p>For any square wave of amplitude \(a\): \(B_n = \dfrac{4a}{n\pi}\) for odd \(n\), zero for even \(n\). With \(a = 1\) and \(T = 10\) s, for instance, \(\omega = 0.628\) rad/s and \(B_1 = 1.27\), \(B_3 = 0.42\).</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 · Fourier builder sim -->
+<section class="slide" id="builder" data-title="Simulator: Fourier series builder">
+  <p class="eyebrow">Simulator</p>
+  <h2>Add harmonics one at a time and watch the shape appear</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simFB">
+      <div class="simhead"><span>Fourier builder</span><span class="legend"><span><i style="background:var(--muted)"></i>exact wave</span><span><i style="background:var(--acc)"></i>partial sum</span><span><i style="background:var(--blu)"></i>spectrum</span></span></div>
+      <canvas id="cvFBt" data-h="190" aria-label="Exact waveform and the Fourier partial sum"></canvas>
+      <canvas id="cvFBs" data-h="130" aria-label="Amplitude spectrum stem plot of the terms included"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="fbW">Waveform</label>
+          <select id="fbW" data-key="w">
+            <option value="sq" selected>Square wave</option>
+            <option value="tri">Triangle wave</option>
+            <option value="saw">Sawtooth</option>
+            <option value="rect">Rectified sine</option>
+          </select></div>
+        <div class="ctl"><label for="fbN">Non-zero AC terms <output data-for="n"></output></label>
+          <input type="range" id="fbN" data-key="n" min="1" max="40" step="1" value="3" data-fmt="0"></div>
+      </div>
+      <div class="readout" id="roFB"></div>
+    </div>
+    <div>
+      <div class="tbl wrap"><table>
+        <tr><th>Wave</th><th>Non-zero coefficients</th></tr>
+        <tr><td>Square</td><td>\(B_n = \frac{4}{n\pi}\), odd \(n\)</td></tr>
+        <tr><td>Triangle</td><td>\(B_n = \pm\frac{8}{\pi^2 n^2}\), odd \(n\), signs alternating</td></tr>
+        <tr><td>Sawtooth</td><td>\(B_n = (-1)^{n+1}\frac{2}{n\pi}\), every \(n\)</td></tr>
+        <tr><td>Rectified \(|\sin|\)</td><td>\(A_0 = \frac2\pi\), \(A_k = -\frac{4}{\pi(4k^2-1)}\) at \(2k\) times the input frequency</td></tr>
+      </table></div>
+      <p class="small">All waves have amplitude 1; the coefficients follow from the same Euler formulas. <b>Jumps</b> (square, sawtooth) give coefficients falling as \(1/n\): slow convergence. Mere <b>corners</b> (triangle, rectified sine) give \(1/n^2\): a few terms suffice. A smoother signal has a narrower spectrum.</p>
+      <p class="define"><span>The <dfn>Gibbs phenomenon</dfn>: next to a jump every partial sum overshoots by about 9 % of the jump. More terms squeeze the overshoot closer to the jump but never remove it.</span></p>
+      <div class="try"><p>Square wave: step from 1 to 5 terms and count the humps per half-cycle (one per term). Push to 40: the RMS error falls, but the peak stays near 1.18, 9 % of the jump of 2. The triangle looks right with 3 terms. The rectified sine has DC plus even multiples of the input frequency only.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 · Worked example: rectified sine -->
+<section class="slide" id="ex-rect" data-title="Worked example: the rectified sine">
+  <p class="eyebrow">Worked example</p>
+  <h2>A 60 Hz rectifier has no 60 Hz in its output</h2>
+  <div class="cols wide-l">
+    <div class="example">
+      <p class="given">A full-wave rectifier flips the negative halves of \(E = 120\sin 120\pi t\) V (60 Hz) upward, giving \(E(t) = |120\sin 120\pi t|\) V. Find its DC level and the frequencies and amplitudes of its first three harmonics.</p>
+      <p class="small"><b>Known:</b> input amplitude 120 V, 60 Hz. <b>Find:</b> \(A_0\), harmonic amplitudes. <b>Assume:</b> ideal rectifier (no diode voltage drop).</p>
+      <ol class="steps">
+        <li>Each hump lasts half an input cycle, so the output period is \(T = 1/120\) s: fundamental \(f_0 = 120\) Hz, \(\omega_0 = 240\pi\) rad/s. The wave is even, so all \(B_k = 0\).</li>
+        <li>Over \(0 &lt; t &lt; T\), \(\sin 120\pi t \ge 0\), so \(E = 120\sin 120\pi t\) there. Substitute \(\theta = 120\pi t\) (\(\theta\): 0 to \(\pi\); \(dt = d\theta/120\pi\)):
+          $$A_0 = \frac1T\!\int_0^T\! E\,dt = \frac{120\cdot120}{120\pi}\!\int_0^\pi\!\sin\theta\,d\theta = \frac{240}{\pi} = 76.4\ \text{V}$$</li>
+        <li>For harmonic \(k\), \(k\omega_0 t = 2k\theta\), so
+          $$A_k = \frac2T\!\int_0^T\! E\cos k\omega_0 t\,dt = \frac{240}{\pi}\!\int_0^\pi\!\sin\theta\cos 2k\theta\,d\theta$$</li>
+        <li>Product-to-sum: \(\sin\theta\cos 2k\theta = \tfrac12[\sin(1+2k)\theta + \sin(1-2k)\theta]\). For odd \(m\), \(\int_0^\pi \sin m\theta\,d\theta = 2/m\), so the integral is \(\frac{1}{1+2k} + \frac{1}{1-2k} = \frac{2}{1-4k^2}\). Hence \(A_k = -\dfrac{480}{\pi(4k^2-1)}\) V.</li>
+        <li>\(k = 1\) (120 Hz): −50.9 V. \(k = 2\) (240 Hz): −10.2 V. \(k = 3\) (360 Hz): −4.37 V. So \(E(t) = 76.4 - 50.9\cos 240\pi t - 10.2\cos 480\pi t - 4.37\cos 720\pi t - \dots\) V.</li>
+      </ol>
+      <p class="small"><b>What this means:</b> the output contains no 60 Hz. Its content has moved to DC (the useful part) and to ripple at 120, 240, 360 Hz. A smoothing filter for this rectifier must suppress 120 Hz.</p>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 420 165" aria-label="Input sine dashed, rectified output as a train of positive humps, and its mean of 76.4 V">
+          <path d="M40 95 H412 M40 20 V160" class="ln-thin"/>
+          <path data-fn="sinIn" data-map="0,2,40,410,95,0.55,300" class="ln-thin dash"/>
+          <path data-fn="rect" data-map="0,2,40,410,95,0.55,400" class="ln-acc"/>
+          <path d="M40 53 H410" class="ln-blu dash" style="stroke-width:1.5"/>
+          <text x="410" y="12" text-anchor="end" class="t-blu t-small">dashed blue: mean 76.4 V</text>
+          <g class="t-mono t-small"><text x="36" y="33" text-anchor="end">120</text><text x="36" y="99" text-anchor="end">0</text><text x="36" y="161" text-anchor="end">−120</text>
+          <text x="132" y="112" text-anchor="middle">8.3</text><text x="225" y="112" text-anchor="middle">16.7</text><text x="317" y="112" text-anchor="middle">25</text><text x="404" y="112" text-anchor="end">33.3 ms</text></g>
+        </svg>
+      </figure>
+      <canvas id="cvRect" data-h="200" aria-label="Amplitude spectrum of the rectified sine: 76.4 V at 0 Hz, 50.9 V at 120 Hz, 10.2 V at 240 Hz, 4.4 V at 360 Hz, nothing at 60 Hz"></canvas>
+      <p class="small muted">Dashed grey: the 60 Hz input. Orange: the rectified output. Below: its amplitude spectrum; the red line marks 60 Hz, where the amplitude is zero.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 11 · Amplitude spectrum and Parseval -->
+<section class="slide" id="spectrum" data-title="The amplitude spectrum">
+  <p class="eyebrow">The amplitude spectrum</p>
+  <h2>A spectrum shows how much of each frequency a signal holds</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 420 250" aria-label="Top: a square wave of amplitude 1 against time. Bottom: its amplitude spectrum, stems at f0, 3f0, 5f0, 7f0, 9f0 of heights 1.27, 0.42, 0.25, 0.18, 0.14">
+          <text x="10" y="14" class="t-muted t-small">time domain</text>
+          <path d="M30 62 H410" class="ln-thin"/>
+          <path data-fn="sq1" data-map="0,3,30,410,62,36,900" class="ln-acc"/>
+          <text x="10" y="128" class="t-muted t-small">frequency domain: amplitude spectrum</text>
+          <path d="M40 225 H410 M40 225 V140" class="ln-thin"/>
+          <g class="ln-blu" style="stroke-width:3">
+            <path d="M96 225 V136"/><path d="M168 225 V195.3"/><path d="M240 225 V207.2"/><path d="M312 225 V212.3"/><path d="M384 225 V215.1"/>
+          </g>
+          <g class="fill-blu"><circle cx="96" cy="136" r="4"/><circle cx="168" cy="195.3" r="4"/><circle cx="240" cy="207.2" r="4"/><circle cx="312" cy="212.3" r="4"/><circle cx="384" cy="215.1" r="4"/></g>
+          <g class="t-mono t-small" text-anchor="middle">
+            <text x="118" y="140">1.27</text><text x="168" y="187">0.42</text><text x="240" y="199">0.25</text><text x="312" y="204">0.18</text><text x="384" y="207">0.14</text>
+            <text x="96" y="241">f₀</text><text x="132" y="241" class="t-muted">2f₀</text><text x="168" y="241">3f₀</text><text x="240" y="241">5f₀</text><text x="312" y="241">7f₀</text><text x="384" y="241">9f₀</text>
+          </g>
+          <text x="44" y="150" class="t-small t-muted">Cₙ</text>
+        </svg>
+        <figcaption>Square wave of amplitude 1 and its amplitude spectrum: one line per harmonic, height Cₙ = 4/(nπ), no even harmonics.</figcaption>
+      </figure>
+      <p class="define"><span>The <dfn>amplitude spectrum</dfn> plots \(C_n\) against frequency \(nf_0\), with the DC level \(A_0\) at \(f = 0\). The <dfn>phase spectrum</dfn> plots \(\phi_n\) against frequency. Together they hold all the information in \(y(t)\): you can rebuild the signal from them.</span></p>
+    </div>
+    <div>
+      <p>How much does each line add to the signal’s size? Square the series and average over a period: cross products of different harmonics average to zero (orthogonality), and each harmonic’s own square averages to \(C_n^2/2\), as in Part A.</p>
+      <div class="eq"><span class="label">Mean square from the spectrum (Parseval’s relation)</span>
+        $$y_\text{rms}^2 = A_0^2 + \sum_{n=1}^{\infty}\frac{C_n^2}{2}$$
+      </div>
+      <p class="define"><span>The <dfn>power spectrum</dfn> plots \(C_n^2/2\) against frequency: how the mean square (proportional to power in a resistor) is shared among the frequencies.</span></p>
+      <p class="small">Quick numbers. Square wave of amplitude 1: \(y_\text{rms}^2 = 1\); the fundamental holds \((4/\pi)^2/2 = 0.811\) (81 %), harmonics 1, 3, 5 together 93 %. Rectifier: \(76.4^2 + (50.9^2 + 10.2^2 + 4.37^2)/2 = 7195\) V², against the exact \(120^2/2 = 7200\) V².</p>
+      <div class="reveal-box" data-label="Predict, then reveal: bandwidth for a 50 Hz square wave">
+        <p class="small">A pressure transducer must reproduce a 50 Hz square wave well enough to show its 1st, 3rd and 5th harmonics. Up to what frequency must it respond?</p>
+        <div class="answer"><p>250 Hz. A square wave has odd harmonics only, at 50, 150 and 250 Hz; together they carry 93 % of the mean square. Answering 50 Hz (the fundamental) would round off the corners into a near-sine.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 12 · Fourier transform -->
+<section class="slide" id="transform" data-title="The Fourier transform">
+  <p class="eyebrow">From series to transform</p>
+  <h2>Signals that never repeat: let the period grow without limit</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simPT">
+      <div class="simhead"><span>Pulse train: stretch the period</span><span class="legend"><span><i style="background:var(--blu)"></i>spectrum lines</span><span><i style="background:var(--muted)"></i>|Y(f)| of one pulse</span></span></div>
+      <canvas id="cvPTt" data-h="110" aria-label="Train of rectangular pulses, width 0.1 s, repeating every T seconds"></canvas>
+      <canvas id="cvPTf" data-h="200" aria-label="Line spectrum of the pulse train with the continuous transform of a single pulse as a dashed envelope"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="ptT">Period T <output data-for="T"></output></label>
+          <input type="range" id="ptT" data-key="T" min="0.2" max="4" step="0.05" value="0.4" data-fmt="2" data-unit=" s"></div>
+        <div class="ctl"><label for="ptS">Vertical axis</label>
+          <select id="ptS" data-key="sc"><option value="raw">line amplitude Cₙ</option><option value="scaled" selected>scaled: (T/2)·Cₙ</option></select></div>
+      </div>
+      <div class="readout" id="roPT"></div>
+    </div>
+    <div>
+      <p>A hammer blow, a valve slamming shut, a start-up transient: these never repeat, so they have no Fourier series. Trick: treat such a signal as periodic with an enormous period, \(T \to \infty\). The lines sit at \(n/T\), so their spacing \(1/T\) shrinks to zero and they merge into a continuous curve. Each \(C_n\) also shrinks like \(1/T\), but \((T/2)C_n\) settles on a fixed curve: the <dfn>Fourier transform</dfn>.</p>
+      <div class="eq"><span class="label">Fourier transform and amplitude spectrum</span>
+        $$Y(f) = \int_{-\infty}^{\infty} y(t)\,e^{-i2\pi f t}\,dt = A(f) - iB(f)$$
+        $$A = \int y\cos 2\pi f t\,dt,\quad B = \int y\sin 2\pi f t\,dt$$
+        $$|Y(f)| = \sqrt{A^2 + B^2},\qquad \phi(f) = \tan^{-1}\frac{B}{A}$$
+      </div>
+      <p class="small">Euler’s identity \(e^{-i\theta} = \cos\theta - i\sin\theta\) (with \(i = \sqrt{-1}\)) packs the cosine and sine integrals into one complex number. \(Y\) has units of \(y\) × seconds: an amplitude per hertz. The <dfn>inverse transform</dfn> \(y(t) = \int Y(f)\,e^{i2\pi f t}\,df\) rebuilds the signal from its spectrum.</p>
+      <div class="try"><p>Pulses are 0.1 s wide, height 1. At T = 0.40 s the lines are 2.5 Hz apart and land on the dashed curve. Drag T to 4 s: lines every 0.25 Hz fill the curve, which is the transform of a single pulse. Switch to raw \(C_n\) and watch the lines shrink as T grows. Notice the zeros at 10, 20, 30 Hz = \(1/\tau\), \(2/\tau\), …: a shorter pulse spreads wider in frequency.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 13 · DFT -->
+<section class="slide" id="dft" data-title="The discrete Fourier transform">
+  <p class="eyebrow">Sampled data</p>
+  <h2>The discrete Fourier transform: the spectrum of N numbers</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 420 160" aria-label="A record of 12 samples spanning N times delta t, with faded copies to the left and right showing that the DFT treats the record as one period of a repeating signal">
+          <rect x="140" y="20" width="140" height="110" class="fill-soft"/>
+          <path d="M0 75 H420" class="ln-thin"/>
+          <path data-fn="rec" data-map="0,1,0,140,75,38,200" class="ln-thin dash" style="opacity:.6"/>
+          <path data-fn="rec" data-map="0,1,140,280,75,38,200" class="ln-thin dash"/>
+          <path data-fn="rec" data-map="0,1,280,420,75,38,200" class="ln-thin dash" style="opacity:.6"/>
+          <g data-samp="rec,0,0.9167,0.083333,0,140,75,38,dot" class="fill-muted" style="opacity:.6"></g>
+          <g data-samp="rec,0,0.9167,0.083333,140,280,75,38,dot" class="fill-blu"></g>
+          <g data-samp="rec,0,0.9167,0.083333,280,420,75,38,dot" class="fill-muted" style="opacity:.6"></g>
+          <path d="M140 146 H280 M140 140 V152 M280 140 V152" class="ln-acc" style="stroke-width:1.6"/>
+          <text x="210" y="142" text-anchor="middle" class="t-acc t-small">record: N samples, length Nδt</text>
+          <path d="M151.7 124 H163.3" class="ln-blu"/><text x="157" y="118" text-anchor="middle" class="t-blu t-mono t-small">δt</text>
+          <text x="70" y="14" text-anchor="middle" class="t-muted t-small">assumed copy</text><text x="350" y="14" text-anchor="middle" class="t-muted t-small">assumed copy</text>
+          <text x="210" y="14" text-anchor="middle" class="t-small">measured</text>
+        </svg>
+        <figcaption>The DFT behaves as if the record repeated forever, so it treats the record length Nδt as the period.</figcaption>
+      </figure>
+      <ol class="steps">
+        <li>A data system stores \(N\) samples \(y_r = y(r\,\delta t)\), \(r = 0, 1, \dots, N-1\), covering a record of length \(N\delta t\).</li>
+        <li>Treat the record as one period: \(T = N\delta t\). Its Fourier series can only hold the harmonics \(f_k = k/T = k/(N\delta t)\). Their spacing is the <dfn>frequency resolution</dfn> \(\delta f = 1/(N\delta t)\).</li>
+        <li>Write the coefficient integral as \(\frac2T\int_0^T y\,e^{-i2\pi f_k t}dt\) and replace it by a sum over the samples: \(\frac{2}{N\delta t}\sum_r y_r\,e^{-i2\pi f_k r\delta t}\,\delta t\). Since \(f_k\,r\,\delta t = kr/N\), \(\delta t\) cancels.</li>
+        <li>Only \(k = 0\) to \(N/2 - 1\) are meaningful: to describe a frequency you need at least two samples per cycle, so the top is just below \(1/(2\delta t)\). Topic 05 shows what goes wrong above it.</li>
+      </ol>
+    </div>
+    <div>
+      <div class="eq"><span class="label">Discrete Fourier transform (one-sided)</span>
+        $$Y(f_k) = \frac2N\sum_{r=0}^{N-1} y_r\,e^{-i2\pi rk/N}$$
+        $$f_k = k\,\delta f,\quad k = 0, 1, \dots, \tfrac N2 - 1,\qquad \delta f = \frac{1}{N\delta t}$$
+      </div>
+      <div class="symbols">
+        <span>\(y_r\)</span><span>sample number \(r\), unit of the signal</span>
+        <span>\(N\)</span><span>number of samples; \(N\delta t\) is the record length, s</span>
+        <span>\(\delta f\)</span><span>frequency resolution: spacing of the bins, Hz</span>
+        <span>\(|Y(f_k)|\)</span><span>amplitude \(C_k\) of the component at \(f_k\) (use \(1/N\) instead of \(2/N\) at \(k = 0\), which gives the mean)</span>
+      </div>
+      <p class="small">The <dfn>fast Fourier transform</dfn> (FFT) computes the same sum in about \(N\log_2 N\) operations instead of \(N^2\) (for \(N = 1024\): 10 000 instead of a million), best when \(N\) is a power of 2.</p>
+      <div class="quiz" data-correct="0">
+        <p class="q">You need \(\delta f = 0.1\) Hz and you sample at 1000 Hz. How many samples must you record?</p>
+        <div class="opts">
+          <button class="opt" data-why="\(N = 1/(\delta f\,\delta t) = 1/(0.1 \times 0.001) = 10\,000\): a 10 s record. Fine resolution needs a long record.">10 000 (a 10 s record)</button>
+          <button class="opt" data-why="1000 samples last 1 s, giving \(\delta f = 1\) Hz.">1000</button>
+          <button class="opt" data-why="100 samples last 0.1 s, giving \(\delta f = 10\) Hz.">100</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 · Worked example: DFT by hand -->
+<section class="slide" id="ex-dft" data-title="Worked example: a DFT by hand">
+  <p class="eyebrow">Worked example</p>
+  <h2>Eight samples of a sine, and their spectrum by hand</h2>
+  <div class="cols wide-l">
+    <div class="example">
+      <p class="given">The signal \(y(t) = 10\sin 2\pi t\) V (1 Hz, amplitude 10 V) is sampled \(N = 8\) times at \(\delta t = 0.125\) s. List the samples and compute the amplitude spectrum by hand with the DFT.</p>
+      <p class="small"><b>Known:</b> \(N = 8\), \(\delta t = 0.125\) s. <b>Find:</b> \(y_r\) and \(|Y(f_k)|\). <b>Assume:</b> exact samples (no quantization).</p>
+      <ol class="steps">
+        <li>\(y_r = 10\sin(2\pi r \times 0.125) = 10\sin(\pi r/4)\): 0, 7.071, 10, 7.071, 0, −7.071, −10, −7.071 V.</li>
+        <li>Record length \(N\delta t = 1\) s, so \(\delta f = 1\) Hz. Bins \(k = 0, 1, 2, 3\) sit at 0, 1, 2, 3 Hz; the limit \(1/(2\delta t)\) is 4 Hz.</li>
+        <li>\(k = 0\): \(Y = \frac18\sum y_r = 0\). No DC, as expected.</li>
+        <li>\(k = 1\): \(e^{-i2\pi r/8} = \cos(\pi r/4) - i\sin(\pi r/4)\). Real part: \(\sum y_r\cos(\pi r/4) = 5 + 0 - 5 + 0 + 5 + 0 - 5 = 0\). Imaginary part: \(\sum y_r\sin(\pi r/4) = 5 + 10 + 5 + 0 + 5 + 10 + 5 = 40\).</li>
+        <li>\(Y(1\ \text{Hz}) = \frac28(0 - 40i) = -10i\) V, so \(|Y| = 10\) V. Since \(Y = A - iB\): \(A = 0\), \(B = 10\) V, a pure sine of amplitude 10 V. ✓</li>
+        <li>\(k = 2\): weights \(\sin(\pi r/2) = 0, 1, 0, -1, 0, 1, 0, -1\) give \(7.071 - 7.071 - 7.071 + 7.071 = 0\); the cosine sum is \(-10 + 10 = 0\). \(k = 3\) also gives 0. Orthogonality at work.</li>
+      </ol>
+      <p class="small"><b>What this means:</b> one spike of 10 V at 1 Hz, exactly the input. It came out this clean because the record held a whole number of cycles, so 1 Hz fell exactly on a bin. The next slide shows what happens when it does not.</p>
+    </div>
+    <div>
+      <div class="tbl"><table>
+        <tr><th>r</th><th>t (s)</th><th>yᵣ (V)</th><th>cos(πr/4)</th><th>sin(πr/4)</th></tr>
+        <tr><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td></tr>
+        <tr><td>1</td><td>0.125</td><td>7.071</td><td>0.707</td><td>0.707</td></tr>
+        <tr><td>2</td><td>0.250</td><td>10.000</td><td>0</td><td>1</td></tr>
+        <tr><td>3</td><td>0.375</td><td>7.071</td><td>−0.707</td><td>0.707</td></tr>
+        <tr><td>4</td><td>0.500</td><td>0</td><td>−1</td><td>0</td></tr>
+        <tr><td>5</td><td>0.625</td><td>−7.071</td><td>−0.707</td><td>−0.707</td></tr>
+        <tr><td>6</td><td>0.750</td><td>−10.000</td><td>0</td><td>−1</td></tr>
+        <tr><td>7</td><td>0.875</td><td>−7.071</td><td>0.707</td><td>−0.707</td></tr>
+      </table></div>
+      <canvas id="cvDftEx1" data-h="140" aria-label="The eight samples on the 1 Hz sine"></canvas>
+      <canvas id="cvDftEx2" data-h="140" aria-label="Amplitude spectrum: a single 10 V line at 1 Hz"></canvas>
+    </div>
+  </div>
+</section>
+
+<!-- 15 · DFT simulator -->
+<section class="slide" id="dftsim" data-title="Simulator: spectrum of two sines">
+  <p class="eyebrow">Simulator</p>
+  <h2>Two sines in, two spikes out, if the resolution allows</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simDFT">
+      <div class="simhead"><span>DFT lab</span>
+        <span class="presets"><button class="btn" id="preTwo" type="button">Two tones</button><button class="btn" id="preOne" type="button">Eight samples</button></span></div>
+      <canvas id="cvDFTt" data-h="130" aria-label="Signal and its samples over the record"></canvas>
+      <canvas id="cvDFTf" data-h="165" aria-label="One-sided DFT amplitude spectrum"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="dC1">C₁ <output data-for="C1"></output></label>
+          <input type="range" id="dC1" data-key="C1" min="0" max="10" step="0.1" value="5" data-fmt="1" data-unit=" V"></div>
+        <div class="ctl"><label for="dF1">f₁ <output data-for="f1"></output></label>
+          <input type="range" id="dF1" data-key="f1" min="0.5" max="20" step="0.001" value="4.997" data-fmt="3" data-unit=" Hz"></div>
+        <div class="ctl"><label for="dC2">C₂ <output data-for="C2"></output></label>
+          <input type="range" id="dC2" data-key="C2" min="0" max="10" step="0.1" value="2" data-fmt="1" data-unit=" V"></div>
+        <div class="ctl"><label for="dF2">f₂ <output data-for="f2"></output></label>
+          <input type="range" id="dF2" data-key="f2" min="0.5" max="20" step="0.001" value="7.003" data-fmt="3" data-unit=" Hz"></div>
+        <div class="ctl"><label for="dN">Samples N</label>
+          <select id="dN" data-key="N"><option>8</option><option>16</option><option>32</option><option>64</option><option selected>128</option><option>256</option></select></div>
+        <div class="ctl"><label for="dDt">Sample interval δt (s)</label>
+          <select id="dDt" data-key="dt"><option value="0.125">0.125</option><option value="0.03125">1/32</option><option value="0.015625">1/64</option><option value="0.0078125" selected>1/128</option></select></div>
+      </div>
+      <div class="readout" id="roDFT"></div>
+    </div>
+    <div>
+      <p>The signal is \(e(t) = C_1\sin 2\pi f_1 t + C_2\sin 2\pi f_2 t\). The <b>Two tones</b> preset is \(e = 5\sin 31.4t + 2\sin 44t\) V: \(31.4/2\pi = 4.997\) Hz and \(44/2\pi = 7.003\) Hz, sampled \(N = 128\) times at \(\delta t = 1/128\) s, so \(\delta f = 1\) Hz. The spikes land on the 5 and 7 Hz bins at 5.00 and 2.01 V.</p>
+      <p class="define"><span><dfn>Leakage</dfn>: when a frequency falls between bins (the record does not hold a whole number of its cycles), its amplitude spreads into neighbouring bins and the peak reads low.</span></p>
+      <div class="try"><p>1. Two tones: read the two peaks. 2. Move f₁ to 5.500 Hz: the peak drops to about 3.3 V and spreads. 3. Set f₁ = 5.000 and f₂ = 5.500 Hz: closer than δf, the tones blur into one hump; choose N = 256 (δf = 0.5 Hz) and they separate. 4. Eight samples preset, then raise f₁ to 7 Hz: a 10 V spike appears at 1 Hz, a false frequency.</p></div>
+      <div class="pitfall"><p>Step 4 is <dfn>aliasing</dfn>: a component above \(1/(2\delta t)\) masquerades as a lower one. The sample rate \(1/\delta t\) must exceed twice the highest frequency in the signal. Topic 05 treats this in full.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 16 · Vibration example -->
+<section class="slide" id="vib" data-title="Worked example: a fan vibration spectrum">
+  <p class="eyebrow">Reading a measured spectrum</p>
+  <h2>What a vibration spectrum tells you, and what resolution it needs</h2>
+  <div class="cols">
+    <div class="example">
+      <p class="given">An accelerometer sits on the bearing housing of a 6-blade fan turning at 1470 rev/min. Its cable runs beside 50 Hz mains wiring. (a) Where do you expect spectral peaks? (b) Sampling at 1024 Hz, how many samples show the twice-shaft-speed peak and the mains peak as separate lines?</p>
+      <p class="small"><b>Known:</b> speed 1470 rev/min, 6 blades, mains 50 Hz, \(1/\delta t = 1024\) Hz. <b>Find:</b> peak frequencies; \(N\). <b>Assume:</b> constant speed during the record.</p>
+      <ol class="steps">
+        <li>Shaft frequency \(f_s = 1470/60 = 24.5\) Hz. Residual unbalance pushes once per turn: peak at <b>1×</b> = 24.5 Hz.</li>
+        <li>Misalignment or looseness commonly adds a <b>2×</b> peak: 49 Hz.</li>
+        <li>Each blade passing a support strut gives a pressure pulse: <b>blade-pass frequency</b> \(6 \times 24.5 = 147\) Hz.</li>
+        <li>Electrical pickup appears at 50 Hz, only 1 Hz from the 2× peak.</li>
+        <li>To show two lines 1 Hz apart with an empty bin between them, \(\delta f \le 0.5\) Hz. Record length \(1/\delta f = 2\) s, so \(N = 2 \times 1024 = 2048\) samples (a power of 2, good for the FFT).</li>
+        <li>Top frequency \(1/(2\delta t) = 512\) Hz &gt; 147 Hz: the blade-pass peak is covered.</li>
+      </ol>
+      <p class="small"><b>What this means:</b> each peak points to a physical source, and a peak that grows over weeks points to a developing fault. Resolution is set by the <b>record length</b>, not by the sample rate.</p>
+    </div>
+    <div class="sim" id="simVib">
+      <div class="simhead"><span>Fan spectrum (simulated record)</span><span class="legend"><span><i style="background:var(--acc)"></i>DFT amplitude</span></span></div>
+      <canvas id="cvVib1" data-h="150" aria-label="Amplitude spectrum from 0 to 160 Hz with peaks at 24.5, 49, 50 and 147 Hz"></canvas>
+      <canvas id="cvVib2" data-h="140" aria-label="Zoom from 40 to 60 Hz showing whether the 49 and 50 Hz lines are resolved"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="vN">Samples N at 1024 Hz</label>
+          <select id="vN" data-key="N"><option>512</option><option>1024</option><option selected>2048</option></select></div>
+      </div>
+      <div class="readout" id="roVib"></div>
+      <div class="try"><p>Choose N = 512 (δf = 2 Hz): 49 and 50 Hz merge into one peak near 50 Hz, and you might blame the mains for a mechanical fault; the 24.5 Hz peak also leaks and reads low. N = 2048: four clean lines with their true amplitudes 2.0, 0.8, 0.5 and 1.2 m/s². Resolution is like the marks on a ruler: with a mark every 2 Hz you cannot tell 49 from 50 Hz.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 17 · Check yourself -->
+<section class="slide" id="check" data-title="Check yourself">
+  <p class="eyebrow">Self-test</p>
+  <h2>Check yourself</h2>
+  <div class="cols c3">
+    <div class="quiz" data-correct="0">
+      <p class="q">A data system records 1024 samples at \(\delta t = 1\) ms. What is the DFT frequency resolution?</p>
+      <div class="opts">
+        <button class="opt" data-why="\(\delta f = 1/(N\delta t) = 1/(1024 \times 0.001) = 0.977\) Hz.">0.98 Hz</button>
+        <button class="opt" data-why="1000 Hz is the sample rate \(1/\delta t\), not the bin spacing.">1000 Hz</button>
+        <button class="opt" data-why="500 Hz is \(1/(2\delta t)\), the highest frequency the samples can describe.">500 Hz</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="2">
+      <p class="q">\(y(t) = t^2\) for \(-\pi &lt; t &lt; \pi\), repeated every \(2\pi\). Which coefficients can be non-zero?</p>
+      <div class="opts">
+        <button class="opt" data-why="\(t^2\) is mirror symmetric, so it is even: it holds no sines.">\(B_n\) only</button>
+        <button class="opt" data-why="The wave is not constant, so some harmonics must be present.">\(A_0\) only</button>
+        <button class="opt" data-why="Right. \((-t)^2 = t^2\): even, so \(B_n = 0\). Its mean, \(\pi^2/3\), is positive, so \(A_0 \ne 0\).">\(A_0\) and \(A_n\)</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="1">
+      <p class="q">You double the sample rate but keep the same number of samples N. What happens to \(\delta f\)?</p>
+      <div class="opts">
+        <button class="opt" data-why="A finer resolution needs a longer record. Here the record gets shorter.">It halves (finer)</button>
+        <button class="opt" data-why="Right. \(\delta t\) halves, so the record \(N\delta t\) halves and \(\delta f = 1/(N\delta t)\) doubles. You gain a higher top frequency, not finer resolution.">It doubles (coarser)</button>
+        <button class="opt" data-why="\(\delta f\) depends on \(N\delta t\), and \(\delta t\) has changed.">It stays the same</button>
+      </div>
+    </div>
+  </div>
+  <div class="reveal-box" data-label="One more: which frequencies are in y = (2 + sin 10t)²?">
+    <div class="answer"><p>Expand: \(4 + 4\sin 10t + \sin^2 10t\). With \(\sin^2\theta = \tfrac12 - \tfrac12\cos 2\theta\): \(y = 4.5 + 4\sin 10t - 0.5\cos 20t\). The spectrum has DC 4.5, a line of amplitude 4 at 10 rad/s (1.59 Hz) and a line of amplitude 0.5 at 20 rad/s (3.18 Hz). Squaring, like rectifying, is a nonlinear operation, and it created a harmonic that was not in the input. Check with Parseval: \(y_\text{rms}^2 = 4.5^2 + (4^2 + 0.5^2)/2 = 28.375\).</p></div>
+  </div>
+</section>
+
+<!-- 18 · Summary -->
+<section class="slide" id="summary" data-title="Summary">
+  <p class="eyebrow">Summary</p>
+  <h2>Part B on one page</h2>
+  <div class="tbl wrap"><table>
+    <tr><th>Idea</th><th>Key relation or rule</th></tr>
+    <tr><td>Fourier series</td><td>\(y = A_0 + \sum (A_n\cos n\omega t + B_n\sin n\omega t)\), \(\omega = 2\pi/T\); harmonic \(n\) at \(nf_0\); \(C_n = \sqrt{A_n^2 + B_n^2}\)</td></tr>
+    <tr><td>Coefficients</td><td>\(A_0 = \frac1T\int y\,dt\); \(A_n, B_n = \frac2T\int y\,\{\cos, \sin\}\,n\omega t\,dt\) over any one period; they work because of orthogonality</td></tr>
+    <tr><td>Symmetry</td><td>Even: cosines only, \(\frac4T\int_0^{T/2}\). Odd: sines only. Square wave: \(B_n = 4a/(n\pi)\), odd \(n\)</td></tr>
+    <tr><td>Spectrum</td><td>\(C_n\) against \(nf_0\); \(y_\text{rms}^2 = A_0^2 + \sum C_n^2/2\); jumps give \(1/n\) decay, corners \(1/n^2\)</td></tr>
+    <tr><td>Transform</td><td>\(Y(f) = \int y\,e^{-i2\pi ft}dt = A - iB\), \(|Y| = \sqrt{A^2 + B^2}\); for signals that never repeat</td></tr>
+    <tr><td>DFT</td><td>\(Y(f_k) = \frac2N\sum y_r e^{-i2\pi rk/N}\), \(\delta f = 1/(N\delta t)\), \(k &lt; N/2\); need \(1/\delta t &gt; 2f_\text{max}\)</td></tr>
+  </table></div>
+  <div class="cols">
+    <div>
+      <h3>You should now be able to…</h3>
+      <ul>
+        <li>explain why splitting a signal into sines predicts instrument response;</li>
+        <li>derive the Fourier coefficients from orthogonality and compute them, using even/odd shortcuts;</li>
+        <li>sketch and interpret an amplitude spectrum, and find the bandwidth a signal needs;</li>
+        <li>compute a small DFT by hand and choose \(N\) and \(\delta t\) for a required \(\delta f\);</li>
+        <li>read a vibration spectrum and spot leakage and merged peaks.</li>
+      </ul>
+    </div>
+    <div class="watch">
+      <h3>Watch next</h3>
+      <a href="https://www.youtube.com/results?search_query=fourier+series+visualized+square+wave+harmonics" target="_blank" rel="noopener">Fourier series, visualised <small>YouTube search</small></a>
+      <a href="https://www.youtube.com/results?search_query=fourier+transform+visual+introduction" target="_blank" rel="noopener">The Fourier transform, a visual introduction <small>YouTube search</small></a>
+      <a href="https://www.youtube.com/results?search_query=FFT+vibration+analysis+spectrum+frequency+resolution" target="_blank" rel="noopener">FFT vibration analysis and resolution <small>YouTube search</small></a>
+    </div>
+  </div>
+  <p class="further">Further reading: Figliola &amp; Beasley, §2.4–2.5</p>
+  <div class="row"><a class="btn" href="d01a.html">&larr; Part A · Signal types, mean and RMS</a><a class="btn primary" href="d02a.html">Next topic: System Response &rarr;</a></div>
+</section>
+
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const out = (id, parts) => { $(id).innerHTML = parts.map(p => '<span>' + p + '</span>').join(''); };
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const TAU = 2 * Math.PI, PI = Math.PI;
+  function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+  function gauss(r) { let u = 0; while (u === 0) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * r()); }
+  const sgn = v => Math.abs(v) < 1e-12 ? 0 : Math.sign(v);
+
+  /* ---- functions for the inline SVG figures ---- */
+  const FN = {
+    c1: x => Math.sin(TAU * 2 * x), c3: x => Math.sin(TAU * 6 * x) / 3, c5: x => Math.sin(TAU * 10 * x) / 5,
+    csum: x => Math.sin(TAU * 2 * x) + Math.sin(TAU * 6 * x) / 3 + Math.sin(TAU * 10 * x) / 5,
+    tri: x => 1 - Math.abs(2 * x - 1),
+    m1: x => Math.sin(PI * x), m3: x => Math.sin(3 * PI * x), m5: x => Math.sin(5 * PI * x), m7: x => Math.sin(7 * PI * x),
+    evn: x => Math.exp(-Math.pow((x - Math.round(x)) / 0.15, 2)),
+    odd: x => sgn(Math.sin(TAU * x)),
+    sq5: x => 5 * sgn(Math.sin(TAU * x)),
+    ps1: x => 20 / PI * Math.sin(TAU * x),
+    ps3: x => 20 / PI * (Math.sin(TAU * x) + Math.sin(3 * TAU * x) / 3 + Math.sin(5 * TAU * x) / 5),
+    sinIn: x => 120 * Math.sin(TAU * x), rect: x => Math.abs(120 * Math.sin(TAU * x)),
+    sq1: x => sgn(Math.sin(TAU * x)),
+    rec: x => 0.6 * Math.sin(TAU * 2 * x) + 0.35 * Math.sin(TAU * 5 * x + 1)
+  };
+  // data-map = a,b,X0,X1,Ybase,scale,n : x in [a,b] -> [X0,X1], y -> Ybase - scale*y
+  document.querySelectorAll('path[data-fn]').forEach(p => {
+    const f = FN[p.dataset.fn], [a, b, X0, X1, Yb, S, n] = p.dataset.map.split(',').map(Number);
+    let d = '';
+    for (let i = 0; i <= n; i++) { const x = a + (b - a) * i / n; d += (i ? 'L' : 'M') + (X0 + (X1 - X0) * i / n).toFixed(1) + ' ' + (Yb - S * f(x)).toFixed(1); }
+    p.setAttribute('d', d);
+  });
+  // data-samp = fn,a,b,dx,X0,X1,Ybase,scale,mode (dot) ; x range of the figure is [0,1]
+  const NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); Object.keys(attrs).forEach(k => e.setAttribute(k, attrs[k])); if (parent) parent.appendChild(e); return e; }
+  document.querySelectorAll('[data-samp]').forEach(g => {
+    const s = g.dataset.samp.split(','), f = FN[s[0]], [a, b, dx, X0, X1, Yb, S] = s.slice(1, 8).map(Number);
+    for (let x = a; x <= b + 1e-9; x += dx) el('circle', { cx: (X0 + (X1 - X0) * x).toFixed(1), cy: (Yb - S * f(x)).toFixed(1), r: 3.2 }, g);
+  });
+
+  /* ---- pluck-at-one-fifth bar spectrum (dB) ---- */
+  (function () {
+    const g = $('pluckBars'), x0 = 52, yTop = 18, yBot = 138, dBmin = -50;
+    const Y = d => yTop + (0 - d) / (0 - dBmin) * (yBot - yTop), X = n => x0 + n * 22.5;
+    el('path', { d: 'M' + x0 + ' ' + yBot + ' H410 M' + x0 + ' ' + yTop + ' V' + yBot, class: 'ln-thin' }, g);
+    [0, -10, -20, -30, -40, -50].forEach(d => { const t = el('text', { x: x0 - 6, y: (Y(d) + 4).toFixed(1), 'text-anchor': 'end', class: 't-mono t-small t-muted' }, g); t.textContent = d; });
+    const b1 = Math.sin(PI / 5);
+    for (let n = 1; n <= 15; n++) {
+      const a = Math.abs(Math.sin(n * PI / 5)) / (n * n);
+      if (a < 1e-9) { const t = el('text', { x: X(n), y: yBot - 4, 'text-anchor': 'middle', class: 't-red t-small' }, g); t.textContent = '×'; }
+      else { const d = 20 * Math.log10(a / b1); el('rect', { x: (X(n) - 6).toFixed(1), y: Y(d).toFixed(1), width: 12, height: (yBot - Y(d)).toFixed(1), class: 'fill-blu' }, g); }
+      if (n === 1 || n % 5 === 0) { const t = el('text', { x: X(n), y: yBot + 15, 'text-anchor': 'middle', class: 't-mono t-small' }, g); t.textContent = n === 1 ? 'f₀' : n + 'f₀'; }
+    }
+    const t1 = el('text', { x: 14, y: 82, class: 't-small t-muted', transform: 'rotate(-90 14 82)', 'text-anchor': 'middle' }, g); t1.textContent = 'level (dB)';
+        const t3 = el('text', { x: 300, y: 30, class: 't-small t-red' }, g); t3.textContent = '× = absent (5, 10, 15)';
+  })();
+
+  /* ---- waveform library for builder and cover ---- */
+  function wave(w, nTerms) {
+    const terms = [];
+    if (w === 'sq') { for (let i = 0; i < nTerms; i++) { const n = 2 * i + 1; terms.push({ k: n, a: 4 / (PI * n), cos: false }); } }
+    else if (w === 'tri') { for (let i = 0; i < nTerms; i++) { const n = 2 * i + 1; terms.push({ k: n, a: (i % 2 ? -1 : 1) * 8 / (PI * PI * n * n), cos: false }); } }
+    else if (w === 'saw') { for (let n = 1; n <= nTerms; n++) terms.push({ k: n, a: (n % 2 ? 1 : -1) * 2 / (PI * n), cos: false }); }
+    else { terms.push({ k: 0, a: 2 / PI, cos: true }); for (let m = 1; m <= nTerms; m++) terms.push({ k: 2 * m, a: -4 / (PI * (4 * m * m - 1)), cos: true }); }
+    const exact = x => {
+      const th = TAU * x;
+      if (w === 'sq') return sgn(Math.sin(th));
+      if (w === 'tri') return 2 / PI * Math.asin(Math.sin(th));
+      if (w === 'saw') return 2 * (x - Math.floor(x + 0.5));
+      return Math.abs(Math.sin(th));
+    };
+    const sum = x => { let y = 0; terms.forEach(t => { y += t.a * (t.cos ? Math.cos(TAU * t.k * x) : Math.sin(TAU * t.k * x)); }); return y; };
+    return { terms, exact, sum };
+  }
+
+  /* ---- cover: square wave assembled harmonic by harmonic ---- */
+  let coverT = 0;
+  function drawCover() {
+    const k = Math.min(9, 1 + Math.floor(coverT / 0.7)), W = wave('sq', k);
+    Deck.plot($('coverTrace'), { x: [0, 3], y: [-1.45, 1.45], pad: { l: 8, r: 8, t: 6, b: 6 }, xticks: [], yticks: [],
+      series: [{ f: W.exact, color: 'muted', width: 1.4, n: 900 }, { f: W.sum, color: 'acc', width: 2.4, n: 900 }] });
+  }
+  Deck.onShow('cover', () => { if (reduce) coverT = 99; return drawCover; });
+  Deck.loop('cover', dt => { if (coverT < 7) { const k0 = Math.floor(coverT / 0.7); coverT += dt; if (Math.floor(coverT / 0.7) !== k0) drawCover(); } });
+
+  /* ---- orthogonality explorer ---- */
+  Deck.onShow('orth', () => {
+    const get = Deck.controls('simOrth', draw);
+    function draw() {
+      const v = get(), n = Math.round(v.n), m = Math.round(v.m);
+      const f1 = v.ty === 'cc' ? t => Math.cos(TAU * n * t) : t => Math.sin(TAU * n * t);
+      const f2 = v.ty === 'ss' ? t => Math.sin(TAU * m * t) : t => Math.cos(TAU * m * t);
+      const l1 = (v.ty === 'cc' ? 'cos ' : 'sin ') + n + 'ωt', l2 = (v.ty === 'ss' ? 'sin ' : 'cos ') + m + 'ωt';
+      Deck.plot($('cvOrA'), { x: [0, 1], y: [-1.2, 1.2], yticks: [-1, 0, 1], ylabel: 'value', title: l1 + '  and  ' + l2,
+        series: [{ f: f1, color: 'acc', width: 2.2 }, { f: f2, color: 'blu', width: 2.2, dash: [6, 4] }] });
+      const pr = t => f1(t) * f2(t);
+      const P = Deck.plot($('cvOrB'), { x: [0, 1], y: [-1.1, 1.1], yticks: [-1, 0, 1], xlabel: 'time t (s), one period T = 1 s', ylabel: 'product',
+        hlines: [{ y: 0, color: 'muted', dash: [] }], series: [{ f: pr, color: 'ink', width: 2 }] });
+      const { ctx, X, Y } = P, N = 600;
+      [[1, 'grn'], [-1, 'red']].forEach(([s, c]) => {
+        ctx.beginPath(); ctx.moveTo(X(0), Y(0));
+        for (let i = 0; i <= N; i++) { const t = i / N, p = pr(t); ctx.lineTo(X(t), Y(s > 0 ? Math.max(0, p) : Math.min(0, p))); }
+        ctx.lineTo(X(1), Y(0)); ctx.closePath(); ctx.fillStyle = Deck.alpha(c, 0.28); ctx.fill();
+      });
+      let I = 0; const M = 4000; for (let i = 0; i < M; i++) I += pr((i + 0.5) / M) / M;
+      const expect = (v.ty !== 'sc' && n === m) ? 'T/2 = 0.5 s' : '0';
+      out('roOrth', ['∫₀ᵀ product dt = <b>' + (Math.abs(I) < 5e-4 ? '0.000' : I.toFixed(3)) + ' s</b>', 'theory: <b>' + expect + '</b>', n === m ? '<b>same harmonic</b>' : 'different harmonics']);
+    }
+    return draw;
+  });
+
+  /* ---- Fourier builder ---- */
+  Deck.onShow('builder', () => {
+    const get = Deck.controls('simFB', draw);
+    function draw() {
+      const v = get(), n = Math.round(v.n), W = wave(v.w, n), rect = v.w === 'rect';
+      const lo = rect ? -0.3 : -1.45, hi = rect ? 1.3 : 1.45;
+      Deck.plot($('cvFBt'), { x: [0, 2], y: [lo, hi], xlabel: rect ? 'time (periods of the input sine)' : 'time (periods of the fundamental)', ylabel: 'y',
+        hlines: [{ y: 1, color: 'rule', dash: [3, 4] }, { y: rect ? 0 : -1, color: 'rule', dash: [3, 4] }],
+        series: [{ f: W.exact, color: 'muted', width: 1.5, n: 1200 }, { f: W.sum, color: 'acc', width: 2.2, n: 1600 }] });
+      const kmax = Math.max(...W.terms.map(t => t.k)), xmax = Math.max(10, kmax + 1);
+      Deck.plot($('cvFBs'), { x: [-0.5, xmax], y: [0, 1.4], yticks: [0, 0.5, 1], yfmt: q => q.toFixed(1), ylabel: '|Cₙ|', xlabel: rect ? 'frequency ÷ input frequency' : 'harmonic number n (frequency ÷ f₀)',
+        series: [{ pts: W.terms.map(t => [t.k, Math.abs(t.a)]), color: 'blu', stem: true }] });
+      let mx = -9, e2 = 0; const M = 4000;
+      for (let i = 0; i < M; i++) { const x = i / M, s = W.sum(x), ex = W.exact(x); if (s > mx) mx = s; e2 += (s - ex) * (s - ex); }
+      const parts = ['highest term <b>' + kmax + (rect ? ' × input' : ' f₀') + '</b>', 'RMS error <b>' + Math.sqrt(e2 / M).toFixed(4) + '</b>'];
+      if (v.w === 'sq' || v.w === 'saw') parts.push('peak <b>' + mx.toFixed(3) + '</b>, overshoot <b>' + ((mx - 1) / 2 * 100).toFixed(1) + ' %</b> of the jump');
+      else parts.push('peak <b>' + mx.toFixed(3) + '</b> (no jump, no Gibbs overshoot)');
+      if (rect) parts.push('DC term A₀ = 2/π = <b>0.637</b>');
+      out('roFB', parts);
+    }
+    return draw;
+  });
+
+  /* ---- rectified sine spectrum ---- */
+  Deck.onShow('ex-rect', () => () => {
+    const pts = [[0, 240 / PI]]; for (let k = 1; k <= 6; k++) pts.push([120 * k, 480 / (PI * (4 * k * k - 1))]);
+    Deck.plot($('cvRect'), { x: [-110, 780], y: [0, 112], xticks: [0, 120, 240, 360, 480, 600, 720], xlabel: 'frequency (Hz)', ylabel: 'amplitude (V)',
+      vlines: [{ x: 60, color: 'red', dash: [3, 4], label: '60 Hz: zero' }],
+      series: [{ pts, color: 'acc', stem: true }],
+      points: pts.slice(0, 4).map((p, i) => ({ x: p[0], y: p[1], r: 0.1, color: 'ink', align: i ? 'left' : 'right', label: p[1].toFixed(p[1] < 10 ? 2 : 1) })) });
+  });
+
+  /* ---- pulse train -> transform ---- */
+  Deck.onShow('transform', () => {
+    const tau = 0.1, get = Deck.controls('simPT', draw);
+    function draw() {
+      const v = get(), T = v.T, sc = v.sc === 'scaled';
+      const pulse = t => { const u = t - T * Math.round(t / T); return Math.abs(u) <= tau / 2 ? 1 : 0; };
+      Deck.plot($('cvPTt'), { x: [-2, 2], y: [-0.15, 1.25], yticks: [0, 1], xlabel: 'time t (s)', ylabel: 'y',
+        series: [{ f: pulse, color: 'acc', width: 2, n: 1600 }] });
+      const fmax = 30, lines = [];
+      for (let n = 1; n / T <= fmax; n++) { const Cn = 2 / (n * PI) * Math.abs(Math.sin(n * PI * tau / T)); lines.push([n / T, sc ? Cn * T / 2 : Cn]); }
+      const env = f => Math.abs(Math.sin(PI * f * tau) / (PI * f));
+      const ymax = sc ? 0.115 : Math.max(0.05, ...lines.map(p => p[1])) * 1.15;
+      Deck.plot($('cvPTf'), { x: [0, fmax], y: [0, ymax], xlabel: 'frequency f (Hz)', ylabel: sc ? '(T/2)·Cₙ (V·s)' : 'Cₙ (V)',
+        series: (sc ? [{ f: env, color: 'muted', width: 1.6, dash: [5, 4], n: 600 }] : []).concat([{ pts: lines, color: 'blu', stem: true }]) });
+      out('roPT', ['line spacing 1/T = <b>' + (1 / T).toFixed(2) + ' Hz</b>', 'lines below 30 Hz <b>' + lines.length + '</b>', 'DC line A₀ = τ/T = <b>' + (tau / T).toFixed(3) + ' V</b> (not drawn)', 'C₁ = <b>' + (2 / PI * Math.abs(Math.sin(PI * tau / T))).toFixed(3) + ' V</b>']);
+    }
+    return draw;
+  });
+
+  /* ---- DFT hand example plots ---- */
+  Deck.onShow('ex-dft', () => () => {
+    const s = []; for (let r = 0; r < 8; r++) s.push([r * 0.125, 10 * Math.sin(TAU * r * 0.125)]);
+    Deck.plot($('cvDftEx1'), { x: [0, 1], y: [-12, 12], yticks: [-10, 0, 10], xlabel: 't (s)', ylabel: 'y (V)', pad: { b: 40 },
+      series: [{ f: t => 10 * Math.sin(TAU * t), color: 'muted', width: 1.4 }, { pts: s, color: 'blu', stem: true }] });
+    Deck.plot($('cvDftEx2'), { x: [-0.5, 3.5], y: [0, 12], xticks: [0, 1, 2, 3], yticks: [0, 5, 10], xlabel: 'frequency fₖ (Hz)', ylabel: '|Y| (V)', pad: { b: 40 },
+      series: [{ pts: [[0, 0], [1, 10], [2, 0], [3, 0]], color: 'acc', stem: true }] });
+  });
+
+  /* ---- DFT simulator ---- */
+  function dft(samp, N, kmax) {
+    const spec = [];
+    for (let k = 0; k <= kmax; k++) {
+      let re = 0, im = 0;
+      for (let r = 0; r < N; r++) { const a = -TAU * r * k / N; re += samp[r] * Math.cos(a); im += samp[r] * Math.sin(a); }
+      spec.push((k === 0 ? 1 : 2) / N * Math.hypot(re, im));
+    }
+    return spec;
+  }
+  Deck.onShow('dftsim', () => {
+    const get = Deck.controls('simDFT', draw);
+    function setVals(o) { Object.keys(o).forEach(id => { $(id).value = o[id]; }); $('dC1').dispatchEvent(new Event('input')); }
+    $('preTwo').addEventListener('click', () => setVals({ dC1: 5, dF1: 4.997, dC2: 2, dF2: 7.003, dN: '128', dDt: '0.0078125' }));
+    $('preOne').addEventListener('click', () => setVals({ dC1: 10, dF1: 1, dC2: 0, dF2: 7.003, dN: '8', dDt: '0.125' }));
+    function draw() {
+      const v = get(), N = +v.N, dt = +v.dt, Tr = N * dt, df = 1 / Tr, fn = 1 / (2 * dt);
+      const e = t => v.C1 * Math.sin(TAU * v.f1 * t) + v.C2 * Math.sin(TAU * v.f2 * t);
+      const samp = [], sp = []; for (let r = 0; r < N; r++) { samp.push(e(r * dt)); sp.push([r * dt, samp[r]]); }
+      const lim = Math.max(1, v.C1 + v.C2) * 1.15;
+      Deck.plot($('cvDFTt'), { x: [0, Tr], y: [-lim, lim], xlabel: 'time (s); record length Nδt = ' + +Tr.toFixed(4) + ' s', ylabel: 'e (V)',
+        series: [{ f: e, color: 'muted', width: 1.2, n: Math.min(4000, Math.max(600, Math.round(Tr * Math.max(v.f1, v.f2) * 40))) }, { pts: sp, color: 'blu', dotsOnly: true, r: N > 128 ? 1.8 : 2.8 }] });
+      const mag = dft(samp, N, N / 2 - 1), spec = mag.map((c, k) => [k * df, c]);
+      let i1 = 0, i2 = -1; spec.forEach((s, i) => { if (s[1] > spec[i1][1]) i1 = i; });
+      spec.forEach((s, i) => { if (Math.abs(i - i1) > 1 && (i2 < 0 || s[1] > spec[i2][1])) i2 = i; });
+      const fmax = (N / 2 - 1) * df, fview = Math.min(fmax, Math.max(10, 1.6 * Math.max(v.f1, v.f2)));
+      Deck.plot($('cvDFTf'), { x: [-df * 0.6, fview + df * 0.6], y: [0, Math.max(10, v.C1, v.C2) * 1.1], xlabel: 'frequency fₖ = k·δf (Hz)', ylabel: '|Y| (V)',
+        series: [{ pts: spec.filter(q => q[0] <= fview + df), color: 'acc', stem: true }],
+        vlines: [{ x: v.f1, color: v.f1 > fn ? 'red' : 'blu', dash: [3, 4], label: 'f₁' }, { x: v.f2, color: v.f2 > fn ? 'red' : 'grn', dash: [3, 4], label: 'f₂' }].filter((l, i) => l.x <= fview + df && (i ? v.C2 : v.C1) > 0) });
+      const parts = ['δf = 1/(Nδt) = <b>' + +df.toFixed(4) + ' Hz</b>', 'top bin <b>' + +fmax.toFixed(3) + ' Hz</b>', '1/(2δt) = <b>' + +fn.toFixed(2) + ' Hz</b>',
+        'largest peak <b>' + spec[i1][1].toFixed(2) + ' V at ' + +spec[i1][0].toFixed(3) + ' Hz</b>'];
+      if (i2 >= 0 && spec[i2][1] > 0.05) parts.push('next <b>' + spec[i2][1].toFixed(2) + ' V at ' + +spec[i2][0].toFixed(3) + ' Hz</b>');
+      if ((v.C1 > 0 && v.f1 > fn) || (v.C2 > 0 && v.f2 > fn)) parts.push('<b style="color:var(--red)">a frequency is above 1/(2δt): aliased</b>');
+      out('roDFT', parts);
+    }
+    return draw;
+  });
+
+  /* ---- fan vibration spectrum ---- */
+  Deck.onShow('vib', () => {
+    const fs = 1024, nr = rng(29), noise = []; for (let i = 0; i < 2048; i++) noise.push(0.15 * gauss(nr));
+    const sig = t => 2 * Math.sin(TAU * 24.5 * t) + 0.8 * Math.sin(TAU * 49 * t + 1) + 0.5 * Math.sin(TAU * 50 * t + 0.3) + 1.2 * Math.sin(TAU * 147 * t + 2);
+    const cache = {};
+    const get = Deck.controls('simVib', draw);
+    function draw() {
+      const N = +get().N, df = fs / N;
+      if (!cache[N]) { const s = []; for (let r = 0; r < N; r++) s.push(sig(r / fs) + noise[r]); cache[N] = dft(s, N, Math.round(165 / df)).map((c, k) => [k * df, c]); }
+      const spec = cache[N];
+      Deck.plot($('cvVib1'), { x: [0, 160], y: [0, 2.3], xticks: [0, 24.5, 49, 100, 147], xfmt: q => String(q), xlabel: 'frequency (Hz)', ylabel: 'm/s²',
+        bands: [{ x0: 40, x1: 60, color: 'ylw', alpha: 0.15 }], series: [{ pts: spec, color: 'acc', width: 1.6 }] });
+      Deck.plot($('cvVib2'), { x: [40, 60], y: [0, 1.1], yticks: [0, 0.5, 1], yfmt: q => q.toFixed(1), xlabel: 'zoom 40–60 Hz · blue: 2× = 49 Hz · red: mains 50 Hz', ylabel: 'm/s²',
+        vlines: [{ x: 49, color: 'blu', dash: [3, 4] }, { x: 50, color: 'red', dash: [3, 4] }],
+        series: [{ pts: spec.filter(p => p[0] >= 39.9 && p[0] <= 60.1), color: 'acc', stem: true }] });
+      const pk = f => { let b = spec[0]; spec.forEach(p => { if (Math.abs(p[0] - f) <= df && p[1] > b[1]) b = p; }); return b[1].toFixed(2); };
+      out('roVib', ['δf = <b>' + df + ' Hz</b>', 'record <b>' + (N / fs) + ' s</b>', 'peak near 24.5 Hz <b>' + pk(24.5) + '</b>', 'near 147 Hz <b>' + pk(147) + '</b>']);
+    }
+    return draw;
+  });
+})();
+</script>
+</body>
+</html>

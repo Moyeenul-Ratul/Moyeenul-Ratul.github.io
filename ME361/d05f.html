@@ -1,0 +1,1181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Transmission and Digital Filtering</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="deck.css">
+<style>
+  .tbl.compact th,.tbl.compact td{padding:5px 10px;font-size:.88rem}
+  .readout{display:block;line-height:1.9}
+  svg .w{stroke:var(--ink);stroke-width:1.5;fill:none}
+  .simbtns{display:flex;gap:8px;flex-wrap:wrap}
+</style>
+<script>window.DECK = { num: "05f", title: "Industrial Transmission and Digital Filtering" };</script>
+<script src="deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+
+<!-- 1 · Cover -->
+<section class="slide cover center" id="cover" data-title="Cover">
+  <p class="num">TOPIC 05 · PART F OF 6</p>
+  <h1>Industrial Transmission and Digital Filtering</h1>
+  <p class="lead">A sensor signal must cross a noisy plant, survive ground differences, be converted with enough resolution and then be cleaned of hum and spikes. This part covers the 4–20 mA current loop, isolation, the sigma-delta converter and the digital filters that work on the stored numbers.</p>
+  <div class="parts"><a href="d05a.html">A · Number systems, codes and logic gates</a><a href="d05b.html">B · Boolean algebra, combinational logic and flip-flops</a><a href="d05c.html">C · Sampling and aliasing</a><a href="d05d.html">D · Bits, words and converters</a><a href="d05e.html">E · DAQ systems and communication</a><span>F · Industrial transmission and digital filtering</span></div>
+  <canvas class="bigtrace" id="coverTrace" data-h="120" aria-label="Animated noisy signal with 50 hertz hum, with a smoothed version being drawn on top of it"></canvas>
+  <ol class="agenda">
+    <li>Voltage or current over a long cable</li>
+    <li>The 4–20 mA loop: live zero, loop power, loop budget</li>
+    <li>From milliamps to engineering units; HART</li>
+    <li>Isolation amplifiers and optocouplers</li>
+    <li>Sigma-delta converters and oversampling</li>
+    <li>Digital filters: moving average, IIR, median</li>
+  </ol>
+</section>
+
+<!-- 2 · Where we are -->
+<section class="slide" id="where" data-title="Where we are">
+  <p class="eyebrow">Where we are</p>
+  <h2>From a converter on the bench to a signal that crosses a plant</h2>
+  <div class="cols">
+    <div>
+      <p>Part C showed that a signal must be sampled faster than twice its highest frequency, and that anything above the Nyquist frequency \(f_N=f_s/2\) must be removed by an <b>analog</b> low-pass filter before sampling, or it folds down to a false lower frequency (an alias).</p>
+      <p>Part D gave the size of one converter step, \(Q=E_{FSR}/2^M\) for an \(M\)-bit converter with full-scale range \(E_{FSR}\), and described the successive-approximation converter (one bit decided per clock tick) and the dual-slope converter, which integrates its input over a fixed time and so ignores mains hum.</p>
+      <p>Part E assembled a data-acquisition system, used a 250 Ω shunt to turn a 4–20 mA signal into 1–5 V, and showed that a differential input rejects a <dfn>common-mode voltage</dfn>, a voltage present on both signal leads together, such as a difference between two ground points.</p>
+      <p>This part follows the signal further: over hundreds of metres of cable, across an isolation barrier, through a high-resolution converter, and into digital filters.</p>
+    </div>
+    <div>
+      <div class="grid-cards">
+        <div class="card"><span class="tag">Slides 3–8</span><h3>Current loops</h3><p>Why industry sends 4–20 mA, how to check a loop's voltage budget, converting to engineering units, HART.</p></div>
+        <div class="card"><span class="tag">Slide 9</span><h3>Isolation</h3><p>Breaking ground loops and surviving large common-mode voltages.</p></div>
+        <div class="card"><span class="tag">Slides 10–11</span><h3>Sigma-delta</h3><p>A 1-bit converter, run very fast, that ends up with 16 to 24 bits.</p></div>
+        <div class="card"><span class="tag">Slides 12–16</span><h3>Digital filtering</h3><p>Moving average, exponential smoothing, median, and the one job a digital filter cannot do.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 · Voltage vs current -->
+<section class="slide" id="vi" data-title="Voltage or current over a long cable">
+  <p class="eyebrow">Analog transmission</p>
+  <h2>Send a voltage or send a current over a long cable?</h2>
+  <div class="cols">
+    <figure>
+      <svg viewBox="0 0 400 280" aria-label="(a) Voltage signalling: source V s with output resistance, two cable cores each with resistance R w over 2, a noise pickup e n in series in the top core, and a receiver input resistance R in across which V in is read. (b) Current signalling: a current source with very high output resistance, the same cable and pickup, and a 250 ohm sense resistor R s across which I times R s is read.">
+<text x="4" y="16" text-anchor="start" font-size="11">(a) voltage signalling</text>
+<path d="M34 40 L34 60" class="w"/>
+<path d="M34 90 L34 110" class="w"/>
+<circle cx="34" cy="75" r="15" class="fill-panel" style="stroke:var(--ink);stroke-width:1.5"/>
+<text x="34" y="72" text-anchor="middle" font-size="11">+</text>
+<text x="34" y="86" text-anchor="middle" font-size="11">−</text>
+<text x="15" y="79" text-anchor="end" class="t-acc" font-size="11">V<tspan baseline-shift="-3" font-size="75%">s</tspan></text>
+<path d="M34 40 L41.9 40 L44.3 45 L49 35 L53.7 45 L58.3 35 L63 45 L67.7 35 L70.1 40 L78 40" class="w"/>
+<text x="58" y="31" text-anchor="middle" class="t-mono" font-size="9">R<tspan baseline-shift="-3" font-size="75%">out</tspan></text>
+<path d="M78 40 L100 40" class="w"/>
+<path d="M100 40 L109 40 L111.7 45 L117 35 L122.3 45 L127.7 35 L133 45 L138.3 35 L141 40 L150 40" class="w"/>
+<text x="125" y="31" text-anchor="middle" class="t-mono" font-size="9">R<tspan baseline-shift="-3" font-size="75%">w</tspan>/2</text>
+<path d="M34 110 L100 110" class="w"/>
+<path d="M100 110 L109 110 L111.7 115 L117 105 L122.3 115 L127.7 105 L133 115 L138.3 105 L141 110 L150 110" class="w"/>
+<text x="125" y="127" text-anchor="middle" class="t-mono" font-size="9">R<tspan baseline-shift="-3" font-size="75%">w</tspan>/2</text>
+<path d="M150 40 L198 40" class="w"/>
+<circle cx="212" cy="40" r="12" class="fill-panel" style="stroke:var(--ink);stroke-width:1.5"/>
+<path d="M204 41 q4 -8 8 0 t8 0" class="w"/>
+<text x="212" y="23" text-anchor="middle" class="t-acc" font-size="9.5">e<tspan baseline-shift="-3" font-size="75%">n</tspan> pickup</text>
+<path d="M224 40 L330 40" class="w"/>
+<path d="M150 110 L330 110" class="w"/>
+<text x="250" y="127" text-anchor="middle" class="t-muted" font-size="9">long cable</text>
+<path d="M330 40 L330 52.6 L335 56.3 L325 63.8 L335 71.3 L325 78.7 L335 86.2 L325 93.7 L330 97.4 L330 110" class="w"/>
+<text x="342" y="67" text-anchor="start" class="t-mono" font-size="10">R<tspan baseline-shift="-3" font-size="75%">in</tspan></text>
+<text x="342" y="80" text-anchor="start" class="t-mono" font-size="9">10 kΩ</text>
+<text x="330" y="31" text-anchor="middle" class="t-muted" font-size="9">receiver</text>
+<text x="342" y="99" text-anchor="start" class="t-acc" font-size="10">reads V<tspan baseline-shift="-3" font-size="75%">in</tspan></text>
+<circle cx="330" cy="40" r="2.6" class="fill-ink"/>
+<circle cx="330" cy="110" r="2.6" class="fill-ink"/>
+<text x="4" y="152" text-anchor="start" font-size="11">(b) current signalling</text>
+<path d="M34 176 L34 196" class="w"/>
+<path d="M34 226 L34 246" class="w"/>
+<circle cx="34" cy="211" r="15" class="fill-panel" style="stroke:var(--ink);stroke-width:1.5"/>
+<path d="M34 220 L34 205" class="w"/>
+<path d="M34 202 L37 208 L31 208 Z" class="fill-ink"/>
+<text x="15" y="215" text-anchor="end" class="t-acc" font-size="12">I</text>
+<text x="2" y="263" text-anchor="start" class="t-muted" font-size="8.5">R<tspan baseline-shift="-3" font-size="75%">out</tspan> very high</text>
+<path d="M34 176 L100 176" class="w"/>
+<path d="M100 176 L109 176 L111.7 181 L117 171 L122.3 181 L127.7 171 L133 181 L138.3 171 L141 176 L150 176" class="w"/>
+<text x="125" y="167" text-anchor="middle" class="t-mono" font-size="9">R<tspan baseline-shift="-3" font-size="75%">w</tspan>/2</text>
+<path d="M34 246 L100 246" class="w"/>
+<path d="M100 246 L109 246 L111.7 251 L117 241 L122.3 251 L127.7 241 L133 251 L138.3 241 L141 246 L150 246" class="w"/>
+<text x="125" y="263" text-anchor="middle" class="t-mono" font-size="9">R<tspan baseline-shift="-3" font-size="75%">w</tspan>/2</text>
+<path d="M150 176 L198 176" class="w"/>
+<circle cx="212" cy="176" r="12" class="fill-panel" style="stroke:var(--ink);stroke-width:1.5"/>
+<path d="M204 177 q4 -8 8 0 t8 0" class="w"/>
+<text x="212" y="159" text-anchor="middle" class="t-acc" font-size="9.5">e<tspan baseline-shift="-3" font-size="75%">n</tspan> pickup</text>
+<path d="M224 176 L330 176" class="w"/>
+<path d="M150 246 L330 246" class="w"/>
+<text x="250" y="263" text-anchor="middle" class="t-muted" font-size="9">long cable</text>
+<path d="M330 176 L330 188.6 L335 192.3 L325 199.8 L335 207.3 L325 214.7 L335 222.2 L325 229.7 L330 233.4 L330 246" class="w"/>
+<text x="342" y="203" text-anchor="start" class="t-mono" font-size="10">R<tspan baseline-shift="-3" font-size="75%">s</tspan></text>
+<text x="342" y="216" text-anchor="start" class="t-mono" font-size="9">250 Ω</text>
+<text x="330" y="167" text-anchor="middle" class="t-muted" font-size="9">receiver</text>
+<text x="342" y="235" text-anchor="start" class="t-acc" font-size="10">reads IR<tspan baseline-shift="-3" font-size="75%">s</tspan></text>
+<circle cx="330" cy="176" r="2.6" class="fill-ink"/>
+<circle cx="330" cy="246" r="2.6" class="fill-ink"/>
+      </svg>
+      <figcaption>The same long cable, with wire resistance \(R_w\) (both cores together) and an interference voltage \(e_n\) picked up along the way, carrying (a) a voltage and (b) a current.</figcaption>
+    </figure>
+    <div>
+      <p><b>(a) Voltage signalling.</b> The receiver sees a divider and the pickup in series: \(V_{in}=V_s\,R_{in}/(R_{in}+R_{out}+R_w)+e_n\). Both terms are errors. With 600 m of 0.5 mm² copper (\(R_w=41\) Ω) into a 10 kΩ input, a 10 V signal arrives 0.41 % low, and every millivolt of \(e_n\) adds straight to the reading.</p>
+      <p><b>(b) Current signalling.</b> A <dfn>current source</dfn> forces a set current whatever the resistance in its path, because its output resistance \(R_{out}\) is very large (megohms). In a single series loop the same current flows through every element, so the receiver reads \(V=IR_s\) with no dependence on \(R_w\). The pickup \(e_n\) can only change the current by \(e_n/R_{out}\): 20 mV over 1 MΩ is 20 nA, about 0.0001 % of a 16 mA span (illustrative values). Interference that injects a current instead develops only a small voltage across the low 250 Ω receiver.</p>
+      <div class="analogy"><p>A voltage signal is like judging a pump by the pressure at the end of a long, leaky pipe: friction and leaks change what arrives. A current signal is like a metering pump that delivers a fixed flow: a longer pipe only makes the pump push harder, and the flowmeter at the end still reads the true flow, as long as the pump has enough pressure in reserve.</p></div>
+      <p class="small">That last condition, enough "pressure in reserve", is the loop's voltage budget, worked out on slide 5.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 4 · Why 4-20 mA -->
+<section class="slide" id="why420" data-title="Why 4–20 mA: live zero and loop power">
+  <p class="eyebrow">The 4–20 mA standard</p>
+  <h2>Why the scale starts at 4 mA and not at zero</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 240" aria-label="Loop current in milliamps against process value in percent: a straight line from 4 milliamps at 0 percent to 20 milliamps at 100 percent. A green band from 3.8 to 20.5 milliamps is the valid signal range. Red bands below 3.6 milliamps and above 21 milliamps mark faults. A right axis gives the voltage across 250 ohms: 1 to 5 volts.">
+<rect x="48" y="174.1" width="282" height="25.9" style="fill:var(--red-soft)"/>
+<rect x="48" y="20" width="282" height="28.8" style="fill:var(--red-soft)"/>
+<rect x="48" y="52.4" width="282" height="120.2" style="fill:var(--grn-soft)"/>
+<path d="M44 200 L48 200" class="ln-thin"/>
+<text x="41" y="204" text-anchor="end" class="t-mono t-muted" font-size="9.5">0</text>
+<path d="M44 171.2 L48 171.2" class="ln-thin"/>
+<text x="41" y="175.2" text-anchor="end" class="t-mono t-muted" font-size="9.5">4</text>
+<path d="M44 142.4 L48 142.4" class="ln-thin"/>
+<text x="41" y="146.4" text-anchor="end" class="t-mono t-muted" font-size="9.5">8</text>
+<path d="M44 113.6 L48 113.6" class="ln-thin"/>
+<text x="41" y="117.6" text-anchor="end" class="t-mono t-muted" font-size="9.5">12</text>
+<path d="M44 84.8 L48 84.8" class="ln-thin"/>
+<text x="41" y="88.8" text-anchor="end" class="t-mono t-muted" font-size="9.5">16</text>
+<path d="M44 56 L48 56" class="ln-thin"/>
+<text x="41" y="60" text-anchor="end" class="t-mono t-muted" font-size="9.5">20</text>
+<path d="M44 27.2 L48 27.2" class="ln-thin"/>
+<text x="41" y="31.2" text-anchor="end" class="t-mono t-muted" font-size="9.5">24</text>
+<path d="M330 171.2 L334 171.2" class="ln-thin"/>
+<text x="337" y="175.2" text-anchor="start" class="t-mono t-blu" font-size="9.5">1 V</text>
+<path d="M330 142.4 L334 142.4" class="ln-thin"/>
+<text x="337" y="146.4" text-anchor="start" class="t-mono t-blu" font-size="9.5">2 V</text>
+<path d="M330 113.6 L334 113.6" class="ln-thin"/>
+<text x="337" y="117.6" text-anchor="start" class="t-mono t-blu" font-size="9.5">3 V</text>
+<path d="M330 84.8 L334 84.8" class="ln-thin"/>
+<text x="337" y="88.8" text-anchor="start" class="t-mono t-blu" font-size="9.5">4 V</text>
+<path d="M330 56 L334 56" class="ln-thin"/>
+<text x="337" y="60" text-anchor="start" class="t-mono t-blu" font-size="9.5">5 V</text>
+<path d="M48 200 L48 204" class="ln-thin"/>
+<text x="48" y="215" text-anchor="middle" class="t-mono t-muted" font-size="9.5">0</text>
+<path d="M118.5 200 L118.5 204" class="ln-thin"/>
+<text x="118.5" y="215" text-anchor="middle" class="t-mono t-muted" font-size="9.5">25</text>
+<path d="M189 200 L189 204" class="ln-thin"/>
+<text x="189" y="215" text-anchor="middle" class="t-mono t-muted" font-size="9.5">50</text>
+<path d="M259.5 200 L259.5 204" class="ln-thin"/>
+<text x="259.5" y="215" text-anchor="middle" class="t-mono t-muted" font-size="9.5">75</text>
+<path d="M330 200 L330 204" class="ln-thin"/>
+<text x="330" y="215" text-anchor="middle" class="t-mono t-muted" font-size="9.5">100</text>
+<path d="M48 20 L48 200 L330 200" class="ln-thin"/>
+<path d="M330 20 L330 200" class="ln-thin"/>
+<text x="14" y="113.6" text-anchor="middle" font-size="10" transform="rotate(-90 14 113.6)">loop current (mA)</text>
+<text x="392" y="113.6" text-anchor="middle" class="t-blu" font-size="10" transform="rotate(90 392 113.6)">across 250 Ω</text>
+<text x="189" y="230" text-anchor="middle" font-size="10">process value (% of calibrated range)</text>
+<path d="M48 171.2 L330 56" class="ln-acc"/>
+<circle cx="48" cy="171.2" r="3.5" class="fill-acc"/>
+<circle cx="330" cy="56" r="3.5" class="fill-acc"/>
+<text x="53.6" y="116.5" text-anchor="start" class="t-acc" font-size="10">live zero: 4 mA</text>
+<path d="M59.3 122.2 L50.8 166.9" class="ln-thin"/>
+<text x="251" y="66.1" text-anchor="end" class="t-acc" font-size="10">full scale: 20 mA</text>
+<path d="M253.9 63.9 L324.4 57.4" class="ln-thin"/>
+<text x="189" y="193.2" text-anchor="middle" font-size="9.5">fault: ≤ 3.6 mA (broken wire, no power)</text>
+<text x="189" y="41.3" text-anchor="middle" font-size="9.5">fault: ≥ 21 mA (high alarm, short circuit)</text>
+<text x="245.4" y="138.8" text-anchor="middle" class="t-muted" font-size="9.5">valid signal</text>
+<text x="245.4" y="149.6" text-anchor="middle" class="t-muted" font-size="9.5">3.8–20.5 mA</text>
+        </svg>
+      </figure>
+      <div class="tbl compact"><table>
+        <tr><th>Process value</th><th>0 %</th><th>25 %</th><th>50 %</th><th>75 %</th><th>100 %</th></tr>
+        <tr><td>Loop current</td><td>4 mA</td><td>8 mA</td><td>12 mA</td><td>16 mA</td><td>20 mA</td></tr>
+        <tr><td>Across 250 Ω</td><td>1 V</td><td>2 V</td><td>3 V</td><td>4 V</td><td>5 V</td></tr>
+      </table></div>
+    </div>
+    <div>
+      <p>A <dfn>transmitter</dfn> is the electronics at the sensor that converts the measurement into the standard signal. Its <dfn>calibrated range</dfn> (for example 0–10 bar) is mapped linearly onto 4–20 mA. Three reasons for the 4 mA floor:</p>
+      <ol>
+        <li><b>Live zero.</b> If 0 bar gave 0 mA, a cut wire, a blown fuse and a true zero would all read the same. With a live zero, a current near 0 mA can only mean a fault. Common practice (the NAMUR NE 43 recommendation) treats 3.8–20.5 mA as a valid signal and ≤ 3.6 mA or ≥ 21 mA as a failure, so a transmitter can also report its own fault by driving the current outside the band.</li>
+        <li><b>Loop power.</b> A transmitter can take the 3–3.5 mA its electronics need from the loop itself, so two wires carry both power and signal.</li>
+        <li><b>History.</b> Pneumatic instruments used 3–15 psi (a 20 % live zero). 4–20 mA keeps the same 1 : 5 ratio and the same 20 % offset.</li>
+      </ol>
+      <div class="quiz" data-correct="2">
+        <p class="q">A 0–10 bar loop suddenly reads 0.0 mA. What is the most likely state of the process?</p>
+        <div class="opts">
+          <button class="opt" data-why="0 bar would give 4 mA, not 0 mA.">The pressure has dropped to 0 bar</button>
+          <button class="opt" data-why="Below range would still give a current near 4 mA, not zero.">The pressure is slightly below the range</button>
+          <button class="opt" data-why="Right. No current at all means the loop is open or unpowered: a fault, not a measurement. The live zero lets the system tell the difference.">Unknown: the loop is broken or unpowered</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 · Loop budget -->
+<section class="slide" id="budget" data-title="The two-wire loop and its voltage budget">
+  <p class="eyebrow">The 4–20 mA loop · voltage budget</p>
+  <h2>A two-wire loop must leave the transmitter enough voltage</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 236" aria-label="Two-wire loop. In the control room, a 24 volt DC supply drives current out of its positive terminal along a cable core of resistance R w over 2 to the plus terminal of a two-wire transmitter in the field. The current returns from the transmitter minus terminal along the second core, through a 250 ohm sense resistor R s and back to the supply minus terminal. The DAQ reads 1 to 5 volts across R s.">
+<rect x="4" y="18" width="168" height="214" rx="6" class="ln-thin dash" fill="none"/>
+<text x="88" y="226" text-anchor="middle" class="t-muted" font-size="9.5">control room</text>
+<rect x="286" y="18" width="110" height="214" rx="6" class="ln-thin dash" fill="none"/>
+<text x="341" y="226" text-anchor="middle" class="t-muted" font-size="9.5">field</text>
+<path d="M34 52 L34 98" class="w"/>
+<path d="M21 98 L47 98" class="ln"/>
+<path d="M27 106 L41 106" class="ln"/>
+<path d="M21 114 L47 114" class="ln"/>
+<path d="M27 122 L41 122" class="ln"/>
+<path d="M34 122 L34 168" class="w"/>
+<text x="52" y="102" text-anchor="start" font-size="11">+</text>
+<text x="52" y="126" text-anchor="start" font-size="11">−</text>
+<text x="64" y="112" text-anchor="start" class="t-acc" font-size="11">V<tspan baseline-shift="-3" font-size="75%">s</tspan></text>
+<text x="64" y="125" text-anchor="start" class="t-mono" font-size="9">24 V DC</text>
+<path d="M34 52 L196 52" class="w"/>
+<path d="M196 52 L205.7 52 L208.6 57 L214.4 47 L220.1 57 L225.9 47 L231.6 57 L237.4 47 L240.3 52 L250 52" class="w"/>
+<text x="223" y="42" text-anchor="middle" class="t-mono" font-size="9.5">R<tspan baseline-shift="-3" font-size="75%">w</tspan>/2</text>
+<path d="M250 52 L330 52 L330 78" class="w"/>
+<path d="M120 38 L160 38" class="ln-acc"/><path d="M160 38 L153 41.5 L153 34.5 Z" class="fill-acc"/>
+<text x="140" y="32" text-anchor="middle" class="t-acc" font-size="10">I = 4–20 mA</text>
+<rect x="300" y="78" width="60" height="64" rx="5" class="box-acc"/>
+<text x="330" y="100" text-anchor="middle" font-size="9.5">2-wire</text>
+<text x="330" y="112" text-anchor="middle" font-size="9.5">trans-</text>
+<text x="330" y="124" text-anchor="middle" font-size="9.5">mitter</text>
+<text x="338" y="74" text-anchor="start" font-size="10">+</text>
+<text x="338" y="155" text-anchor="start" font-size="10">−</text>
+<text x="368" y="104" text-anchor="start" class="t-acc" font-size="11">V<tspan baseline-shift="-3" font-size="75%">tx</tspan></text>
+<text x="363" y="119" text-anchor="start" class="t-mono" font-size="8">≥ V<tspan baseline-shift="-3" font-size="75%">min</tspan></text>
+<path d="M300 110 L292 110" class="ln-thin"/>
+<path d="M330 142 L330 168 L250 168" class="w"/>
+<path d="M196 168 L205.7 168 L208.6 173 L214.4 163 L220.1 173 L225.9 163 L231.6 173 L237.4 163 L240.3 168 L250 168" class="w"/>
+<text x="223" y="186" text-anchor="middle" class="t-mono" font-size="9.5">R<tspan baseline-shift="-3" font-size="75%">w</tspan>/2</text>
+<path d="M196 168 L130 168" class="w"/>
+<text x="241" y="120" text-anchor="middle" class="t-muted" font-size="9.5">cable</text>
+<text x="241" y="132" text-anchor="middle" class="t-muted" font-size="9.5">length L</text>
+<path d="M78 168 L87.4 168 L90.1 173 L95.7 163 L101.2 173 L106.8 163 L112.3 173 L117.9 163 L120.6 168 L130 168" class="w"/>
+<path d="M78 168 L34 168" class="w"/>
+<text x="104" y="157" text-anchor="middle" class="t-mono" font-size="9.5">R<tspan baseline-shift="-3" font-size="75%">s</tspan> 250 Ω</text>
+<circle cx="78" cy="168" r="2.6" class="fill-ink"/>
+<circle cx="130" cy="168" r="2.6" class="fill-ink"/>
+<path d="M78 168 L78 186" class="w"/>
+<path d="M130 168 L130 186" class="w"/>
+<rect x="62" y="186" width="84" height="22" rx="5" class="box-blu"/>
+<text x="104" y="201" text-anchor="middle" font-size="9.5">DAQ: 1–5 V</text>
+        </svg>
+      </figure>
+      <p>In a <dfn>loop-powered (two-wire) transmitter</dfn> the same two wires carry power and signal: the transmitter acts as a regulated current sink that lets exactly 4–20 mA through. To regulate it needs a minimum voltage across its terminals, \(V_{min}\) (often called the lift-off voltage, typically 10–12 V). Four-wire transmitters have a separate power supply and drive the loop themselves.</p>
+      <ol class="steps">
+        <li>One series loop, so Kirchhoff's voltage law gives \(V_s=V_{tx}+I(R_w+R_s)\).</li>
+        <li>The transmitter regulates only while \(V_{tx}\ge V_{min}\), and the largest drop occurs at the largest current \(I_{max}\).</li>
+        <li>So \(V_s-I_{max}(R_w+R_s)\ge V_{min}\), which gives the largest total load resistance below.</li>
+      </ol>
+      <div class="eq"><span class="label">Loop budget: maximum load resistance</span>
+        $$R_{L,max}=\frac{V_s-V_{min}}{I_{max}},\qquad R_w+R_s+R_{other}\le R_{L,max}$$
+      </div>
+    </div>
+    <div class="example">
+      <p class="given">A pressure transmitter that needs at least 12 V across its terminals is 600 m from the control room. The loop uses a two-core copper cable with 0.5 mm² cores (\(\rho=1.72\times10^{-8}\) Ω·m), a 24 V DC supply and a 250 Ω sense resistor at the DAQ input. Check the loop, find the voltage range at the DAQ, and find the longest cable this design allows.</p>
+      <p><b>Known</b> \(V_s=24\) V, \(V_{min}=12\) V, \(L=600\) m, \(A=0.5\) mm², \(R_s=250\) Ω. <b>Find</b> \(R_w\), drops, \(V_{tx}\), \(L_{max}\). <b>Assumptions</b> design at \(I_{max}=20\) mA; supply at nominal voltage.</p>
+      <ol class="steps">
+        <li>Current flows out and back, so the wire length is \(2L=1200\) m and \(R_w=\rho\,2L/A\) \(=1.72\times10^{-8}\times1200\,/\,(0.5\times10^{-6})\) \(=41.3\) Ω.</li>
+        <li>At 20 mA: wire drop \(0.020\times41.3=0.83\) V, sense drop \(0.020\times250=5.00\) V, so \(V_{tx}=24-0.83-5.00=18.2\) V \(\ge12\) V. The loop works.</li>
+        <li>At 4 mA: drops 0.17 V and 1.00 V, \(V_{tx}=22.8\) V. The DAQ sees 1.00–5.00 V.</li>
+        <li>\(R_{L,max}=(24-12)/0.020=600\) Ω. The resistor uses 250 Ω, so the cable may have up to 350 Ω.</li>
+        <li>\(2L_{max}=350\times0.5\times10^{-6}/1.72\times10^{-8}=10\,170\) m, so \(L_{max}\approx5.1\) km.</li>
+        <li>If the transmitter must also signal a high alarm at 22 mA: \(R_{L,max}=12/0.022=545\) Ω and \(L_{max}\approx4.3\) km.</li>
+      </ol>
+      <p><b>What this means:</b> the 250 Ω resistor, not the cable, uses most of the budget. Long cables are rarely the problem; extra series devices (indicators, isolators, safety barriers) and a low supply are.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · Loop sim -->
+<section class="slide" id="loopsim" data-title="Loop budget simulator">
+  <p class="eyebrow">Simulator · 4–20 mA loop budget</p>
+  <h2>Watch where the supply voltage goes</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simLoop">
+      <div class="simhead"><span>Two-wire loop, live voltage drops</span><span class="legend"><span><i style="background:var(--blu)"></i>sense resistor</span><span><i style="background:var(--muted)"></i>cable</span><span><i style="background:var(--grn)"></i>left for transmitter</span></span></div>
+      <canvas id="cvLoop" data-h="230" aria-label="Loop drawing with the supply, cable resistances, sense resistor and transmitter, labelled with the live voltage across each, and moving dots showing the current"></canvas>
+      <canvas id="cvBar" data-h="70" aria-label="Bar dividing the supply voltage into sense resistor drop, cable drop and the voltage left for the transmitter, with the transmitter minimum marked"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="lV">Supply voltage <output data-for="Vs"></output></label>
+          <input type="range" id="lV" data-key="Vs" min="12" max="36" step="0.5" value="24" data-fmt="1" data-unit=" V"></div>
+        <div class="ctl"><label for="lM">Transmitter minimum <output data-for="Vm"></output></label>
+          <input type="range" id="lM" data-key="Vm" min="8" max="20" step="0.5" value="12" data-fmt="1" data-unit=" V"></div>
+        <div class="ctl"><label for="lL">Cable length (one way) <output data-for="L"></output></label>
+          <input type="range" id="lL" data-key="L" min="50" max="10000" step="50" value="600" data-fmt="0" data-unit=" m"></div>
+        <div class="ctl"><label for="lA">Core cross-section</label>
+          <select id="lA" data-key="A"><option value="0.5" selected>0.5 mm²</option><option value="0.75">0.75 mm²</option><option value="1.5">1.5 mm²</option></select></div>
+        <div class="ctl"><label for="lR">Sense resistor</label>
+          <select id="lR" data-key="Rs"><option value="250" selected>250 Ω</option><option value="500">500 Ω</option><option value="100">100 Ω</option></select></div>
+        <div class="ctl"><label for="lP">Process value <output data-for="P"></output></label>
+          <input type="range" id="lP" data-key="P" min="0" max="110" step="1" value="100" data-fmt="0" data-unit=" %"></div>
+      </div>
+      <div class="readout" id="roLoop"></div>
+    </div>
+    <div>
+      <p>The model: the transmitter tries to pass \(I=4+16\,P/100\) mA for process value \(P\) (it goes above 20 mA if \(P\) exceeds 100 %). If the supply cannot provide that current while keeping \(V_{min}\) across the transmitter, the current stops at \((V_s-V_{min})/(R_w+R_s)\). The DAQ then reads a wrong, clipped value without any warning, which is the dangerous failure of an under-powered loop.</p>
+      <div class="try"><p>Start at the worked example (24 V, 12 V, 600 m, 0.5 mm², 250 Ω, 100 %): 18.2 V is left for the transmitter. Drag the cable to 10 km: the green part shrinks and turns red near 5.1 km, and the reading clips. Return to 600 m and choose 500 Ω: the loop now starves above about 90 %. Finally set the supply to 18 V with 250 Ω: the loop still works, but 110 % (22 mA) is clipped, so a high alarm would never arrive.</p></div>
+      <div class="pitfall"><p>A starved loop does not read zero; it reads a believable but low value near full scale. Check the budget at the highest current the transmitter can send, including its alarm current, and at the lowest supply voltage.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 · Engineering units -->
+<section class="slide" id="units" data-title="Worked example: from current to engineering units">
+  <p class="eyebrow">The 4–20 mA loop · scaling</p>
+  <h2>From milliamps (or counts) back to engineering units</h2>
+  <div class="cols">
+    <div>
+      <p>The transmitter maps its calibrated range \(x_{lo}\) to \(x_{hi}\) linearly onto 4–20 mA, so the current is</p>
+      <p>$$I=4\ \text{mA}+16\ \text{mA}\times\frac{x-x_{lo}}{x_{hi}-x_{lo}}$$</p>
+      <p>Solving for \(x\) gives the scaling the DAQ software applies. With the 250 Ω resistor, \(V=IR_s\) runs from 1 to 5 V, a span of 4 V:</p>
+      <div class="eq"><span class="label">Scaling a 4–20 mA signal</span>
+        $$x=x_{lo}+(x_{hi}-x_{lo})\,\frac{I-4\ \text{mA}}{16\ \text{mA}}=x_{lo}+(x_{hi}-x_{lo})\,\frac{V-1\ \text{V}}{4\ \text{V}}$$
+      </div>
+      <div class="symbols">
+        <span>\(x_{lo},x_{hi}\)</span><span>process values at 4 mA and 20 mA (the calibrated range)</span>
+        <span>\(I,\ V\)</span><span>loop current, and voltage across the 250 Ω sense resistor</span>
+      </div>
+      <div class="quiz" data-correct="1">
+        <p class="q">A 0–10 bar transmitter sends 9.6 mA. What is the pressure?</p>
+        <div class="opts">
+          <button class="opt" data-why="That is 9.6/20 × 10, which ignores the 4 mA live zero.">4.8 bar</button>
+          <button class="opt" data-why="Right: \((9.6-4)/16\times10=3.5\) bar.">3.5 bar</button>
+          <button class="opt" data-why="That is 9.6/16 × 10: the offset must be subtracted first.">6.0 bar</button>
+        </div>
+      </div>
+    </div>
+    <div class="example">
+      <p class="given">A temperature transmitter is ranged −50 to 150 °C. Its loop current passes through a 250 Ω resistor into a 12-bit converter with a 0–5 V range, which returns the code 2867. Find the temperature, the temperature resolution, and the code below which the software should declare a fault.</p>
+      <p><b>Known</b> \(x_{lo}=-50\) °C, \(x_{hi}=150\) °C, \(R_s=250\) Ω, \(M=12\), \(E_{FSR}=5\) V, code 2867. <b>Find</b> \(T\), \(\Delta T\) per code, fault code. <b>Assumptions</b> ideal resistor and converter; fault below 3.6 mA.</p>
+      <ol class="steps">
+        <li>Converter step \(Q=5/2^{12}=1.221\) mV, so \(V=2867\times1.221\ \text{mV}=3.500\) V.</li>
+        <li>Current \(I=V/R_s=3.500/250=14.00\) mA.</li>
+        <li>\(T=-50+200\times(14.00-4)/16=-50+125.0=75.0\) °C.</li>
+        <li>Resolution: one code is \(1.221\ \text{mV}/250\ \Omega=4.88\ \mu\)A, which is \(200\ ^\circ\text{C}\times4.88\ \mu\text{A}/16\ \text{mA}=0.061\) °C.</li>
+        <li>Fault limit: 3.6 mA gives \(0.900\) V, code \(0.900/1.221\ \text{mV}=737\). Any code below 737 means a broken or unpowered loop.</li>
+      </ol>
+      <p><b>What this means:</b> the 0–1 V part of the converter range is never used by a healthy loop, so only about four-fifths of the codes (3277 of 4096) carry the measurement.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 8 · HART and comparison -->
+<section class="slide" id="hart" data-title="HART, and choosing 0–10 V or 4–20 mA">
+  <p class="eyebrow">The 4–20 mA loop · digital on top</p>
+  <h2>HART adds digital data on the same two wires</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 156" aria-label="Loop current near 12 milliamps with a small sinusoidal signal of plus or minus 0.5 milliamp superimposed: one cycle of 1200 hertz for each bit 1 and about two cycles of 2200 hertz for each bit 0. The average stays at 12 milliamps.">
+<path d="M44 70 L392 70" class="ln-thin dash"/>
+<path d="M44 70 L44.6 67.9 L45.2 65.7 L45.7 63.6 L46.3 61.5 L46.9 59.5 L47.5 57.5 L48.1 55.5 L48.6 53.6 L49.2 51.8 L49.8 50 L50.4 48.3 L51 46.7 L51.5 45.2 L52.1 43.8 L52.7 42.5 L53.3 41.3 L53.9 40.2 L54.4 39.2 L55 38.4 L55.6 37.7 L56.2 37.1 L56.8 36.6 L57.3 36.3 L57.9 36.1 L58.5 36 L59.1 36.1 L59.7 36.3 L60.2 36.6 L60.8 37.1 L61.4 37.7 L62 38.4 L62.6 39.2 L63.1 40.2 L63.7 41.3 L64.3 42.5 L64.9 43.8 L65.5 45.2 L66 46.7 L66.6 48.3 L67.2 50 L67.8 51.8 L68.4 53.6 L68.9 55.5 L69.5 57.5 L70.1 59.5 L70.7 61.5 L71.3 63.6 L71.8 65.7 L72.4 67.9 L73 70 L73.6 72.1 L74.2 74.3 L74.7 76.4 L75.3 78.5 L75.9 80.5 L76.5 82.5 L77.1 84.5 L77.6 86.4 L78.2 88.2 L78.8 90 L79.4 91.7 L80 93.3 L80.5 94.8 L81.1 96.2 L81.7 97.5 L82.3 98.7 L82.9 99.8 L83.4 100.8 L84 101.6 L84.6 102.3 L85.2 102.9 L85.8 103.4 L86.3 103.7 L86.9 103.9 L87.5 104 L88.1 103.9 L88.7 103.7 L89.2 103.4 L89.8 102.9 L90.4 102.3 L91 101.6 L91.6 100.8 L92.1 99.8 L92.7 98.7 L93.3 97.5 L93.9 96.2 L94.5 94.8 L95 93.3 L95.6 91.7 L96.2 90 L96.8 88.2 L97.4 86.4 L97.9 84.5 L98.5 82.5 L99.1 80.5 L99.7 78.5 L100.3 76.4 L100.8 74.3 L101.4 72.1 L102 68.2 L102.6 64.3 L103.2 60.5 L103.7 56.8 L104.3 53.3 L104.9 50 L105.5 47 L106.1 44.3 L106.6 41.9 L107.2 39.9 L107.8 38.3 L108.4 37.1 L109 36.3 L109.5 36 L110.1 36.2 L110.7 36.7 L111.3 37.8 L111.9 39.2 L112.4 41.1 L113 43.4 L113.6 46 L114.2 48.9 L114.8 52.1 L115.3 55.5 L115.9 59.2 L116.5 62.9 L117.1 66.8 L117.7 70.7 L118.2 74.6 L118.8 78.5 L119.4 82.2 L120 85.8 L120.6 89.1 L121.1 92.2 L121.7 95 L122.3 97.5 L122.9 99.6 L123.5 101.3 L124 102.6 L124.6 103.5 L125.2 104 L125.8 103.9 L126.4 103.5 L126.9 102.5 L127.5 101.2 L128.1 99.4 L128.7 97.3 L129.3 94.8 L129.8 91.9 L130.4 88.8 L131 85.4 L131.6 81.9 L132.2 78.1 L132.7 74.3 L133.3 70.4 L133.9 66.4 L134.5 62.6 L135.1 58.8 L135.6 55.2 L136.2 51.8 L136.8 48.6 L137.4 45.7 L138 43.1 L138.5 40.9 L139.1 39.1 L139.7 37.7 L140.3 36.7 L140.9 36.1 L141.4 36 L142 36.4 L142.6 37.2 L143.2 38.4 L143.8 40 L144.3 42.1 L144.9 44.5 L145.5 47.2 L146.1 50.3 L146.7 53.6 L147.2 57.2 L147.8 60.9 L148.4 64.7 L149 68.6 L149.6 72.5 L150.1 76.4 L150.7 80.2 L151.3 83.8 L151.9 87.3 L152.5 90.6 L153 93.5 L153.6 96.2 L154.2 98.5 L154.8 100.5 L155.4 102 L155.9 103.1 L156.5 103.8 L157.1 104 L157.7 103.8 L158.3 103.1 L158.8 102 L159.4 100.5 L160 99.4 L160.6 98.3 L161.2 97.1 L161.7 95.7 L162.3 94.3 L162.9 92.8 L163.5 91.1 L164.1 89.4 L164.6 87.6 L165.2 85.8 L165.8 83.8 L166.4 81.9 L167 79.8 L167.5 77.8 L168.1 75.7 L168.7 73.6 L169.3 71.4 L169.9 69.3 L170.4 67.2 L171 65 L171.6 62.9 L172.2 60.9 L172.8 58.8 L173.3 56.8 L173.9 54.9 L174.5 53 L175.1 51.2 L175.7 49.4 L176.2 47.8 L176.8 46.2 L177.4 44.7 L178 43.4 L178.6 42.1 L179.1 40.9 L179.7 39.9 L180.3 38.9 L180.9 38.1 L181.5 37.5 L182 36.9 L182.6 36.5 L183.2 36.2 L183.8 36 L184.4 36 L184.9 36.1 L185.5 36.4 L186.1 36.7 L186.7 37.3 L187.3 37.9 L187.8 38.7 L188.4 39.5 L189 40.6 L189.6 41.7 L190.2 42.9 L190.7 44.3 L191.3 45.7 L191.9 47.2 L192.5 48.9 L193.1 50.6 L193.6 52.4 L194.2 54.2 L194.8 56.2 L195.4 58.1 L196 60.2 L196.5 62.2 L197.1 64.3 L197.7 66.4 L198.3 68.6 L198.9 70.7 L199.4 72.8 L200 75 L200.6 77.1 L201.2 79.1 L201.8 81.2 L202.3 83.2 L202.9 85.1 L203.5 87 L204.1 88.8 L204.7 90.6 L205.2 92.2 L205.8 93.8 L206.4 95.3 L207 96.6 L207.6 97.9 L208.1 99.1 L208.7 100.1 L209.3 101.1 L209.9 101.9 L210.5 102.5 L211 103.1 L211.6 103.5 L212.2 103.8 L212.8 104 L213.4 104 L213.9 103.9 L214.5 103.6 L215.1 103.3 L215.7 102.7 L216.3 102.1 L216.8 101.3 L217.4 100.5 L218 99.4 L218.6 98.3 L219.2 97.1 L219.7 95.7 L220.3 94.3 L220.9 92.8 L221.5 91.1 L222.1 89.4 L222.6 87.6 L223.2 85.8 L223.8 83.8 L224.4 81.9 L225 79.8 L225.5 77.8 L226.1 75.7 L226.7 73.6 L227.3 71.4 L227.9 69.3 L228.4 67.2 L229 65 L229.6 62.9 L230.2 60.9 L230.8 58.8 L231.3 56.8 L231.9 54.9 L232.5 53 L233.1 51.2 L233.7 49.4 L234.2 47.8 L234.8 46.2 L235.4 44.7 L236 43.4 L236.6 42.1 L237.1 40.9 L237.7 39.9 L238.3 38.9 L238.9 38.1 L239.5 37.5 L240 36.9 L240.6 36.5 L241.2 36.2 L241.8 36 L242.4 36 L242.9 36.1 L243.5 36.4 L244.1 36.7 L244.7 37.3 L245.3 37.9 L245.8 38.7 L246.4 39.5 L247 40.6 L247.6 41.7 L248.2 42.9 L248.7 44.3 L249.3 45.7 L249.9 47.2 L250.5 48.9 L251.1 50.6 L251.6 52.4 L252.2 54.2 L252.8 56.2 L253.4 58.1 L254 60.2 L254.5 62.2 L255.1 64.3 L255.7 66.4 L256.3 68.6 L256.9 70.7 L257.4 72.8 L258 75 L258.6 77.1 L259.2 79.1 L259.8 81.2 L260.3 83.2 L260.9 85.1 L261.5 87 L262.1 88.8 L262.7 90.6 L263.2 92.2 L263.8 93.8 L264.4 95.3 L265 96.6 L265.6 97.9 L266.1 99.1 L266.7 100.1 L267.3 101.1 L267.9 101.9 L268.5 102.5 L269 103.1 L269.6 103.5 L270.2 103.8 L270.8 104 L271.4 104 L271.9 103.9 L272.5 103.6 L273.1 103.3 L273.7 102.7 L274.3 102.1 L274.8 101.3 L275.4 100.5 L276 98.5 L276.6 96.2 L277.2 93.5 L277.7 90.6 L278.3 87.3 L278.9 83.8 L279.5 80.2 L280.1 76.4 L280.6 72.5 L281.2 68.6 L281.8 64.7 L282.4 60.9 L283 57.2 L283.5 53.6 L284.1 50.3 L284.7 47.2 L285.3 44.5 L285.9 42.1 L286.4 40 L287 38.4 L287.6 37.2 L288.2 36.4 L288.8 36 L289.3 36.1 L289.9 36.7 L290.5 37.7 L291.1 39.1 L291.7 40.9 L292.2 43.1 L292.8 45.7 L293.4 48.6 L294 51.8 L294.6 55.2 L295.1 58.8 L295.7 62.6 L296.3 66.4 L296.9 70.4 L297.5 74.3 L298 78.1 L298.6 81.9 L299.2 85.4 L299.8 88.8 L300.4 91.9 L300.9 94.8 L301.5 97.3 L302.1 99.4 L302.7 101.2 L303.3 102.5 L303.8 103.5 L304.4 103.9 L305 104 L305.6 103.5 L306.2 102.6 L306.7 101.3 L307.3 99.6 L307.9 97.5 L308.5 95 L309.1 92.2 L309.6 89.1 L310.2 85.8 L310.8 82.2 L311.4 78.5 L312 74.6 L312.5 70.7 L313.1 66.8 L313.7 62.9 L314.3 59.2 L314.9 55.5 L315.4 52.1 L316 48.9 L316.6 46 L317.2 43.4 L317.8 41.1 L318.3 39.2 L318.9 37.8 L319.5 36.7 L320.1 36.2 L320.7 36 L321.2 36.3 L321.8 37.1 L322.4 38.3 L323 39.9 L323.6 41.9 L324.1 44.3 L324.7 47 L325.3 50 L325.9 53.3 L326.5 56.8 L327 60.5 L327.6 64.3 L328.2 68.2 L328.8 72.1 L329.4 76 L329.9 79.8 L330.5 83.5 L331.1 87 L331.7 90.3 L332.3 93.3 L332.8 96 L333.4 98.3 L334 99.4 L334.6 100.5 L335.2 101.3 L335.7 102.1 L336.3 102.7 L336.9 103.3 L337.5 103.6 L338.1 103.9 L338.6 104 L339.2 104 L339.8 103.8 L340.4 103.5 L341 103.1 L341.5 102.5 L342.1 101.9 L342.7 101.1 L343.3 100.1 L343.9 99.1 L344.4 97.9 L345 96.6 L345.6 95.3 L346.2 93.8 L346.8 92.2 L347.3 90.6 L347.9 88.8 L348.5 87 L349.1 85.1 L349.7 83.2 L350.2 81.2 L350.8 79.1 L351.4 77.1 L352 75 L352.6 72.8 L353.1 70.7 L353.7 68.6 L354.3 66.4 L354.9 64.3 L355.5 62.2 L356 60.2 L356.6 58.1 L357.2 56.2 L357.8 54.2 L358.4 52.4 L358.9 50.6 L359.5 48.9 L360.1 47.2 L360.7 45.7 L361.3 44.3 L361.8 42.9 L362.4 41.7 L363 40.6 L363.6 39.5 L364.2 38.7 L364.7 37.9 L365.3 37.3 L365.9 36.7 L366.5 36.4 L367.1 36.1 L367.6 36 L368.2 36 L368.8 36.2 L369.4 36.5 L370 36.9 L370.5 37.5 L371.1 38.1 L371.7 38.9 L372.3 39.9 L372.9 40.9 L373.4 42.1 L374 43.4 L374.6 44.7 L375.2 46.2 L375.8 47.8 L376.3 49.4 L376.9 51.2 L377.5 53 L378.1 54.9 L378.7 56.8 L379.2 58.8 L379.8 60.9 L380.4 62.9 L381 65 L381.6 67.2 L382.1 69.3 L382.7 71.4 L383.3 73.6 L383.9 75.7 L384.5 77.8 L385 79.8 L385.6 81.9 L386.2 83.8 L386.8 85.8 L387.4 87.6 L387.9 89.4 L388.5 91.1 L389.1 92.8 L389.7 94.3 L390.3 95.7 L390.8 97.1 L391.4 98.3 L392 99.4" class="ln-acc"/>
+<text x="73" y="16" text-anchor="middle" class="t-mono" font-size="11">1</text>
+<text x="73" y="134" text-anchor="middle" class="t-mono t-muted" font-size="8.5">1200 Hz</text>
+<path d="M102 20 L102 120" class="ln-thin dash"/>
+<text x="131" y="16" text-anchor="middle" class="t-mono" font-size="11">0</text>
+<text x="131" y="134" text-anchor="middle" class="t-mono t-muted" font-size="8.5">2200 Hz</text>
+<path d="M160 20 L160 120" class="ln-thin dash"/>
+<text x="189" y="16" text-anchor="middle" class="t-mono" font-size="11">1</text>
+<text x="189" y="134" text-anchor="middle" class="t-mono t-muted" font-size="8.5">1200 Hz</text>
+<path d="M218 20 L218 120" class="ln-thin dash"/>
+<text x="247" y="16" text-anchor="middle" class="t-mono" font-size="11">1</text>
+<text x="247" y="134" text-anchor="middle" class="t-mono t-muted" font-size="8.5">1200 Hz</text>
+<path d="M276 20 L276 120" class="ln-thin dash"/>
+<text x="305" y="16" text-anchor="middle" class="t-mono" font-size="11">0</text>
+<text x="305" y="134" text-anchor="middle" class="t-mono t-muted" font-size="8.5">2200 Hz</text>
+<path d="M334 20 L334 120" class="ln-thin dash"/>
+<text x="363" y="16" text-anchor="middle" class="t-mono" font-size="11">1</text>
+<text x="363" y="134" text-anchor="middle" class="t-mono t-muted" font-size="8.5">1200 Hz</text>
+<path d="M44 20 L44 120" class="ln-thin"/>
+<text x="39" y="40" text-anchor="end" class="t-mono t-muted" font-size="9">12.5</text>
+<text x="39" y="74" text-anchor="end" class="t-mono t-muted" font-size="9">12</text>
+<text x="39" y="108" text-anchor="end" class="t-mono t-muted" font-size="9">11.5</text>
+<text x="4" y="14" text-anchor="start" class="t-muted" font-size="9">mA</text>
+<text x="218" y="152" text-anchor="middle" class="t-muted" font-size="9">one bit = 1/1200 s ≈ 0.83 ms; average stays 12 mA</text>
+        </svg>
+      </figure>
+      <p><dfn>HART</dfn> (Highway Addressable Remote Transducer) superimposes a small sinusoid of about ±0.5 mA on the analog current. It uses <dfn>frequency-shift keying</dfn> (FSK): 1200 Hz means a 1 and 2200 Hz means a 0, at 1200 bit/s. Over each bit the sinusoid averages to zero, and the receiver's analog input responds far too slowly to follow 1–2 kHz, so the 4–20 mA reading is unaffected.</p>
+      <p>Over HART a handheld communicator or the control system can read the transmitter's tag, range, diagnostics and extra measured variables, and re-range it, without disturbing the analog signal. The FSK voltage is developed across the loop resistance, so HART needs a minimum loop resistance of about 230 Ω, one more reason for the 250 Ω standard.</p>
+    </div>
+    <div>
+      <div class="tbl wrap compact"><table>
+        <tr><th></th><th>0–10 V</th><th>4–20 mA</th></tr>
+        <tr><td><b>Distance</b></td><td>a few metres, inside a cabinet</td><td>hundreds of metres to km</td></tr>
+        <tr><td><b>Wire resistance</b></td><td>causes a direct error</td><td>no effect within the budget</td></tr>
+        <tr><td><b>Noise</b></td><td>pickup adds to the reading</td><td>source and receiver impedances suppress it</td></tr>
+        <tr><td><b>Broken wire</b></td><td>reads 0 V, looks like a valid zero</td><td>reads 0 mA, detected as a fault</td></tr>
+        <tr><td><b>Power</b></td><td>sensor needs its own supply (3–4 wires)</td><td>two wires can carry power and signal</td></tr>
+        <tr><td><b>Several receivers</b></td><td>in parallel, easy</td><td>in series, each uses part of the budget</td></tr>
+        <tr><td><b>Ground difference</b></td><td>adds to the reading</td><td>loop can float; one ground point</td></tr>
+      </table></div>
+      <div class="note" data-label="Limitations of 4–20 mA"><p>One pair carries one variable (HART multidrop is the exception, with several digital devices on one pair and the current parked at 4 mA). The loop current also creates a magnetic field that can induce crosstalk in neighbouring cables; twisted pairs reduce both pickup and emission. Fully digital fieldbuses carry many variables on one cable, but 4–20 mA remains the most widely used analog field signal.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 · Isolation -->
+<section class="slide" id="iso" data-title="Isolation: ground loops and common-mode voltage">
+  <p class="eyebrow">Isolation</p>
+  <h2>Isolation breaks the wire path so ground differences cannot enter</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 290" aria-label="(a) Isolation amplifier: a sensor on a motor frame at ground A feeds an input amplifier on a floating side with its own power; the signal crosses an insulating barrier through a transformer to an output amplifier on the DAQ side at ground B. The voltage difference between grounds A and B sits across the barrier. (b) Optocoupler: a field 24 volt input drives an LED; its light crosses a gap to a phototransistor that switches a 5 volt logic line.">
+<text x="4" y="12" text-anchor="start" font-size="11">(a) isolation amplifier</text>
+<rect x="6" y="34" width="60" height="50" rx="4" class="box"/>
+<text x="36" y="56" text-anchor="middle" font-size="9.5">motor</text>
+<text x="36" y="68" text-anchor="middle" font-size="9.5">frame</text>
+<circle cx="66" cy="59" r="3.5" class="fill-acc"/>
+<path d="M66 52 L100 52" class="w"/>
+<path d="M66 66 L100 66" class="w"/>
+<path d="M36 84 L36 96" class="w"/>
+<path d="M36 96 L36 102" class="w"/><path d="M27 102 L45 102" class="w"/><path d="M30 106 L42 106" class="w"/><path d="M33 110 L39 110" class="w"/>
+<text x="36" y="128" text-anchor="middle" class="t-mono t-muted" font-size="8.5">ground A</text>
+<rect x="92" y="22" width="92" height="104" rx="6" style="fill:var(--acc-soft);stroke:none"/>
+<text x="138" y="120" text-anchor="middle" class="t-acc" font-size="9">floating side</text>
+<path d="M104 38 L144 59 L104 80 Z" class="box"/>
+<text x="112" y="55" text-anchor="middle" font-size="10">+</text>
+<text x="112" y="74" text-anchor="middle" font-size="10">−</text>
+<path d="M100 52 L104 52" class="w"/>
+<path d="M100 66 L104 66" class="w"/>
+<path d="M144 59 L160 59" class="w"/>
+<rect x="150" y="86" width="30" height="22" rx="3" class="box"/>
+<text x="165" y="100" text-anchor="middle" class="t-mono" font-size="8">pwr</text>
+<rect x="186" y="18" width="20" height="112" style="fill:var(--grid)"/>
+<path d="M186 18 L186 130" class="ln-thin dash"/>
+<path d="M206 18 L206 130" class="ln-thin dash"/>
+<text x="196" y="142" text-anchor="middle" class="t-mono" font-size="8.5">barrier</text>
+<path d="M178 46 q6 4 0 8 q6 4 0 8 q6 4 0 8" class="w"/>
+<path d="M214 46 q6 4 0 8 q6 4 0 8 q6 4 0 8" class="w"/>
+<path d="M160 59 L172 59" class="w"/>
+<path d="M172 50 L172 68" class="ln-thin"/>
+<rect x="208" y="22" width="96" height="104" rx="6" style="fill:var(--blu-soft);stroke:none"/>
+<text x="256" y="120" text-anchor="middle" class="t-blu" font-size="9">DAQ side</text>
+<path d="M220 59 L240 59" class="w"/>
+<path d="M240 42 L274 59 L240 76 Z" class="box"/>
+<path d="M274 59 L318 59" class="w"/>
+<rect x="318" y="44" width="60" height="30" rx="5" class="box-blu"/>
+<text x="348" y="63" text-anchor="middle" font-size="10">DAQ</text>
+<path d="M348 74 L348 96" class="w"/>
+<path d="M348 96 L348 102" class="w"/><path d="M339 102 L357 102" class="w"/><path d="M342 106 L354 106" class="w"/><path d="M345 110 L351 110" class="w"/>
+<text x="348" y="128" text-anchor="middle" class="t-mono t-muted" font-size="8.5">ground B</text>
+<path d="M48 136 Q196 176 336 136" class="ln-acc dash"/>
+<text x="196" y="168" text-anchor="middle" class="t-acc" font-size="9.5">ΔV between grounds sits across the barrier</text>
+<text x="4" y="190" text-anchor="start" font-size="11">(b) optocoupler for a digital line</text>
+<rect x="150" y="202" width="104" height="62" rx="6" class="box"/>
+<path d="M60 216 L178 216 L178 224" class="w"/>
+<path d="M170 224 L186 224 L178 238 Z" class="fill-ink"/>
+<path d="M169 238 L187 238" class="w"/>
+<path d="M178 238 L178 250 L60 250" class="w"/>
+<text x="58" y="212" text-anchor="start" class="t-mono t-muted" font-size="8.5">field 24 V</text>
+<text x="58" y="262" text-anchor="start" class="t-mono t-muted" font-size="8.5">field return</text>
+<path d="M192 224 L210 224" class="ln-acc"/><path d="M210 224 L203 227.5 L203 220.5 Z" class="fill-acc"/>
+<path d="M192 234 L210 234" class="ln-acc"/><path d="M210 234 L203 237.5 L203 230.5 Z" class="fill-acc"/>
+<path d="M222 220 L222 246" class="ln"/>
+<path d="M222 228 L236 216 L236 208 L300 208" class="w"/>
+<path d="M222 238 L236 250 L236 256 L300 256" class="w"/>
+<path d="M234 248 L227.6 245.9 L231.9 241.6 Z" class="fill-ink"/>
+<text x="304" y="212" text-anchor="start" class="t-mono t-muted" font-size="8.5">5 V logic</text>
+<text x="304" y="260" text-anchor="start" class="t-mono t-muted" font-size="8.5">logic ground</text>
+<text x="202" y="280" text-anchor="middle" class="t-acc" font-size="9.5">only light crosses the gap</text>
+        </svg>
+      </figure>
+      <div class="analogy"><p>An isolation barrier is a bank teller's window: the message (the signal) is passed through the slot, but there is no doorway, so whatever is going on in the queue (the field ground) cannot walk into the vault (the DAQ).</p></div>
+      <div class="reveal-box" data-label="Quick number: reveal">
+        <p>A thermocouple on a motor frame sits 50 V (50 Hz) above the DAQ ground. An isolation amplifier with 120 dB isolation-mode rejection is used. How much 50 Hz appears at its output, referred to the input?</p>
+        <div class="answer"><p>120 dB is a factor of \(10^{120/20}=10^6\), so \(50\ \text{V}/10^6=50\ \mu\)V, small next to a thermocouple's roughly 40 µV/°C output (about 1 °C, and the digital filters later in this part remove most of it). Wired directly, the same 50 V would be five times beyond a ±10 V common-mode range.</p></div>
+      </div>
+    </div>
+    <div>
+      <p>A differential input rejects a common-mode voltage only within its rated range, usually about ±10 V. A sensor glued to a motor frame, a busbar or a patient can sit tens or hundreds of volts away from the DAQ ground. Wiring it directly either saturates the amplifier, drives a ground-loop current through the signal leads, or damages the equipment.</p>
+      <p class="define"><dfn>Galvanic isolation</dfn> means there is no conducting path between two circuits; the information crosses by a magnetic field (transformer), an electric field (small capacitor) or light (optocoupler).</p>
+      <p>An <dfn>isolation amplifier</dfn> (a) has an input side with its own floating power supply and an output side referenced to the DAQ ground. The signal crosses the barrier on a modulated carrier and is demodulated on the other side. The ground difference then appears across the barrier, which is rated to withstand it (often 1500 V or more), instead of across the signal. Its <dfn>isolation-mode rejection</dfn> says how much of that voltage still leaks into the output.</p>
+      <p>An <dfn>optocoupler</dfn> (b) does the same for on/off signals: an LED driven by the field circuit shines on a phototransistor in the logic circuit. PLC digital inputs and DAQ digital lines are usually opto-isolated. For 4–20 mA loops, loop isolators pass the current across a barrier.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 10 · Sigma-delta principle + sim -->
+<section class="slide" id="sd" data-title="The sigma-delta modulator">
+  <p class="eyebrow">Sigma-delta converters · principle</p>
+  <h2>A 1-bit converter, run very fast, whose bit density tracks the input</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simSD">
+      <div class="simhead"><span>First-order modulator</span><span class="legend"><span><i style="background:var(--muted)"></i>input</span><span><i style="background:var(--acc)"></i>word average</span><span><i style="background:var(--blu)"></i>bits ±V</span><span><i style="background:var(--acc)"></i>integrator (dashed)</span></span></div>
+      <canvas id="cvSD1" data-h="125" aria-label="Input voltage and the average of the bitstream over each block of clocks, shown as a staircase that follows the input"></canvas>
+      <canvas id="cvSD2" data-h="120" aria-label="The bitstream as plus or minus one pulses, and the integrator output"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="sdm">Input</label>
+          <select id="sdm" data-key="mode"><option value="dc" selected>constant</option><option value="sin">slow sine</option></select></div>
+        <div class="ctl"><label for="sdx">Input level / amplitude (× V) <output data-for="x"></output></label>
+          <input type="range" id="sdx" data-key="x" min="-0.95" max="0.95" step="0.05" value="0.5" data-fmt="2"></div>
+        <div class="ctl"><label for="sdM">Bits averaged per output word</label>
+          <select id="sdM" data-key="M"><option value="8">8</option><option value="16" selected>16</option><option value="32">32</option></select></div>
+      </div>
+      <div class="simbtns"><button class="btn" type="button" id="sdReplay">Replay clock by clock</button></div>
+      <div class="readout" id="roSD"></div>
+      <div class="try"><p>Set a constant 0.5 and replay: three bits in four are 1 and the staircase settles on 0.5. Try 0.05: the pattern is nearly 1010…, with an occasional extra 1. Switch to "slow sine" and change the bits per word from 8 to 32: more bits per word give finer steps but fewer, later words. That is the speed-for-resolution trade.</p></div>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 160" aria-label="Sigma-delta modulator: input V in enters a summing junction, then an integrator, then a clocked 1-bit quantizer (comparator and latch). The output bitstream goes to a digital filter and decimator that produces M-bit words at a low rate. The bitstream also drives a 1-bit DAC whose output, plus or minus V, is subtracted at the summing junction.">
+<text x="6" y="44" text-anchor="start" class="t-acc" font-size="11">V<tspan baseline-shift="-3" font-size="75%">in</tspan></text>
+<path d="M6 52 L56 52" class="w"/><path d="M56 52 L49 55.5 L49 48.5 Z" class="fill-ink"/>
+<circle cx="68" cy="52" r="12" class="fill-panel" style="stroke:var(--ink);stroke-width:1.5"/>
+<text x="68" y="57" text-anchor="middle" font-size="13">Σ</text>
+<text x="50" y="44" text-anchor="middle" font-size="10">+</text>
+<path d="M80 52 L102 52" class="w"/><path d="M102 52 L95 55.5 L95 48.5 Z" class="fill-ink"/>
+<rect x="102" y="34" width="52" height="36" rx="5" class="box"/>
+<text x="128" y="58" text-anchor="middle" font-size="18">∫</text>
+<text x="128" y="83" text-anchor="middle" class="t-muted" font-size="9">integrator</text>
+<path d="M154 52 L176 52" class="w"/><path d="M176 52 L169 55.5 L169 48.5 Z" class="fill-ink"/>
+<rect x="176" y="34" width="70" height="36" rx="5" class="box-acc"/>
+<text x="211" y="50" text-anchor="middle" font-size="9.5">1-bit</text>
+<text x="211" y="62" text-anchor="middle" font-size="9.5">quantizer</text>
+<text x="211" y="28" text-anchor="middle" class="t-muted" font-size="9">comparator + latch</text>
+<path d="M211 96 L211 70" class="ln-thin"/><path d="M211 70 L214.5 77 L207.5 77 Z" class="fill-muted"/>
+<text x="205" y="96" text-anchor="end" class="t-mono t-muted" font-size="8.5">clock</text>
+<path d="M246 52 L262 52" class="w"/>
+<circle cx="262" cy="52" r="2.6" class="fill-ink"/>
+<path d="M262 52 L290 52" class="w"/><path d="M290 52 L283 55.5 L283 48.5 Z" class="fill-ink"/>
+<rect x="290" y="30" width="104" height="44" rx="5" class="box-blu"/>
+<text x="342" y="48" text-anchor="middle" font-size="9.5">digital filter</text>
+<text x="342" y="61" text-anchor="middle" font-size="9.5">+ decimator</text>
+<path d="M342 74 L342 102" class="w"/><path d="M342 102 L338.5 95 L345.5 95 Z" class="fill-ink"/>
+<text x="342" y="114" text-anchor="middle" class="t-blu" font-size="9.5">M-bit words</text>
+<text x="342" y="126" text-anchor="middle" class="t-blu" font-size="9.5">at a low rate</text>
+<text x="267" y="84" text-anchor="start" class="t-mono t-blu" font-size="8.5">bit-</text>
+<text x="267" y="94" text-anchor="start" class="t-mono t-blu" font-size="8.5">stream</text>
+<path d="M262 52 L262 124 L200 124" class="w"/>
+<rect x="128" y="110" width="72" height="28" rx="5" class="box"/>
+<text x="164" y="122" text-anchor="middle" font-size="9.5">1-bit DAC</text>
+<text x="164" y="133" text-anchor="middle" class="t-mono" font-size="8.5">±V</text>
+<path d="M128 124 L68 124 L68 71" class="w"/>
+<path d="M68 64 L71.5 71 L64.5 71 Z" class="fill-ink"/>
+<text x="78" y="84" text-anchor="start" font-size="12">−</text>
+<text x="96" y="152" text-anchor="start" class="t-muted" font-size="9">feedback: +V for a 1, −V for a 0</text>
+        </svg>
+      </figure>
+      <p>A <dfn>sigma-delta converter</dfn> (also called delta-sigma) is the modulator drawn here followed by a digital filter. At every clock tick the loop subtracts the feedback (\(+V\) after a 1, \(-V\) after a 0) from the input, adds the difference to the integrator, and the comparator outputs 1 if the integrator is positive. If the input is higher than the average feedback, the integrator climbs and more 1s are produced, so the feedback is pulled up to match.</p>
+      <ol class="steps">
+        <li>After \(N\) clocks the integrator holds \(u_N=\sum_{k}(V_{in}-v_k)\), with \(v_k=\pm V\).</li>
+        <li>The feedback keeps \(u_N\) bounded (within about \(\pm2V\)), so dividing by \(N\): \(V_{in}-\frac1N\sum v_k\to0\).</li>
+        <li>With \(n_1\) ones: \(\frac{V(n_1-(N-n_1))}{N}=V_{in}\), so \(\dfrac{n_1}{N}=\dfrac12\Big(1+\dfrac{V_{in}}{V}\Big)\).</li>
+      </ol>
+      <p>So \(V_{in}=0.5V\) gives 75 % ones, \(0\) gives half, \(-V\) none; counting the 1s over 4096 clocks gives a 12-bit result.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 11 · Oversampling, noise shaping, choosing -->
+<section class="slide" id="osr" data-title="Oversampling, noise shaping; sigma-delta or SAR">
+  <p class="eyebrow">Sigma-delta converters · resolution and its price</p>
+  <h2>Oversampling spreads the quantization noise; noise shaping pushes it away</h2>
+  <div class="cols wide-l">
+    <div>
+      <div class="sim" id="simOSR">
+        <div class="simhead"><span>Where the quantization noise sits</span><span class="legend"><span><i style="background:var(--muted)"></i>plain oversampling</span><span><i style="background:var(--acc)"></i>first-order noise shaping</span><span><i style="background:var(--blu)"></i>signal band</span></span></div>
+        <canvas id="cvOSR" data-h="150" aria-label="Quantization noise amplitude against frequency from 0 to half the modulator clock: flat for plain oversampling, rising from zero as 2 sine pi f over f s for noise shaping; the signal band near zero is shaded"></canvas>
+        <div class="controls">
+          <div class="ctl"><label for="oR">Oversampling ratio OSR</label>
+            <select id="oR" data-key="R"><option value="4">4</option><option value="8" selected>8</option><option value="16">16</option><option value="64">64</option><option value="256">256</option></select></div>
+        </div>
+        <div class="readout" id="roOSR"></div>
+        <div class="try"><p>Step OSR from 4 to 256: each doubling lowers the flat in-band noise by 3 dB, the shaped noise by about 9 dB.</p></div>
+      </div>
+      <div class="tbl wrap compact"><table>
+        <tr><th>Typical</th><th>Successive approximation</th><th>Sigma-delta</th></tr>
+        <tr><td><b>Resolution, rate</b></td><td>12–18 bits, up to MS/s</td><td>16–24 bits, a few S/s to a few hundred kS/s</td></tr>
+        <tr><td><b>Multiplexing</b></td><td>easy: switch, hold, convert</td><td>poor: filter must settle after each switch</td></tr>
+        <tr><td><b>Linearity</b></td><td>set by matched internal parts</td><td>excellent: two levels always lie on a straight line</td></tr>
+      </table></div>
+    </div>
+    <div>
+      <p><b>Oversampling.</b> A quantization error spread evenly over \(\pm Q/2\) has mean square \(Q^2/12\), and that noise power spreads evenly from 0 to \(f_s/2\). If the signal only occupies 0 to \(f_B\), the <dfn>oversampling ratio</dfn> is \(\text{OSR}=f_s/2f_B\). A digital low-pass filter that keeps only 0 to \(f_B\) keeps only \(1/\text{OSR}\) of the noise: 3 dB, or half a bit, per doubling.</p>
+      <p><b>Noise shaping.</b> Inside the loop the integrator makes the quantization error appear <i>differenced</i>: the output is the input plus \(e_n-e_{n-1}\). Differencing is a high-pass filter of magnitude \(2\sin(\pi f/f_s)\), so the noise is pushed up towards \(f_s/2\), where the digital filter removes it. For a first-order loop the in-band noise falls as \(\text{OSR}^{-3}\): 9 dB, 1.5 bits, per doubling. At OSR = 64 a 1-bit quantizer ideally gives about 4 bits by plain oversampling, 9 bits with first-order and 14 bits with second-order shaping.</p>
+      <p><b>Decimation.</b> The filtered stream is then kept only once every OSR clocks, giving \(M\)-bit words at the rate \(2f_B\). The simplest decimation filter is the counter of the previous slide, a moving average; set to a 50 Hz or 10 Hz output rate it also notches out mains hum (next slide).</p>
+      <p><b>The price</b> is delay and poor multiplexing (table). Sigma-delta suits slow, high-resolution channels (load cells, thermocouples) and sound and vibration with one converter per channel.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 13 · Moving average -->
+<section class="slide" id="ma" data-title="The moving average and its notches">
+  <p class="eyebrow">Digital filtering · moving average</p>
+  <h2>The moving average: a low-pass filter with perfect notches</h2>
+  <div class="cols">
+    <div>
+      <p>A <dfn>digital filter</dfn> is a calculation on the stored samples \(x_n\), taken every \(\Delta t\). The <dfn>moving average</dfn> of \(N\) samples outputs the mean of the latest \(N\):</p>
+      <p>$$y_n=\frac1N\sum_{k=0}^{N-1}x_{n-k},\qquad\text{window }T=N\Delta t$$</p>
+      <p>What does it do to a sine of frequency \(f\)? Derive it:</p>
+      <ol class="steps">
+        <li>Write the sine as a complex exponential, \(x_n=e^{j\theta n}\) with \(\theta=2\pi f\Delta t\) (the real part is the actual sine).</li>
+        <li>Then \(y_n=x_n\cdot\frac1N\sum_{k=0}^{N-1}e^{-j\theta k}\): the output is the input times a complex gain \(H\).</li>
+        <li>Geometric series: \(\sum_{k=0}^{N-1}r^k=\frac{1-r^N}{1-r}\) with \(r=e^{-j\theta}\).</li>
+        <li>Since \(|1-e^{-j\phi}|=2|\sin(\phi/2)|\), the magnitude is \(|H|=\dfrac{|\sin(N\theta/2)|}{N|\sin(\theta/2)|}\); put back \(\theta\) and \(N\Delta t=T\).</li>
+        <li>The phase is \(-\theta(N-1)/2\), proportional to \(f\): every frequency is delayed by the same time \((N-1)\Delta t/2\).</li>
+      </ol>
+      <div class="eq"><span class="label">Moving-average magnitude ratio</span>
+        $$|H(f)|=\frac{|\sin(\pi f T)|}{N\,|\sin(\pi f\Delta t)|}$$
+        $$|H|=0\ \text{at}\ f=\frac{m}{T},\quad m=1,2,\dots$$
+      </div>
+    </div>
+    <div>
+      <canvas id="cvMA" data-h="230" aria-label="Magnitude ratio of a 20-point moving average at 1 kilohertz sampling, from 0 to 500 hertz, with zeros at 50, 100, 150 hertz and so on, compared with a first-order low-pass filter of 5 hertz cutoff"></canvas>
+      <div class="legend"><span><i style="background:var(--acc)"></i>moving average, N = 20, Δt = 1 ms (T = 20 ms)</span><span><i style="background:var(--blu)"></i>first-order low-pass, f<sub>c</sub> = 5 Hz (next slide)</span></div>
+      <div class="why"><p>A sine averaged over a whole number of its own periods gives exactly zero: the positive and negative halves cancel. So every frequency whose period fits a whole number of times into the window \(T\) is removed completely: \(f=1/T,\ 2/T,\dots\) A 20 ms window removes 50 Hz mains hum and all its harmonics.</p></div>
+      <div class="analogy"><p>Judging a road's slope while your car bounces on a regular wavy surface: average your height over exactly one wave length (or two, or three) and the bouncing cancels, leaving only the slope. Average over one and a half waves and part of a bump is left over.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 · IIR -->
+<section class="slide" id="iir" data-title="First-order IIR: a digital RC filter">
+  <p class="eyebrow">Digital filtering · exponential smoothing</p>
+  <h2>A first-order recursive filter is a digital RC circuit</h2>
+  <div class="cols">
+    <div>
+      <p>An RC low-pass filter obeys \(\tau\,dy/dt+y=x\) with time constant \(\tau=RC\) and cutoff \(f_c=1/(2\pi\tau)\). Turn it into a calculation on samples:</p>
+      <ol class="steps">
+        <li>Replace the derivative by the backward difference over one sample: \(dy/dt\approx(y_n-y_{n-1})/\Delta t\).</li>
+        <li>\(\tau(y_n-y_{n-1})/\Delta t+y_n=x_n\), so \(y_n(\tau+\Delta t)=\tau\,y_{n-1}+\Delta t\,x_n\).</li>
+        <li>Divide by \(\tau+\Delta t\) and rearrange: \(y_n=y_{n-1}+\alpha(x_n-y_{n-1})\) with \(\alpha=\Delta t/(\tau+\Delta t)\).</li>
+        <li>Matching the RC step response exactly at the sample instants gives instead \(\alpha=1-e^{-\Delta t/\tau}\); the two agree closely when \(\Delta t\ll\tau\).</li>
+      </ol>
+      <div class="eq"><span class="label">First-order IIR (exponential smoothing)</span>
+        $$y_n=y_{n-1}+\alpha\,(x_n-y_{n-1})$$
+        $$\alpha=\frac{\Delta t}{\tau+\Delta t}\approx1-e^{-\Delta t/\tau},\qquad \tau=\frac{1}{2\pi f_c}$$
+      </div>
+      <div class="symbols">
+        <span>\(\alpha\)</span><span>smoothing factor, 0 to 1: each new sample moves the output a fraction \(\alpha\) of the way towards it</span>
+        <span>\(\Delta t\)</span><span>sampling interval, s</span>
+        <span>\(\tau,\ f_c\)</span><span>equivalent RC time constant (s) and cutoff frequency (Hz)</span>
+      </div>
+    </div>
+    <div>
+      <div class="example">
+        <p class="given">Data are sampled at 1 kHz. Design an exponential smoothing filter equivalent to an RC low-pass with \(f_c=5\) Hz. How much does it attenuate 50 Hz hum, and how long does it take to follow a step?</p>
+        <ol class="steps">
+          <li>\(\tau=1/(2\pi\times5)=31.8\) ms; \(\Delta t=1\) ms.</li>
+          <li>\(\alpha=1/(31.8+1)=0.0305\) (exact-step version \(1-e^{-1/31.8}=0.0309\)).</li>
+          <li>At 50 Hz the gain is about \(1/\sqrt{1+(50/5)^2}=0.10\): hum is reduced tenfold, not removed.</li>
+          <li>After \(n\) samples a step has reached \(1-(1-\alpha)^n\); 95 % needs \(n=\ln0.05/\ln(1-\alpha)=97\) samples, about \(3\tau\).</li>
+        </ol>
+        <p><b>What this means:</b> one stored number and one multiply per sample give a smooth trend, but only a gentle, first-order cut.</p>
+      </div>
+      <p>The output depends on its own previous value, so every past input still has a weight, \(\alpha(1-\alpha)^k\) for the sample \(k\) steps back, that decays but never reaches zero. This is an <dfn>infinite impulse response</dfn> (IIR) filter.</p>
+      <div class="analogy"><p>Exponential smoothing is how a sensible person updates an opinion: each new piece of news moves the view a small fraction \(\alpha\) of the way towards it. Old news is never forgotten outright, it just fades.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 15 · Filter playground -->
+<section class="slide" id="play" data-title="Filter playground and the 50 Hz example">
+  <p class="eyebrow">Simulator · digital filters on a noisy record</p>
+  <h2>Clean a noisy, humming record and see each filter's price</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simF">
+      <div class="simhead"><span>1 s record at f<sub>s</sub> = 1 kHz</span><span class="legend"><span><i style="background:var(--muted)"></i>raw samples</span><span><i style="background:var(--acc)"></i>filtered</span><span><i style="background:var(--ink)"></i>true signal</span></span></div>
+      <canvas id="cvF1" data-h="210" aria-label="Raw noisy record with 50 hertz hum, the true signal (a slow sine plus a step), and the filtered output"></canvas>
+      <canvas id="cvF2" data-h="140" aria-label="Magnitude ratio of the chosen filter from 0 to 500 hertz, with the mains frequency and its third harmonic marked"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="fT">Filter</label>
+          <select id="fT" data-key="type"><option value="none">none</option><option value="ma" selected>moving average (real time)</option><option value="mac">centred moving average (offline)</option><option value="iir">first-order IIR (real time)</option><option value="iirfb">IIR forward + backward (offline)</option><option value="med">median</option></select></div>
+        <div class="ctl"><label for="fN">Window N (average, median) <output data-for="N"></output></label>
+          <input type="range" id="fN" data-key="N" min="1" max="60" step="1" value="20" data-fmt="0"></div>
+        <div class="ctl"><label for="fC">IIR cutoff f<sub>c</sub> <output data-for="fc"></output></label>
+          <input type="range" id="fC" data-key="fc" data-scale="log" data-min="0.5" data-max="100" min="0" max="1000" value="435" data-fmt="-1" data-unit=" Hz"></div>
+        <div class="ctl"><label for="fH">Hum amplitude <output data-for="hum"></output></label>
+          <input type="range" id="fH" data-key="hum" min="0" max="1" step="0.05" value="0.4" data-fmt="2"></div>
+        <div class="ctl"><label for="fM">Mains frequency <output data-for="fm"></output></label>
+          <input type="range" id="fM" data-key="fm" min="48" max="52" step="0.1" value="50" data-fmt="1" data-unit=" Hz"></div>
+        <div class="ctl"><label for="fS">Spikes</label>
+          <select id="fS" data-key="sp"><option value="0" selected>none</option><option value="1">occasional spikes</option></select></div>
+      </div>
+      <div class="readout" id="roF"></div>
+    </div>
+    <div class="example">
+      <p class="given">A load-cell signal with content below 5 Hz is sampled at \(f_s=1\) kHz and carries 50 Hz hum (with harmonics) of 20 mV amplitude. Choose a moving average that removes the hum, and find its effect on the signal, its delay, and what happens if the mains drifts to 50.5 Hz or if \(N=15\) is used.</p>
+      <ol class="steps">
+        <li>The window must hold one mains period: \(T=1/50=20\) ms, so \(N=T f_s=20\). Zeros fall at 50, 100, 150 Hz…</li>
+        <li>Signal: \(|H(5\ \text{Hz})|=\sin(\pi\cdot5\cdot0.02)/(20\sin(\pi\cdot5\cdot0.001))=0.984\); at 1 Hz, 0.9993.</li>
+        <li>Delay \((N-1)\Delta t/2=9.5\) ms.</li>
+        <li>At 50.5 Hz, \(|H|=0.0099\): 20 mV of hum becomes 0.20 mV, still a hundredfold reduction.</li>
+        <li>With \(N=15\) (15 ms) there is no zero at 50 Hz: \(|H(50)|=0.30\), and 6 mV of hum remains.</li>
+      </ol>
+      <p><b>What this means:</b> the averaging window must be a whole number of hum periods; then even a short average beats a much stronger RC-type filter at 50 Hz.</p>
+      <div class="try"><p>Compare "moving average", N = 20, with "first-order IIR" at 5 Hz: both smooth, but only the average removes the hum. Set N = 15 and watch the hum return. Turn on spikes: both linear filters smear each spike into a bump; the median removes them and keeps the step sharp. Note how the real-time filters shift the step later; the offline ones do not.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 16 · FIR/IIR/median/zero-phase -->
+<section class="slide" id="types" data-title="FIR or IIR, median, zero-phase">
+  <p class="eyebrow">Digital filtering · choosing</p>
+  <h2>FIR or IIR, median filters, and zero-phase filtering</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 240" aria-label="(a) FIR structure: x of n passes through a chain of three one-sample delays; the current and three delayed samples are each multiplied by one quarter and summed to give y of n, with no feedback. (b) IIR structure: x of n multiplied by alpha enters a summing junction whose output is y of n; y of n is delayed one sample, multiplied by one minus alpha and fed back into the summing junction.">
+<text x="4" y="12" text-anchor="start" font-size="11">(a) FIR: moving average of 4 samples</text>
+<text x="4" y="44" text-anchor="start" class="t-mono t-acc" font-size="10">x[n]</text>
+<path d="M34 40 L62 40" class="w"/>
+<path d="M62 40 L82 40" class="w"/>
+<rect x="82" y="28" width="44" height="24" rx="5" class="box"/>
+<text x="104" y="44" text-anchor="middle" class="t-mono" font-size="10">z⁻¹</text>
+<path d="M126 40 L152 40" class="w"/>
+<path d="M152 40 L172 40" class="w"/>
+<rect x="172" y="28" width="44" height="24" rx="5" class="box"/>
+<text x="194" y="44" text-anchor="middle" class="t-mono" font-size="10">z⁻¹</text>
+<path d="M216 40 L242 40" class="w"/>
+<path d="M242 40 L262 40" class="w"/>
+<rect x="262" y="28" width="44" height="24" rx="5" class="box"/>
+<text x="284" y="44" text-anchor="middle" class="t-mono" font-size="10">z⁻¹</text>
+<path d="M306 40 L332 40" class="w"/>
+<circle cx="62" cy="40" r="2.6" class="fill-ink"/>
+<path d="M62 40 L62 62" class="w"/><path d="M62 62 L58.5 55 L65.5 55 Z" class="fill-ink"/>
+<circle cx="62" cy="72" r="10" class="fill-panel" style="stroke:var(--ink);stroke-width:1.5"/>
+<text x="62" y="76" text-anchor="middle" class="t-mono" font-size="10">¼</text>
+<path d="M62 82 L62 102" class="w"/>
+<circle cx="152" cy="40" r="2.6" class="fill-ink"/>
+<path d="M152 40 L152 62" class="w"/><path d="M152 62 L148.5 55 L155.5 55 Z" class="fill-ink"/>
+<circle cx="152" cy="72" r="10" class="fill-panel" style="stroke:var(--ink);stroke-width:1.5"/>
+<text x="152" y="76" text-anchor="middle" class="t-mono" font-size="10">¼</text>
+<path d="M152 82 L152 102" class="w"/>
+<circle cx="242" cy="40" r="2.6" class="fill-ink"/>
+<path d="M242 40 L242 62" class="w"/><path d="M242 62 L238.5 55 L245.5 55 Z" class="fill-ink"/>
+<circle cx="242" cy="72" r="10" class="fill-panel" style="stroke:var(--ink);stroke-width:1.5"/>
+<text x="242" y="76" text-anchor="middle" class="t-mono" font-size="10">¼</text>
+<path d="M242 82 L242 102" class="w"/>
+<circle cx="332" cy="40" r="2.6" class="fill-ink"/>
+<path d="M332 40 L332 62" class="w"/><path d="M332 62 L328.5 55 L335.5 55 Z" class="fill-ink"/>
+<circle cx="332" cy="72" r="10" class="fill-panel" style="stroke:var(--ink);stroke-width:1.5"/>
+<text x="332" y="76" text-anchor="middle" class="t-mono" font-size="10">¼</text>
+<path d="M332 82 L332 102" class="w"/>
+<path d="M62 102 L332 102" class="w"/>
+<path d="M197 102 L197 118" class="w"/><path d="M197 118 L193.5 111 L200.5 111 Z" class="fill-ink"/>
+<circle cx="197" cy="130" r="12" class="fill-panel" style="stroke:var(--ink);stroke-width:1.5"/>
+<text x="197" y="135" text-anchor="middle" font-size="13">Σ</text>
+<path d="M209 130 L250 130" class="w"/><path d="M250 130 L243 133.5 L243 126.5 Z" class="fill-ink"/>
+<text x="256" y="134" text-anchor="start" class="t-mono t-acc" font-size="10">y[n]</text>
+<text x="392" y="134" text-anchor="end" class="t-muted" font-size="9">no feedback</text>
+<text x="4" y="152" text-anchor="start" font-size="11">(b) IIR: first-order smoothing</text>
+<text x="4" y="176" text-anchor="start" class="t-mono t-acc" font-size="10">x[n]</text>
+<path d="M34 172 L80 172" class="w"/><path d="M80 172 L73 175.5 L73 168.5 Z" class="fill-ink"/>
+<circle cx="92" cy="172" r="12" class="fill-panel" style="stroke:var(--ink);stroke-width:1.5"/>
+<text x="92" y="176" text-anchor="middle" class="t-mono" font-size="11">α</text>
+<path d="M104 172 L150 172" class="w"/><path d="M150 172 L143 175.5 L143 168.5 Z" class="fill-ink"/>
+<circle cx="162" cy="172" r="12" class="fill-panel" style="stroke:var(--ink);stroke-width:1.5"/>
+<text x="162" y="177" text-anchor="middle" font-size="13">Σ</text>
+<path d="M174 172 L260 172" class="w"/>
+<circle cx="260" cy="172" r="2.6" class="fill-ink"/>
+<path d="M260 172 L300 172" class="w"/><path d="M300 172 L293 175.5 L293 168.5 Z" class="fill-ink"/>
+<text x="306" y="176" text-anchor="start" class="t-mono t-acc" font-size="10">y[n]</text>
+<path d="M260 172 L260 210" class="w"/>
+<rect x="238" y="210" width="44" height="24" rx="5" class="box"/>
+<text x="260" y="226" text-anchor="middle" class="t-mono" font-size="10">z⁻¹</text>
+<path d="M238 222 L222 222" class="w"/>
+<circle cx="206" cy="222" r="16" class="fill-panel" style="stroke:var(--ink);stroke-width:1.5"/>
+<text x="206" y="226" text-anchor="middle" class="t-mono" font-size="9.5">1−α</text>
+<path d="M190 222 L162 222 L162 191" class="w"/>
+<path d="M162 184 L165.5 191 L158.5 191 Z" class="fill-ink"/>
+<text x="392" y="202" text-anchor="end" class="t-muted" font-size="9">feedback of the</text>
+<text x="392" y="214" text-anchor="end" class="t-muted" font-size="9">previous output</text>
+        </svg>
+        <figcaption>\(z^{-1}\) means "delay by one sample". (a) A finite impulse response filter uses only inputs; (b) an infinite impulse response filter feeds back its own output.</figcaption>
+      </figure>
+      <p>A <dfn>finite impulse response</dfn> (FIR) filter computes each output from a finite number of recent inputs, each times a weight. A single spike in affects only \(N\) outputs. FIR filters are always stable and can have exactly linear phase (a pure delay, as for the moving average), but a sharp response needs many weights. An IIR filter reuses past outputs, so a few coefficients give a strong effect, but its phase shift varies with frequency, and a badly designed one can become unstable.</p>
+      <div class="pitfall"><p>Use zero-phase filtering for analysis only. In a control loop or an alarm, the "future" samples do not exist yet, and the delay of a real-time filter is part of the loop's dynamics.</p></div>
+    </div>
+    <div>
+      <p>A <dfn>median filter</dfn> replaces each sample by the middle value of the sorted window. It is not linear, so it has no frequency response, but it is the right tool for isolated spikes. For the window 2.0, 2.1, 9.7, 2.2, 2.1 the median is 2.1, while the mean is 3.62: the average spreads the spike over five outputs, the median ignores it. It also keeps steps sharp, because at an edge most of the window is on one side or the other.</p>
+      <p><b>Real time or offline.</b> A filter that runs while data arrive can only use past samples, so it delays the signal. When the whole record is already stored, it can use "future" samples too. A centred moving average is symmetric and has no delay. Any filter can be made <dfn>zero-phase</dfn> by running it forward through the record and then backward: the phase shifts cancel and the magnitude is applied twice, \(|H|^2\).</p>
+      <div class="quiz" data-correct="1">
+        <p class="q">A flow record shows occasional single-sample spikes from electrical switching. Which filter keeps the true steps in flow sharp while removing the spikes?</p>
+        <div class="opts">
+          <button class="opt" data-why="A moving average spreads each spike over N samples and also ramps every step.">Moving average, N = 5</button>
+          <button class="opt" data-why="Right. A 3- or 5-point median discards an isolated extreme value and leaves a step where it is.">Median, N = 5</button>
+          <button class="opt" data-why="Exponential smoothing also spreads spikes into decaying tails and slows steps.">First-order IIR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 17 · Anti-alias -->
+<section class="slide" id="noalias" data-title="Why a digital filter cannot replace the anti-alias filter">
+  <p class="eyebrow">Digital filtering · the limit</p>
+  <h2>A digital filter cannot replace the analog anti-alias filter</h2>
+  <div class="cols wide-l">
+    <div>
+      <canvas id="cvAl" data-h="200" aria-label="A 980 hertz sine and a 20 hertz sine over 50 milliseconds, both sampled at 1 kilohertz: the samples of both are identical and lie on the 20 hertz curve"></canvas>
+      <div class="legend"><span><i style="background:var(--muted)"></i>980 Hz vibration (before sampling)</span><span><i style="background:var(--blu)"></i>20 Hz sine</span><span><i style="background:var(--acc)"></i>samples at 1 kHz</span></span></div>
+      <div class="note" data-label="The sigma-delta case"><p>A sigma-delta converter seems to break this rule, but it does not. Its modulator samples at MHz rates, so a simple analog RC filter is enough to remove content near that rate. The sharp digital filter acts on the fast bitstream <i>before</i> decimation, while the unwanted components are still at their true frequencies. Only then is the rate reduced. An analog filter is still there; it can just be gentle.</p></div>
+    </div>
+    <div>
+      <p>A digital filter works only on the samples. Once a component above \(f_N\) has been sampled, its samples are <b>identical</b> to those of its alias. Sampled at 1 kHz, a 980 Hz pump vibration and a 20 Hz sine give exactly the same numbers, \(\cos(2\pi\cdot980\,n\Delta t)=\cos(2\pi\cdot20\,n\Delta t)\) because \(980=1000-20\). No calculation can tell which one was there; the 20 Hz alias passes every digital low-pass filter that passes real 20 Hz signals.</p>
+      <p>The information that distinguishes them, the waveform between the samples, is only available <b>before</b> sampling. So the low-pass filter that removes content above \(f_N\) must act on the analog signal, ahead of the sample-and-hold.</p>
+      <div class="quiz" data-correct="2">
+        <p class="q">A record sampled at 1 kHz without an analog filter shows an unexpected 10 Hz oscillation. A 20-point moving average is applied. What happens to the 10 Hz component?</p>
+        <div class="opts">
+          <button class="opt" data-why="The zeros of a 20 ms average are at 50, 100, 150 Hz, not at 10 Hz.">It is removed by the notch</button>
+          <button class="opt" data-why="Only the samples exist now; the filter cannot know where the component came from.">It is removed if it is an alias</button>
+          <button class="opt" data-why="Right. \(|H(10\ \text{Hz})|=0.94\), whether it is a real 10 Hz signal or the alias of a 990 Hz vibration. Only an analog filter before sampling could have removed the alias.">It passes almost unchanged (about 94 %)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 18 · Check yourself -->
+<section class="slide" id="check" data-title="Check yourself">
+  <p class="eyebrow">Self-test</p>
+  <h2>Check yourself</h2>
+  <div class="cols c3">
+    <div class="quiz" data-correct="0">
+      <p class="q">A loop has a 24 V supply, a transmitter needing at least 11 V, a 250 Ω sense resistor and 100 Ω of cable. How much more series resistance (an indicator, an isolator) can it take at 20 mA?</p>
+      <div class="opts">
+        <button class="opt" data-why="\(R_{L,max}=(24-11)/0.020=650\) Ω; already used \(250+100=350\) Ω, so 300 Ω remain.">300 Ω</button>
+        <button class="opt" data-why="650 Ω is the whole budget; the resistor and cable already use 350 Ω of it.">650 Ω</button>
+        <button class="opt" data-why="That uses 24 V instead of the 13 V the transmitter can spare: \((24-11)/0.020=650\) Ω total.">850 Ω</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="1">
+      <p class="q">Data are sampled at 600 Hz. How many points should a moving average have to remove 50 Hz hum completely?</p>
+      <div class="opts">
+        <button class="opt" data-why="6 points span 10 ms, half a 50 Hz period: the first zero is at 100 Hz.">6</button>
+        <button class="opt" data-why="Right: one 20 ms period holds \(0.020\times600=12\) samples, so N = 12 puts zeros at 50, 100, 150 Hz…">12</button>
+        <button class="opt" data-why="N equals the window time times the sample rate, not the hum frequency.">50</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="2">
+      <p class="q">An exponential smoothing filter runs every 10 ms and should behave like an RC filter with τ = 90 ms. What is α?</p>
+      <div class="opts">
+        <button class="opt" data-why="That is \(1-\alpha\), the weight given to the previous output.">0.9</button>
+        <button class="opt" data-why="\(\Delta t/\tau=0.111\) is the small-step limit; the backward-difference form is \(\Delta t/(\tau+\Delta t)\).">0.111</button>
+        <button class="opt" data-why="Right: \(\alpha=10/(90+10)=0.10\) (the exact-step form gives \(1-e^{-1/9}=0.105\)).">0.10</button>
+      </div>
+    </div>
+  </div>
+  <div class="reveal-box" data-label="One more: reveal the answer">
+    <p>A DAQ reads 0.40 V across the 250 Ω resistor of a 0–6 bar loop and the operator's display shows "−0.9 bar". What is really going on, and what should the software have done?</p>
+    <div class="answer"><p>\(I=0.40/250=1.6\) mA, below the 3.6 mA fault limit. This is not a pressure at all: the loop is broken, unpowered, or the transmitter has failed low. Blind scaling gives \(6\times(1.6-4)/16=-0.9\) bar, a believable-looking number. The software should check the current first and show a fault instead of a value.</p></div>
+  </div>
+</section>
+
+<!-- 19 · Summary -->
+<section class="slide" id="summary" data-title="Summary">
+  <p class="eyebrow">Summary</p>
+  <h2>Transmission and digital filtering on one page</h2>
+  <div class="tbl compact"><table>
+    <tr><th>Idea</th><th>Relation</th><th>Remember</th></tr>
+    <tr><td>4–20 mA scale</td><td>\(x=x_{lo}+(x_{hi}-x_{lo})(I-4)/16\)</td><td>≤ 3.6 or ≥ 21 mA is a fault</td></tr>
+    <tr><td>Loop budget</td><td>\(R_w+R_s+R_{other}\le(V_s-V_{min})/I_{max}\)</td><td>check at alarm current and low supply</td></tr>
+    <tr><td>Isolation</td><td>no conducting path across the barrier</td><td>for large CMV, ground loops, safety</td></tr>
+    <tr><td>Sigma-delta</td><td>\(n_1/N=\tfrac12(1+V_{in}/V)\)</td><td>OSR + noise shaping → 16–24 bits</td></tr>
+    <tr><td>Moving average</td><td>\(|H|=|\sin\pi fT|/(N|\sin\pi f\Delta t|)\)</td><td>zeros at \(m/T\); 20 ms kills 50 Hz</td></tr>
+    <tr><td>First-order IIR</td><td>\(y_n=y_{n-1}+\alpha(x_n-y_{n-1})\), \(\alpha=\Delta t/(\tau+\Delta t)\)</td><td>digital RC, \(f_c=1/2\pi\tau\)</td></tr>
+    <tr><td>Median, zero-phase</td><td>middle of sorted window; forward + backward</td><td>spikes; offline analysis only</td></tr>
+    <tr><td>Anti-alias</td><td>samples of \(f\) and its alias are identical</td><td>only an analog filter can prevent it</td></tr>
+  </table></div>
+  <div class="cols">
+    <div>
+      <h3>You should now be able to…</h3>
+      <ul>
+        <li>explain why industry sends 4–20 mA rather than a voltage, and what the live zero buys;</li>
+        <li>check a two-wire loop's voltage budget and find its maximum cable length;</li>
+        <li>convert a current, voltage or converter code to engineering units and detect a faulty loop;</li>
+        <li>say when isolation is needed, and how a sigma-delta converter turns a 1-bit stream into a high-resolution word;</li>
+        <li>design a moving average and an exponential smoothing filter, and choose between FIR, IIR and median filters.</li>
+      </ul>
+    </div>
+    <div class="watch">
+      <h3>Watch next</h3>
+      <a href="https://www.youtube.com/results?search_query=4-20+mA+current+loop+explained+live+zero" target="_blank" rel="noopener">The 4–20 mA current loop and live zero <small>YouTube search</small></a>
+      <a href="https://www.youtube.com/results?search_query=4-20+mA+loop+power+budget+calculation+two+wire+transmitter" target="_blank" rel="noopener">Loop power budget for two-wire transmitters <small>YouTube search</small></a>
+      <a href="https://www.youtube.com/results?search_query=sigma+delta+ADC+explained+oversampling+noise+shaping" target="_blank" rel="noopener">Sigma-delta ADCs, oversampling and noise shaping <small>YouTube search</small></a>
+      <a href="https://www.youtube.com/results?search_query=moving+average+filter+frequency+response+explained" target="_blank" rel="noopener">Moving-average filter frequency response <small>YouTube search</small></a>
+      <a href="https://www.youtube.com/results?search_query=isolation+amplifier+ground+loop+explained" target="_blank" rel="noopener">Isolation amplifiers and ground loops <small>YouTube search</small></a>
+    </div>
+  </div>
+  <p class="further">Further reading: Figliola &amp; Beasley, §6.6, §6.9 and §7.7; Floyd, Digital Fundamentals, Ch. 12–13</p>
+  <div class="row"><a class="btn" href="d05e.html">&larr; Part E · DAQ systems and communication</a><a class="btn primary" href="index.html">All sessions &rarr;</a></div>
+</section>
+
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const TAU = 2 * Math.PI;
+
+  /* ---------- shared signal tools ---------- */
+  function rng(seed) { let s = seed; return () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; }; }
+  function gauss(r) { let u = 0; for (let i = 0; i < 6; i++) u += r(); return (u - 3) / Math.sqrt(0.5); }
+  function maMag(f, N, dt) { const x = Math.PI * f * dt; if (Math.abs(Math.sin(x)) < 1e-12) return 1; return Math.abs(Math.sin(N * x) / (N * Math.sin(x))); }
+  function iirMag(f, a, dt) { const w = TAU * f * dt, re = 1 - (1 - a) * Math.cos(w), im = (1 - a) * Math.sin(w); return a / Math.hypot(re, im); }
+
+  /* ---------- cover ---------- */
+  let cT = 0;
+  const cr = rng(7), cN = 700, craw = [], ctrue = [];
+  for (let i = 0; i < cN; i++) { const t = i / cN; const s = 0.55 * Math.sin(TAU * 1.3 * t) + 0.25 * Math.sin(TAU * 3.1 * t + 1); ctrue.push(s); craw.push(s + 0.28 * Math.sin(TAU * 35 * t) + 0.08 * gauss(cr)); }
+  const cfil = craw.map((_, i) => { let a = 0, n = 0; for (let k = i - 10; k <= i + 9; k++) if (k >= 0 && k < cN) { a += craw[k]; n++; } return a / n; });
+  function drawCover() {
+    const cv = $('coverTrace'), { ctx, W, H } = Deck.sizeCanvas(cv);
+    ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+    const X = i => 6 + (W - 12) * i / (cN - 1), Y = v => H / 2 - v * H * 0.42;
+    ctx.strokeStyle = Deck.color('muted'); ctx.lineWidth = 1; ctx.beginPath();
+    craw.forEach((v, i) => i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v))); ctx.stroke();
+    const upto = Math.min(cN - 1, Math.floor(cT * cN));
+    ctx.strokeStyle = Deck.color('acc'); ctx.lineWidth = 2.6; ctx.beginPath();
+    for (let i = 0; i <= upto; i++) i ? ctx.lineTo(X(i), Y(cfil[i])) : ctx.moveTo(X(i), Y(cfil[i]));
+    ctx.stroke();
+    ctx.fillStyle = Deck.color('acc'); ctx.beginPath(); ctx.arc(X(upto), Y(cfil[upto]), 4, 0, 7); ctx.fill();
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (cT < 1.01) { cT += RM ? 2 : dt * 0.25; drawCover(); } });
+
+  /* ---------- loop budget simulator ---------- */
+  const RHO = 1.72e-8;
+  let loopState = null, dotPhase = 0;
+  function loopCalc(v) {
+    const L = +(+v.L).toPrecision(3), A = +v.A * 1e-6, Rs = +v.Rs, Rw = RHO * 2 * L / A;
+    const Idem = (4 + 16 * v.P / 100) / 1000, Ilim = Math.max(0, (v.Vs - v.Vm) / (Rw + Rs));
+    const I = Math.min(Idem, Ilim), starved = Idem > Ilim + 1e-9;
+    const Vw = I * Rw, Vr = I * Rs, Vtx = v.Vs - Vw - Vr;
+    const Rmax = (v.Vs - v.Vm) / 0.020, Lmax = Math.max(0, (Rmax - Rs) * A / RHO / 2);
+    return { L, A, Rs, Rw, Idem, I, starved, Vw, Vr, Vtx, Rmax, Lmax, Vs: v.Vs, Vm: v.Vm, P: v.P };
+  }
+  function zig(ctx, x1, x2, y, amp) {
+    const lead = (x2 - x1) * 0.18, a = x1 + lead, b = x2 - lead; ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(a, y);
+    for (let i = 0; i < 6; i++) ctx.lineTo(a + (b - a) * (i + .5) / 6, y + (i % 2 ? -amp : amp));
+    ctx.lineTo(b, y); ctx.lineTo(x2, y); ctx.stroke();
+  }
+  function drawLoop() {
+    const s = loopState; if (!s) return;
+    const cv = $('cvLoop'), { ctx, W, H } = Deck.sizeCanvas(cv);
+    ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+    const small = W < 520, fs = small ? 10 : 12;
+    const xS = 34, xR = W * 0.24, xC = W * 0.52, xT = W - (small ? 58 : 80), yT = 46, yB = H - 50;
+    const ink = Deck.color('ink'), mut = Deck.color('muted');
+    // zones
+    ctx.setLineDash([4, 4]); ctx.strokeStyle = Deck.color('rule'); ctx.lineWidth = 1;
+    ctx.strokeRect(4, 8, xR + 34, H - 14); ctx.strokeRect(xT - (small ? 40 : 52), 8, W - xT + (small ? 36 : 48), H - 14); ctx.setLineDash([]);
+    ctx.font = Deck.font(fs - 1); ctx.fillStyle = mut; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText('control room', 10, 12); ctx.textAlign = 'right'; ctx.fillText('field', W - 10, 12);
+    ctx.textAlign = 'center'; ctx.fillText('cable ' + s.L + ' m, ' + (s.A * 1e6) + ' mm²', xC, (yT + yB) / 2 - 8);
+    // wires
+    ctx.strokeStyle = ink; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(xS, (yT + yB) / 2 - 14); ctx.lineTo(xS, yT); ctx.lineTo(xC - 26, yT); ctx.stroke();
+    zig(ctx, xC - 26, xC + 26, yT, 5);
+    ctx.beginPath(); ctx.moveTo(xC + 26, yT); ctx.lineTo(xT, yT); ctx.lineTo(xT, yT + 24); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(xT, yB - 24); ctx.lineTo(xT, yB); ctx.lineTo(xC + 26, yB); ctx.stroke();
+    zig(ctx, xC - 26, xC + 26, yB, 5);
+    ctx.beginPath(); ctx.moveTo(xC - 26, yB); ctx.lineTo(xR + 24, yB); ctx.stroke();
+    zig(ctx, xR - 24, xR + 24, yB, 5);
+    ctx.beginPath(); ctx.moveTo(xR - 24, yB); ctx.lineTo(xS, yB); ctx.lineTo(xS, (yT + yB) / 2 + 14); ctx.stroke();
+    // battery
+    const yc = (yT + yB) / 2; ctx.lineWidth = 2.2;
+    [[-14, 14], [-6, 7], [2, 14], [10, 7]].forEach(([dy, hw], k) => { ctx.beginPath(); ctx.moveTo(xS - hw, yc + dy); ctx.lineTo(xS + hw, yc + dy); ctx.stroke(); });
+    ctx.lineWidth = 1.6;
+    ctx.fillStyle = Deck.color('acc'); ctx.font = Deck.font(fs, true); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(s.Vs.toFixed(1) + ' V', xS + 18, yc - 4);
+    // transmitter box
+    const ok = !s.starved;
+    ctx.fillStyle = Deck.alpha(ok ? 'grn' : 'red', .18); ctx.strokeStyle = Deck.color(ok ? 'grn' : 'red');
+    ctx.fillRect(xT - (small ? 30 : 40), yT + 24, small ? 60 : 80, yB - yT - 48); ctx.strokeRect(xT - (small ? 30 : 40), yT + 24, small ? 60 : 80, yB - yT - 48);
+    ctx.fillStyle = ink; ctx.font = Deck.font(fs - 1); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('transmitter', xT, yc - 16);
+    ctx.font = Deck.font(fs, true); ctx.fillStyle = Deck.color(ok ? 'grn' : 'red'); ctx.fillText(s.Vtx.toFixed(1) + ' V', xT, yc + 2);
+    ctx.font = Deck.font(fs - 2, true); ctx.fillStyle = mut; ctx.fillText('needs ' + s.Vm.toFixed(1), xT, yc + 18);
+    // labels
+    ctx.font = Deck.font(fs - 1, true); ctx.textBaseline = 'bottom'; ctx.fillStyle = mut;
+    ctx.fillText((s.Rw / 2).toFixed(1) + ' Ω: ' + (s.Vw / 2).toFixed(2) + ' V', xC, yT - 8);
+    ctx.textBaseline = 'top'; ctx.fillText((s.Rw / 2).toFixed(1) + ' Ω: ' + (s.Vw / 2).toFixed(2) + ' V', xC, yB + 9);
+    ctx.fillStyle = Deck.color('blu'); ctx.fillText(s.Rs + ' Ω: ' + s.Vr.toFixed(2) + ' V', xR, yB + 9);
+    ctx.textBaseline = 'bottom'; ctx.fillText('DAQ reads', xR, yB - 10);
+    // current label
+    ctx.fillStyle = Deck.color('acc'); ctx.font = Deck.font(fs, true); ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+    ctx.fillText('I = ' + (s.I * 1000).toFixed(2) + ' mA', xS + 10, yT - 6);
+    // moving dots along loop path
+    const segs = [[xS, yT, xT, yT], [xT, yT, xT, yB], [xT, yB, xS, yB], [xS, yB, xS, yT]];
+    const lens = segs.map(g => Math.hypot(g[2] - g[0], g[3] - g[1])), per = lens.reduce((a, b) => a + b, 0);
+    ctx.fillStyle = Deck.color('acc');
+    for (let d = dotPhase % 34; d < per; d += 34) {
+      let r = d, k = 0; while (k < 3 && r > lens[k]) { r -= lens[k]; k++; }
+      const g = segs[k], u = r / lens[k], x = g[0] + (g[2] - g[0]) * u, y = g[1] + (g[3] - g[1]) * u;
+      if (k === 1 && y > yT + 22 && y < yB - 22) continue;
+      if (k === 3 && Math.abs(y - yc) < 18) continue;
+      ctx.beginPath(); ctx.arc(x, y, 2.6, 0, 7); ctx.fill();
+    }
+    // budget bar
+    const cb = $('cvBar'), b = Deck.sizeCanvas(cb), c2 = b.ctx, BW = b.W, BH = b.H;
+    c2.fillStyle = Deck.color('paper'); c2.fillRect(0, 0, BW, BH);
+    const x0 = 8, x1 = BW - 8, sc = (x1 - x0) / s.Vs, y0 = 22, hh = 24;
+    const parts = [[s.Vr, 'blu', 'sense'], [s.Vw, 'muted', 'cable'], [s.Vtx, ok ? 'grn' : 'red', 'transmitter']];
+    let xx = x0; c2.font = Deck.font(10.5, true); c2.textBaseline = 'middle'; c2.textAlign = 'center';
+    parts.forEach(([v, col, lab]) => {
+      const w = v * sc; c2.fillStyle = Deck.alpha(col, .55); c2.fillRect(xx, y0, w, hh);
+      if (w > 64) { c2.fillStyle = Deck.color('ink'); c2.fillText(lab + ' ' + v.toFixed(1) + ' V', xx + w / 2, y0 + hh / 2); }
+      xx += w;
+    });
+    const xm = x1 - s.Vm * sc; c2.strokeStyle = Deck.color('red'); c2.lineWidth = 2; c2.setLineDash([4, 3]);
+    c2.beginPath(); c2.moveTo(xm, y0 - 6); c2.lineTo(xm, y0 + hh + 6); c2.stroke(); c2.setLineDash([]);
+    c2.fillStyle = Deck.color('red'); c2.textAlign = 'right'; c2.textBaseline = 'top'; c2.font = Deck.font(10, true);
+    c2.fillText('transmitter needs ≥ ' + s.Vm.toFixed(1) + ' V from here →', xm + (xm > BW * 0.6 ? -4 : 160), y0 + hh + 7);
+    c2.fillStyle = Deck.color('muted'); c2.textAlign = 'left'; c2.textBaseline = 'bottom'; c2.fillText('0 V', x0, y0 - 3);
+    c2.textAlign = 'right'; c2.fillText(s.Vs.toFixed(1) + ' V supply', x1, y0 - 3);
+  }
+  Deck.onShow('loopsim', () => {
+    const get = Deck.controls('simLoop', upd);
+    function upd() {
+      loopState = loopCalc(get()); const s = loopState;
+      const pRead = (s.I * 1000 - 4) / 16 * 100;
+      $('roLoop').innerHTML = 'R<sub>w</sub> (both cores) <b>' + s.Rw.toFixed(1) + ' Ω</b> &nbsp; wanted <b>' + (s.Idem * 1000).toFixed(2) + ' mA</b> &nbsp; actual <b>' + (s.I * 1000).toFixed(2) + ' mA</b> &nbsp; DAQ reads <b>' + pRead.toFixed(1) + ' %</b> &nbsp; R<sub>L,max</sub> at 20 mA <b>' + s.Rmax.toFixed(0) + ' Ω</b> &nbsp; longest cable <b>' + (s.Lmax >= 1000 ? (s.Lmax / 1000).toFixed(2) + ' km' : s.Lmax.toFixed(0) + ' m') + '</b>' + (s.starved ? ' &nbsp; <b>LOOP STARVED: reading clipped</b>' : '');
+      drawLoop();
+    }
+    return upd;
+  });
+  Deck.loop('loopsim', dt => { if (!loopState || RM) return; dotPhase += dt * 40 * loopState.I / 0.012; drawLoop(); });
+
+  /* ---------- sigma-delta modulator ---------- */
+  const SDN = 128; let sdShow = SDN, sdData = null;
+  function sdRun(v) {
+    const x = [], bits = [], u = [];
+    let ui = 0, fb = 0;
+    for (let n = 0; n < SDN; n++) {
+      const xi = v.mode === 'sin' ? v.x * Math.sin(TAU * n / SDN) : v.x;
+      ui += xi - fb; const b = ui >= 0 ? 1 : 0; fb = b ? 1 : -1;
+      x.push(xi); bits.push(b); u.push(ui);
+    }
+    return { x, bits, u, M: +v.M, mode: v.mode, xv: v.x };
+  }
+  function drawSD() {
+    const d = sdData; if (!d) return;
+    const n = Math.max(1, Math.min(SDN, Math.floor(sdShow)));
+    const xin = d.x.map((v, i) => [i, v]);
+    const stair = [];
+    for (let k = 0; (k + 1) * d.M <= n; k++) {
+      let s = 0; for (let i = k * d.M; i < (k + 1) * d.M; i++) s += d.bits[i] ? 1 : -1;
+      const avg = s / d.M; stair.push([k * d.M, avg]); stair.push([(k + 1) * d.M, avg]);
+    }
+    Deck.plot($('cvSD1'), { x: [0, SDN], y: [-1.2, 1.2], ylabel: 'value (× V)', yticks: [-1, 0, 1], xticks: [], pad: { b: 10 },
+      series: [{ pts: xin, color: 'muted', width: 2 }, { pts: stair, color: 'acc', width: 2.4 }] });
+    const bs = [], us = [];
+    for (let i = 0; i < n; i++) { const v = d.bits[i] ? 1 : -1; bs.push([i, v]); bs.push([i + 1, v]); us.push([i + 1, d.u[i]]); }
+    Deck.plot($('cvSD2'), { x: [0, SDN], y: [-2.4, 2.4], xlabel: 'clock tick', ylabel: 'level', yticks: [-2, 0, 2],
+      series: [{ pts: bs, color: 'blu', width: 1.2 }, { pts: us, color: 'acc', width: 1.2, dash: [3, 3] }] });
+    const m = Math.min(n, d.M); let ones = 0; for (let i = 0; i < m; i++) ones += d.bits[i];
+    let tot = 0; for (let i = 0; i < n; i++) tot += d.bits[i];
+    const str = d.bits.slice(0, Math.min(n, 24)).join('');
+    $('roSD').innerHTML = 'first bits <b>' + str + (n > 24 ? '…' : '') + '</b> &nbsp; ones in first word <b>' + ones + ' of ' + m + '</b> &nbsp; decoded 2n<sub>1</sub>/N − 1 = <b>' + (2 * ones / m - 1).toFixed(3) + '</b>' + (d.mode === 'dc' ? ' &nbsp; ones over ' + n + ' ticks <b>' + (100 * tot / n).toFixed(1) + ' %</b> (theory ' + (50 * (1 + d.xv)).toFixed(1) + ' %)' : '') + ' &nbsp; output words <b>' + Math.floor(n / d.M) + '</b>';
+  }
+  Deck.onShow('sd', () => {
+    const get = Deck.controls('simSD', () => { sdData = sdRun(get()); drawSD(); });
+    sdData = sdRun(get()); sdShow = RM ? SDN : 0;
+    $('sdReplay').addEventListener('click', () => { sdShow = RM ? SDN : 0; drawSD(); });
+    return () => drawSD();
+  });
+  Deck.loop('sd', dt => { if (sdShow < SDN) { sdShow = Math.min(SDN, sdShow + dt * 70); drawSD(); } });
+
+  /* ---------- oversampling / noise shaping ---------- */
+  Deck.onShow('osr', () => {
+    const get = Deck.controls('simOSR', draw);
+    function draw() {
+      const R = +get().R, fB = 1 / (2 * R);
+      Deck.plot($('cvOSR'), { x: [0, 0.5], y: [0, 2.15], xlabel: 'frequency / modulator clock rate  (f / fs)', ylabel: 'noise (relative)',
+        bands: [{ x0: 0, x1: fB, color: 'blu', alpha: .2 }],
+        series: [{ f: () => 1, color: 'muted', width: 2 }, { f: f => 2 * Math.sin(Math.PI * f), color: 'acc', width: 2.4 }],
+        vlines: [{ x: fB, color: 'blu', label: 'f_B' }] });
+      const plain = 1 / R, shaped = (2 * fB - Math.sin(TAU * fB) / Math.PI) / 0.5;
+      const dbp = -10 * Math.log10(plain), dbs = -10 * Math.log10(shaped);
+      $('roOSR').innerHTML = 'band 0 to <b>f<sub>s</sub>/' + (2 * R) + '</b> &nbsp; in-band noise: plain <b>−' + dbp.toFixed(1) + ' dB (+' + (dbp / 6.02).toFixed(1) + ' bits)</b> &nbsp; shaped <b>' + (dbs >= 0 ? '−' : '+') + Math.abs(dbs).toFixed(1) + ' dB (' + (dbs >= 0 ? '+' : '−') + Math.abs(dbs / 6.02).toFixed(1) + ' bits)</b>';
+    }
+    return draw;
+  });
+
+  /* ---------- moving average response ---------- */
+  Deck.onShow('ma', () => () => {
+    const dt = 1e-3, a = dt / (1 / (TAU * 5) + dt);
+    Deck.plot($('cvMA'), { x: [0, 500], y: [0, 1.05], xlabel: 'frequency (Hz)', ylabel: 'magnitude ratio |H|',
+      series: [{ f: f => maMag(f, 20, dt), color: 'acc', width: 2.2, n: 1500 }, { f: f => iirMag(f, a, dt), color: 'blu', width: 2, n: 600 }],
+      points: [50, 100, 150, 200, 250, 300, 350, 400, 450].map(f => ({ x: f, y: 0, color: 'acc', r: 3.5 })).concat([{ x: 50, y: 0, r: 0.1, color: 'acc', label: '50 Hz' }]) });
+  });
+
+  /* ---------- filter playground ---------- */
+  Deck.onShow('play', () => {
+    const fsr = 1000, dt = 1 / fsr, Nn = 1000;
+    const r = rng(2024), noise = [], spk = new Float64Array(Nn);
+    for (let i = 0; i < Nn; i++) noise.push(0.05 * gauss(r));
+    for (let k = 0; k < 18; k++) { const i = 20 + Math.floor(r() * 960); spk[i] = (r() < 0.5 ? -1 : 1) * (1.2 + 1.2 * r()); }
+    const tru = []; for (let i = 0; i < Nn; i++) { const t = i * dt; tru.push(0.5 * Math.sin(TAU * 1.5 * t) + (t >= 0.5 ? 0.8 : 0)); }
+    const get = Deck.controls('simF', draw);
+    function filt(x, v) {
+      const N = Math.max(1, Math.round(v.N)), n = x.length, y = new Array(n);
+      if (v.type === 'none') return x.slice();
+      if (v.type === 'ma') { let s = 0; for (let i = 0; i < n; i++) { s += x[i]; if (i >= N) s -= x[i - N]; y[i] = s / Math.min(i + 1, N); } return y; }
+      if (v.type === 'mac') { const h1 = Math.floor((N - 1) / 2); for (let i = 0; i < n; i++) { let s = 0, c = 0; for (let k = i - h1; k < i - h1 + N; k++) if (k >= 0 && k < n) { s += x[k]; c++; } y[i] = s / c; } return y; }
+      const tau = 1 / (TAU * v.fc), a = dt / (tau + dt);
+      if (v.type === 'iir' || v.type === 'iirfb') {
+        y[0] = x[0]; for (let i = 1; i < n; i++) y[i] = y[i - 1] + a * (x[i] - y[i - 1]);
+        if (v.type === 'iir') return y;
+        const z = new Array(n); z[n - 1] = y[n - 1]; for (let i = n - 2; i >= 0; i--) z[i] = z[i + 1] + a * (y[i] - z[i + 1]); return z;
+      }
+      // median (centred)
+      const h1 = Math.floor((N - 1) / 2);
+      for (let i = 0; i < n; i++) { const w = []; for (let k = i - h1; k < i - h1 + N; k++) if (k >= 0 && k < n) w.push(x[k]); w.sort((p, q) => p - q); const m = w.length; y[i] = m % 2 ? w[(m - 1) / 2] : 0.5 * (w[m / 2 - 1] + w[m / 2]); }
+      return y;
+    }
+    function draw() {
+      const v = get(), fm = v.fm, A = v.hum;
+      const x = []; for (let i = 0; i < Nn; i++) { const t = i * dt; x.push(tru[i] + A * Math.sin(TAU * fm * t + 0.3) + 0.3 * A * Math.sin(TAU * 3 * fm * t + 1.1) + noise[i] + (+v.sp ? spk[i] : 0)); }
+      const y = filt(x, v);
+      const raw = x.map((q, i) => [i * dt, q]), fy = y.map((q, i) => [i * dt, q]), tp = tru.map((q, i) => [i * dt, q]);
+      Deck.plot($('cvF1'), { x: [0, 1], y: [-1.6, 2.4], xlabel: 'time (s)', ylabel: 'signal',
+        series: [{ pts: raw, color: 'muted', width: 1 }, { pts: tp, color: 'ink', width: 1.4, dash: [5, 4] }, { pts: fy, color: 'acc', width: 2.2 }] });
+      const N = Math.max(1, Math.round(v.N)), a = dt / (1 / (TAU * v.fc) + dt);
+      let Hf = null, delay = '';
+      if (v.type === 'ma' || v.type === 'mac') { Hf = f => maMag(f, N, dt); delay = v.type === 'ma' ? ((N - 1) * dt * 500).toFixed(1) + ' ms' : '0 (offline)'; }
+      else if (v.type === 'iir') { Hf = f => iirMag(f, a, dt); delay = '≈ τ = ' + (1000 / (TAU * v.fc)).toFixed(1) + ' ms at low f'; }
+      else if (v.type === 'iirfb') { Hf = f => Math.pow(iirMag(f, a, dt), 2); delay = '0 (offline)'; }
+      else if (v.type === 'none') { Hf = () => 1; delay = '0'; }
+      const opts = { x: [0, 500], y: [0, 1.08], xlabel: 'frequency (Hz)', ylabel: '|H|', yticks: [0, 0.5, 1], yfmt: v => v.toFixed(1),
+        vlines: [{ x: fm, color: 'red', label: fm.toFixed(1) + ' Hz' }, { x: 3 * fm, color: 'red' }], series: [] };
+      if (Hf) opts.series.push({ f: Hf, color: 'acc', width: 2, n: 1200 });
+      const P = Deck.plot($('cvF2'), opts);
+      if (!Hf) { P.ctx.fillStyle = Deck.color('muted'); P.ctx.font = Deck.font(12); P.ctx.textAlign = 'center'; P.ctx.textBaseline = 'middle'; P.ctx.fillText('median: non-linear, so no frequency response', (P.box.x0 + P.box.x1) / 2, (P.box.y0 + P.box.y1) / 2); }
+      let se = 0, c = 0; for (let i = 100; i < Nn; i++) { se += (y[i] - tru[i]) ** 2; c++; }
+      $('roF').innerHTML = 'rms error vs true (t &gt; 0.1 s) <b>' + Math.sqrt(se / c).toFixed(3) + '</b> &nbsp; |H| at mains <b>' + (Hf ? Hf(fm).toFixed(3) : 'n/a') + '</b> &nbsp; delay <b>' + (delay || 'about (N−1)/2 samples smear, no shift') + '</b>' + (v.type === 'iir' || v.type === 'iirfb' ? ' &nbsp; α <b>' + a.toFixed(4) + '</b>' : '');
+    }
+    return draw;
+  });
+
+  /* ---------- alias: identical samples ---------- */
+  Deck.onShow('noalias', () => () => {
+    const pts = []; for (let n = 0; n <= 50; n++) pts.push({ x: n, y: Math.cos(TAU * 980 * n / 1000), color: 'acc', r: 3.6 });
+    Deck.plot($('cvAl'), { x: [0, 50], y: [-1.25, 1.25], xlabel: 'time (ms)', ylabel: 'signal', yticks: [-1, 0, 1],
+      series: [{ f: t => Math.cos(TAU * 0.98 * t), color: 'muted', width: 0.8, n: 4000 }, { f: t => Math.cos(TAU * 0.02 * t), color: 'blu', width: 2.4 }], points: pts });
+  });
+})();
+</script>
+</body>
+</html>

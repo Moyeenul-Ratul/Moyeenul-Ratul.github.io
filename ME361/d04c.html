@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Amplifiers and Filters</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="deck.css">
+<style>
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:640px){.duo{grid-template-columns:1fr}}
+  .tbl.compact th,.tbl.compact td{padding:6px 10px;font-size:.88rem}
+  .card p{max-width:none}
+</style>
+<script>window.DECK = { num: "04c", title: "Amplifiers, Filters and Grounding" };</script>
+<script src="deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+
+<!-- 1 · Cover -->
+<section class="slide cover center" id="cover" data-title="Cover">
+  <p class="num">TOPIC 04 · PART C OF 3</p>
+  <h1>Amplifiers, Filters and Grounding</h1>
+  <p class="lead">A bridge hands you a few millivolts with mains hum and hiss riding on top. This part makes that signal large with operational amplifiers, removes the unwanted frequencies with filters, and keeps new noise out with proper grounds, shields and wiring.</p>
+  <div class="parts"><a href="d04a.html">A · Meters and electrical instruments</a><a href="d04b.html">B · Bridges, loading and impedance</a><span>C · Amplifiers, filters and grounding</span></div>
+  <canvas class="bigtrace" id="coverTrace" data-h="120" aria-label="Animated trace: a small noisy signal becomes a large clean one after amplification and filtering"></canvas>
+  <ol class="agenda">
+    <li>Gain and the operational amplifier</li>
+    <li>Feedback and the two ideal rules</li>
+    <li>Standard circuits and the instrumentation amplifier</li>
+    <li>Integrator, differentiator, comparator and friends</li>
+    <li>Filters: RC, Butterworth, Bessel, active</li>
+    <li>Grounds, ground loops, shields and wires</li>
+  </ol>
+</section>
+
+<!-- 2 · Where we are -->
+<section class="slide" id="where" data-title="Where we are">
+  <p class="eyebrow">Where we are</p>
+  <h2>Part B gave us a small voltage with an output resistance</h2>
+  <div class="cols">
+    <div>
+      <p>A strain-gauge bridge with 5 V excitation gives about 2.5 mV at a strain of \(10^{-3}\). Seen from its output terminals it behaves like a source in series with a resistance \(R_e\) of a few hundred ohms. Part B showed that whatever you connect must have an input impedance at least 100 to 1000 times \(R_e\), or it reads low: that is the loading error.</p>
+      <p>Three jobs remain before such a signal can be recorded:</p>
+      <ul>
+        <li><b>Make it bigger</b> without loading the source: an amplifier with very high input impedance.</li>
+        <li><b>Make it cleaner</b>: remove mains hum, high-frequency hiss or a drifting offset with a filter.</li>
+        <li><b>Keep it clean on the way</b>: grounding, shielding and the right cable.</li>
+      </ul>
+      <p>Part B also showed signals that need special handling: the charge of a piezoelectric crystal, which leaks and depends on cable capacitance.</p>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 200" aria-label="Signal conditioning chain: bridge, amplifier, filter, recorder, with signal size and noise at each stage">
+          <rect x="6" y="60" width="80" height="50" rx="6" class="box-acc"/><text x="46" y="90" text-anchor="middle">Bridge</text>
+          <rect x="112" y="60" width="80" height="50" rx="6" class="box"/><text x="152" y="90" text-anchor="middle">Amplifier</text>
+          <rect x="218" y="60" width="80" height="50" rx="6" class="box"/><text x="258" y="90" text-anchor="middle">Filter</text>
+          <rect x="324" y="60" width="70" height="50" rx="6" class="box-blu"/><text x="359" y="90" text-anchor="middle">Record</text>
+          <path d="M86 85 H112 M192 85 H218 M298 85 H324" class="ln"/>
+          <path d="M10 40 l6 -3 l6 4 l6 -5 l6 6 l6 -4 l6 3 l6 -5 l6 4 l6 -2 l6 3 l6 -3" class="ln-thin"/>
+          <text x="10" y="22" font-size="11" class="t-muted">2.5 mV + hum</text>
+          <path d="M116 46 l6 -14 l6 18 l6 -22 l6 26 l6 -18 l6 12 l6 -20 l6 18 l6 -10 l6 12 l6 -12" class="ln-thin"/>
+          <text x="116" y="22" font-size="11" class="t-muted">2.5 V + hum</text>
+          <path d="M222 44 C240 30 260 30 280 44" class="ln-acc"/>
+          <text x="222" y="22" font-size="11" class="t-muted">2.5 V, clean</text>
+          <text x="46" y="134" text-anchor="middle" font-size="11" class="t-mono t-muted">R_e ≈ 120 Ω</text>
+          <text x="152" y="134" text-anchor="middle" font-size="11" class="t-mono t-muted">Z_in ≫ R_e</text>
+          <text x="258" y="134" text-anchor="middle" font-size="11" class="t-mono t-muted">keeps f &lt; f_c</text>
+          <rect x="6" y="152" width="388" height="40" rx="6" class="fill-grid"/>
+          <text x="200" y="169" text-anchor="middle" font-size="12">grounds, shields, twisted pairs protect every wire</text>
+          <text x="200" y="185" text-anchor="middle" font-size="12" class="t-muted">between these boxes</text>
+        </svg>
+        <figcaption>The conditioning chain of this part, with typical signal sizes for a strain-gauge bridge.</figcaption>
+      </figure>
+      <div class="analogy"><p>Think of a faint radio station. The amplifier is the volume knob, the filter is the tuner that rejects other stations, and grounding and shielding are the walls that stop your neighbour’s drill from coming through the speaker.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 · Gain and the op-amp -->
+<section class="slide" id="opamp" data-title="Gain and the operational amplifier">
+  <p class="eyebrow">Amplifiers</p>
+  <h2>The operational amplifier: enormous gain in a small package</h2>
+  <div class="cols">
+    <div>
+      <p>An <dfn>amplifier</dfn> scales a signal: a linear amplifier gives \(E_o(t)=G\,E_i(t)\), where the <dfn>gain</dfn> \(G\) may be positive, negative, or less than 1. In decibels, \(G_{dB}=20\log_{10}|G|\): a gain of 100 is 40 dB. Other amplifiers apply other functions, such as \(E_o=G\log E_i\). Every real amplifier works only over a limited input range and a limited frequency band.</p>
+      <p>The workhorse is the <dfn>operational amplifier</dfn> (op-amp), an integrated circuit with two inputs and one output, powered from a dual supply, typically ±5 V to ±15 V. It amplifies the <i>difference</i> between its inputs:</p>
+      <div class="eq"><span class="label">Op-amp open-loop law</span>$$E_o=A_o\,(E_+-E_-)$$</div>
+      <div class="symbols"><span>\(E_+\)</span><span>non-inverting input: output follows it in phase</span><span>\(E_-\)</span><span>inverting input: output moves opposite to it</span><span>\(A_o\)</span><span>open-loop gain, \(10^5\) to \(10^6\) at low frequency, falling at high frequency</span></div>
+      <p class="small">Typical: input impedance above \(10^7\ \Omega\) (above \(10^{12}\ \Omega\) for field-effect inputs), output impedance below 100 Ω. Two extra pins allow a small trim of the output offset to zero.</p>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 250" aria-label="Op-amp symbol with inverting and non-inverting inputs, supply pins and output; and open-loop transfer curve that saturates at plus and minus Esat within a few tens of microvolts">
+          <path d="M60 20 V120 L150 70 Z" class="box"/>
+          <text x="66" y="48" font-size="18">−</text><text x="66" y="104" font-size="16">+</text>
+          <path d="M10 44 H60 M10 96 H60 M150 70 H190" class="ln"/>
+          <text x="8" y="38" font-size="12">E₋</text><text x="8" y="90" font-size="12">E₊</text><text x="166" y="62" font-size="12">Eₒ</text>
+          <path d="M105 45 V14 M105 95 V126" class="ln-thin"/><text x="110" y="16" font-size="11" class="t-muted">+15 V</text><text x="110" y="134" font-size="11" class="t-muted">−15 V</text>
+          <path d="M210 150 H395 M302 140 V248" class="ln-thin"/>
+          <path d="M215 228 H292 L312 170 H392" class="ln-acc"/>
+          <text x="394" y="146" text-anchor="end" font-size="11" class="t-muted">E₊ − E₋</text>
+          <text x="306" y="146" font-size="11" class="t-muted">Eₒ</text>
+          <text x="330" y="164" font-size="11">+E_sat</text><text x="214" y="166" font-size="11" class="t-muted">E_sat ≈ 13.5 V</text>
+          <text x="214" y="244" font-size="11">−E_sat</text>
+          <text x="226" y="194" font-size="11" class="t-acc">±68 µV</text>
+          <path d="M292 200 H312" class="ln-thin"/>
+          <text x="10" y="170" font-size="12">Open loop, the output</text><text x="10" y="186" font-size="12">hits a supply limit for</text><text x="10" y="202" font-size="12">almost any input.</text>
+        </svg>
+        <figcaption>Left: the op-amp symbol. Right: its open-loop transfer curve. The linear part is only about ±68 µV wide.</figcaption>
+      </figure>
+      <div class="pitfall"><p>Used open loop, an op-amp is useless as an amplifier. With \(A_o=2\times10^5\) and a ±15 V supply that saturates near ±13.5 V, an input difference of \(13.5/(2\times10^5)=68\ \mu\)V drives it to the limit. Its \(A_o\) also varies by large factors between units and with temperature. The next slide shows how feedback turns this unruly gain into a precise one.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 · Feedback -->
+<section class="slide" id="feedback" data-title="Negative feedback and the ideal rules">
+  <p class="eyebrow">Amplifiers · feedback</p>
+  <h2>Negative feedback trades raw gain for a gain you can trust</h2>
+  <div class="cols wide-r">
+    <div>
+      <figure>
+        <svg viewBox="0 0 300 200" aria-label="Non-inverting amplifier: input to plus terminal; output fed back through R2 to the minus terminal, which is also connected through R1 to ground">
+          <path d="M140 40 V120 L210 80 Z" class="box"/>
+          <text x="146" y="62" font-size="16">−</text><text x="146" y="110" font-size="15">+</text>
+          <path d="M10 105 H140" class="ln"/><text x="10" y="98" font-size="12">Eᵢ</text>
+          <path d="M140 55 H110 V20 H160 M210 20 H250 V80 M210 80 H290" class="ln"/>
+          <rect x="160" y="12" width="50" height="16" class="box"/><text x="185" y="44" text-anchor="middle" font-size="12">R₂</text>
+          <path d="M110 55 V130 M110 170 V180 M98 180 H122 M102 186 H118 M106 192 H114" class="ln"/>
+          <rect x="102" y="130" width="16" height="40" class="box"/><text x="80" y="155" font-size="12">R₁</text>
+          <circle cx="110" cy="55" r="3.5" class="fill-ink"/><circle cx="250" cy="80" r="3.5" class="fill-ink"/>
+          <text x="262" y="72" font-size="12">Eₒ</text>
+          <text x="124" y="150" font-size="11" class="t-blu">E₋ = βEₒ</text>
+        </svg>
+        <figcaption>Non-inverting amplifier. R₂ and R₁ divide the output and feed a fraction β of it back to the inverting input.</figcaption>
+      </figure>
+      <div class="analogy"><p>A driver keeping a car on a lane line does not need a precisely calibrated steering wheel. They watch the error and correct it continuously. An op-amp with feedback is that driver: it watches \(E_+-E_-\) and pushes its output until the error is essentially zero, and the resistors define where “zero error” lies.</p></div>
+    </div>
+    <div>
+      <ol class="steps">
+        <li>The divider feeds back \(E_-=\beta E_o\), with \(\beta=\dfrac{R_1}{R_1+R_2}\).</li>
+        <li>Open-loop law: \(E_o=A_o(E_i-\beta E_o)\). Collect \(E_o\): \(E_o(1+A_o\beta)=A_oE_i\).
+          $$G=\frac{E_o}{E_i}=\frac{A_o}{1+A_o\beta}\;\xrightarrow{A_o\beta\gg1}\;\frac1\beta=1+\frac{R_2}{R_1}$$</li>
+        <li>Numbers: \(R_2/R_1=99\), so \(\beta=0.01\). With \(A_o=10^5\), \(G=99.90\). If \(A_o\) halves to \(5\times10^4\), \(G=99.80\): a 50 % change in the op-amp moves the gain by only 0.1 %. The gain is now set by a resistor ratio.</li>
+        <li>How big is the error voltage? At \(E_o=10\) V, \(E_+-E_-=E_o/A_o=10/10^5=0.1\) mV. Compared with volts, the two inputs are at the same potential.</li>
+      </ol>
+      <div class="define"><p>The <dfn>two ideal op-amp rules</dfn>, valid with negative feedback and an unsaturated output: <b>(1)</b> no current flows into either input (input impedance is huge); <b>(2)</b> the output adjusts so that \(E_+=E_-\) (because \(A_o\) is huge). Every circuit on the next slides is solved with these two rules and Kirchhoff’s current law.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 · Inverting and non-inverting -->
+<section class="slide" id="inv-noninv" data-title="Inverting and non-inverting amplifiers">
+  <p class="eyebrow">Standard circuits · 1</p>
+  <h2>Inverting and non-inverting amplifiers from the two rules</h2>
+  <div class="cols">
+    <div>
+      <h3>Inverting amplifier</h3>
+      <figure>
+        <svg viewBox="0 0 300 140" aria-label="Inverting amplifier: input through R1 to the minus node, R2 from minus node to output, plus input grounded">
+          <path d="M150 40 V100 L210 70 Z" class="box"/>
+          <text x="156" y="61" font-size="16">−</text><text x="156" y="94" font-size="15">+</text>
+          <path d="M10 55 H40 M90 55 H150 M120 55 V20 H150 M200 20 H240 V70 M210 70 H290" class="ln"/>
+          <rect x="40" y="47" width="50" height="16" class="box"/><text x="65" y="80" text-anchor="middle" font-size="12">R₁</text>
+          <rect x="150" y="12" width="50" height="16" class="box"/><text x="175" y="9" text-anchor="middle" font-size="12">R₂</text>
+          <path d="M150 85 H130 V110 M120 110 H140 M124 116 H136 M128 122 H132" class="ln"/>
+          <circle cx="120" cy="55" r="3.5" class="fill-ink"/><circle cx="240" cy="70" r="3.5" class="fill-ink"/>
+          <text x="10" y="46" font-size="12">Eᵢ</text><text x="262" y="62" font-size="12">Eₒ</text>
+          <text x="96" y="136" font-size="11" class="t-acc">− node: virtual ground, 0 V</text>
+          <path d="M45 40 H80 M74 36 L82 40 L74 44" class="ln-thin"/><text x="56" y="34" font-size="11" class="t-muted">I</text>
+        </svg>
+      </figure>
+      <ol class="steps">
+        <li>Rule 2: \(E_+=0\), so \(E_-=0\). The inverting node is a <dfn>virtual ground</dfn>: at 0 V without being connected to ground.</li>
+        <li>Current through R₁: \(I=E_i/R_1\). Rule 1: none enters the op-amp, so all of it flows on through R₂.</li>
+        <li>\(E_o=0-IR_2\), so \(G=-\dfrac{R_2}{R_1}\). The input impedance is just \(R_1\).</li>
+      </ol>
+      <p class="small">\(R_1=10\) kΩ, \(R_2=100\) kΩ gives \(G=-10\). Note that 10 kΩ of input impedance would load a bridge with \(R_e=6.5\) kΩ badly.</p>
+    </div>
+    <div>
+      <h3>Non-inverting amplifier</h3>
+      <p>The circuit of the previous slide. With the rules: \(E_-=E_+=E_i\); the current through R₁ is \(E_i/R_1\) and the same current flows through R₂, so \(E_o=E_i+R_2E_i/R_1\):</p>
+      <div class="eq"><span class="label">Non-inverting gain</span>$$G=1+\frac{R_2}{R_1}=\frac{R_1+R_2}{R_1}$$</div>
+      <p>The signal enters an op-amp input directly, so the input impedance is the op-amp’s own, multiplied by \(1+A_o\beta\) by the feedback: effectively infinite. The output is in phase with the input. A small resistor equal to \(R_1\parallel R_2\) is often placed in series with the + input so that the tiny bias currents of the two inputs see equal resistances and their offsets cancel; it does not change the gain.</p>
+      <div class="quiz" data-correct="1">
+        <p class="q">A non-inverting amplifier has \(R_2=99\) kΩ (feedback) and \(R_1=1\) kΩ (to ground). Its gain is…</p>
+        <div class="opts">
+          <button class="opt" data-why="99 is the magnitude of the inverting gain \(R_2/R_1\) with these resistors.">99</button>
+          <button class="opt" data-why="Right. \(G=1+99/1=100\), in phase with the input.">100</button>
+          <button class="opt" data-why="This circuit does not invert; its gain is positive.">−99</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · Follower and differential -->
+<section class="slide" id="follower-diff" data-title="Voltage follower and differential amplifier">
+  <p class="eyebrow">Standard circuits · 2</p>
+  <h2>The voltage follower buffers; the differential amplifier subtracts</h2>
+  <div class="cols">
+    <div>
+      <h3>Voltage follower (buffer)</h3>
+      <figure>
+        <svg viewBox="0 0 280 100" aria-label="Voltage follower: input to plus terminal, output wired directly back to minus terminal">
+          <path d="M110 30 V90 L170 60 Z" class="box"/>
+          <text x="116" y="51" font-size="16">−</text><text x="116" y="84" font-size="15">+</text>
+          <path d="M10 75 H110 M110 45 H90 V12 H200 V60 M170 60 H270" class="ln"/>
+          <circle cx="200" cy="60" r="3.5" class="fill-ink"/>
+          <text x="10" y="68" font-size="12">Eᵢ</text><text x="240" y="52" font-size="12">Eₒ</text>
+        </svg>
+      </figure>
+      <p>The output is wired straight to the inverting input, so \(\beta=1\):</p>
+      <ol class="steps">
+        <li>\(E_o=A_o(E_i-E_o)\Rightarrow G=\dfrac{A_o}{1+A_o}\approx1\). With \(A_o=2\times10^5\), \(G=0.999995\).</li>
+        <li>Input impedance: the op-amp’s own times \(1+A_o\), effectively infinite. Output impedance: the op-amp’s own divided by \(1+A_o\); 75 Ω becomes 0.4 mΩ.</li>
+        <li>It draws almost nothing from the source and can drive almost any load: the ideal <b>buffer</b> of Part B. It is the cure for the pH electrode and other high-impedance sensors.</li>
+      </ol>
+    </div>
+    <div>
+      <h3>Differential amplifier</h3>
+      <figure>
+        <svg viewBox="0 0 310 175" aria-label="Differential amplifier: E1 through R1 to minus node with R2 feedback; E2 through R1 to plus node with R2 to ground">
+          <path d="M170 50 V110 L230 80 Z" class="box"/>
+          <text x="176" y="71" font-size="16">−</text><text x="176" y="104" font-size="15">+</text>
+          <path d="M10 65 H40 M90 65 H170 M130 65 V25 H160 M210 25 H260 V80 M230 80 H300" class="ln"/>
+          <path d="M10 95 H40 M90 95 H170 M130 95 V112 M130 152 V160 M120 160 H140 M124 166 H136 M128 172 H132" class="ln"/>
+          <rect x="40" y="57" width="50" height="16" class="box"/><rect x="40" y="87" width="50" height="16" class="box"/>
+          <rect x="160" y="17" width="50" height="16" class="box"/><rect x="122" y="112" width="16" height="40" class="box"/>
+          <text x="65" y="52" text-anchor="middle" font-size="12">R₁</text><text x="65" y="122" text-anchor="middle" font-size="12">R₁</text>
+          <text x="185" y="12" text-anchor="middle" font-size="12">R₂</text><text x="146" y="138" font-size="12">R₂</text>
+          <circle cx="130" cy="65" r="3.5" class="fill-ink"/><circle cx="130" cy="95" r="3.5" class="fill-ink"/><circle cx="260" cy="80" r="3.5" class="fill-ink"/>
+          <text x="10" y="58" font-size="12">E₁</text><text x="10" y="118" font-size="12">E₂</text><text x="270" y="72" font-size="12">Eₒ</text>
+        </svg>
+      </figure>
+      <ol class="steps">
+        <li>The + node is a divider: \(E_+=E_2\,R_2/(R_1+R_2)\). Rule 2 sets \(E_-\) equal to it.</li>
+        <li>Rule 1 at the − node: \((E_1-E_-)/R_1=(E_--E_o)/R_2\). Substitute and simplify:
+          $$E_o=\frac{R_2}{R_1}\,(E_2-E_1)$$</li>
+        <li>A voltage common to both inputs (the <dfn>common-mode voltage</dfn>) cancels. The <dfn>common-mode rejection ratio</dfn> \(\text{CMRR}=20\log(G_{diff}/G_{cm})\) in dB measures how well; resistor mismatch limits it.</li>
+      </ol>
+      <p class="small">Weakness: its input impedances are only \(R_1\) and \(R_1+R_2\), unequal and modest, so it loads a bridge. The next fix is the instrumentation amplifier.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 7 · Op-amp simulator -->
+<section class="slide" id="opamp-sim" data-title="Op-amp circuit simulator">
+  <p class="eyebrow">Simulator · op-amp circuits</p>
+  <h2>Gain, bandwidth and clipping of real op-amp circuits</h2>
+  <div class="sim" id="simOA">
+    <div class="simhead"><span>Op-amp bench · GBW 1 MHz, ±13.5 V swing</span><span class="legend"><span><i style="background:var(--blu)"></i>input</span><span><i style="background:var(--acc)"></i>output</span><span><i style="background:var(--muted)"></i>open-loop gain</span></span></div>
+    <div class="duo">
+      <canvas id="cvOAt" data-h="240" aria-label="Input and output voltage against time for the chosen circuit"></canvas>
+      <canvas id="cvOAf" data-h="240" aria-label="Gain magnitude against frequency on log axes: open-loop gain and closed-loop gain"></canvas>
+    </div>
+    <div class="controls">
+      <div class="ctl"><label for="oac">Circuit</label>
+        <select id="oac" data-key="c"><option value="inv">Inverting</option><option value="non" selected>Non-inverting</option><option value="fol">Voltage follower</option><option value="dif">Differential (1 V common mode)</option></select></div>
+      <div class="ctl"><label for="oar1">R₁ <output data-for="r1"></output></label>
+        <input type="range" id="oar1" data-key="r1" data-scale="log" data-min="1000" data-max="100000" min="0" max="1000" value="500" data-fmt="-1" data-unit=" Ω"></div>
+      <div class="ctl"><label for="oar2">R₂ <output data-for="r2"></output></label>
+        <input type="range" id="oar2" data-key="r2" data-scale="log" data-min="1000" data-max="1000000" min="0" max="1000" value="667" data-fmt="-1" data-unit=" Ω"></div>
+      <div class="ctl"><label for="oav">Input amplitude <output data-for="v"></output></label>
+        <input type="range" id="oav" data-key="v" data-scale="log" data-min="0.001" data-max="5" min="0" max="1000" value="541" data-fmt="-1" data-unit=" V"></div>
+      <div class="ctl"><label for="oaf">Signal frequency <output data-for="f"></output></label>
+        <input type="range" id="oaf" data-key="f" data-scale="log" data-min="10" data-max="1000000" min="0" max="1000" value="400" data-fmt="-1" data-unit=" Hz"></div>
+    </div>
+    <div class="readout" id="roOA"></div>
+  </div>
+  <div class="cols">
+    <div class="try"><p>Non-inverting with R₁ = 10 kΩ, R₂ = 100 kΩ (gain 11) and 0.1 V in: output 1.1 V. Raise R₂ to 1 MΩ: gain 101, and the closed-loop bandwidth shrinks to about 10 kHz. Push the frequency past it and the gain falls and the output lags. Raise the input to 0.5 V: the output tries for 50 V and flattens at 13.5 V.</p></div>
+    <div><p class="small">The open-loop gain of a general-purpose op-amp falls by a factor of 10 for every factor of 10 in frequency above a few hertz, so gain × bandwidth is constant: the <dfn>gain–bandwidth product</dfn> (GBW). A circuit whose feedback divider has \(1/\beta=1+R_2/R_1\) keeps its designed gain only up to about \(f_B=\text{GBW}\,\beta\). Large gains need either a faster op-amp or two stages of moderate gain.</p></div>
+  </div>
+</section>
+
+<!-- 8 · Instrumentation amplifier -->
+<section class="slide" id="inamp" data-title="The instrumentation amplifier">
+  <p class="eyebrow">Standard circuits · 3</p>
+  <h2>The instrumentation amplifier: buffered inputs, one gain resistor</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 420 260" aria-label="Three-op-amp instrumentation amplifier: two non-inverting input op-amps A1 and A2 joined by resistor RG between their inverting inputs, each with feedback resistor R, feeding a differential stage A3 with resistors R3 and R4">
+          <path d="M100 20 V80 L160 50 Z" class="box"/><text x="120" y="55" font-size="11">A₁</text>
+          <text x="104" y="40" font-size="14">+</text><text x="104" y="72" font-size="16">−</text>
+          <path d="M100 180 V240 L160 210 Z" class="box"/><text x="120" y="215" font-size="11">A₂</text>
+          <text x="104" y="200" font-size="16">−</text><text x="104" y="232" font-size="14">+</text>
+          <path d="M10 35 H100 M10 225 H100" class="ln"/><text x="10" y="28" font-size="12">E₁</text><text x="10" y="218" font-size="12">E₂</text>
+          <path d="M100 65 H80 V110 M80 150 V195 H100" class="ln"/>
+          <rect x="72" y="110" width="16" height="40" class="box-acc"/><text x="34" y="135" class="t-acc" font-size="12">R_G</text>
+          <path d="M80 100 H115 M155 100 H178 V50 H160 M80 160 H115 M155 160 H178 V210 H160" class="ln"/>
+          <rect x="115" y="92" width="40" height="16" class="box"/><text x="135" y="124" text-anchor="middle" font-size="12">R</text>
+          <rect x="115" y="152" width="40" height="16" class="box"/><text x="135" y="146" text-anchor="middle" font-size="12">R</text>
+          <circle cx="80" cy="100" r="3" class="fill-ink"/><circle cx="80" cy="160" r="3" class="fill-ink"/>
+          <path d="M178 50 H198 V120 H210 M250 120 H300 M178 210 H198 V150 H210 M250 150 H300" class="ln"/>
+          <rect x="210" y="112" width="40" height="16" class="box"/><rect x="210" y="142" width="40" height="16" class="box"/>
+          <text x="230" y="106" text-anchor="middle" font-size="12">R₃</text><text x="230" y="176" text-anchor="middle" font-size="12">R₃</text>
+          <path d="M300 105 V165 L360 135 Z" class="box"/><text x="318" y="140" font-size="11">A₃</text>
+          <text x="304" y="124" font-size="16">−</text><text x="304" y="158" font-size="14">+</text>
+          <path d="M272 120 V80 H290 M330 80 H375 V135 M360 135 H412" class="ln"/>
+          <rect x="290" y="72" width="40" height="16" class="box"/><text x="310" y="66" text-anchor="middle" font-size="12">R₄</text>
+          <path d="M272 150 V180 M272 220 V230 M262 230 H282 M266 236 H278 M270 242 H274" class="ln"/>
+          <rect x="264" y="180" width="16" height="40" class="box"/><text x="286" y="204" font-size="12">R₄</text>
+          <circle cx="272" cy="120" r="3" class="fill-ink"/><circle cx="272" cy="150" r="3" class="fill-ink"/><circle cx="375" cy="135" r="3" class="fill-ink"/>
+          <text x="384" y="127" font-size="12">Eₒ</text>
+          <text x="180" y="40" font-size="11" class="t-muted">V₁′</text><text x="180" y="230" font-size="11" class="t-muted">V₂′</text>
+        </svg>
+        <figcaption>Three op-amps: two non-inverting input stages share the gain resistor R<sub>G</sub>; a differential stage subtracts their outputs.</figcaption>
+      </figure>
+    </div>
+    <div>
+      <p>An <dfn>instrumentation amplifier</dfn> (in-amp) combines two followers-with-gain and a differential amplifier. Derive it with the two rules:</p>
+      <ol class="steps">
+        <li>Rule 2 at A₁ and A₂: the two ends of \(R_G\) sit at \(E_1\) and \(E_2\). So \(R_G\) carries \(i=(E_2-E_1)/R_G\).</li>
+        <li>Rule 1: that same \(i\) flows through both resistors R. The voltage between the two outputs is therefore \(i\,(R+R_G+R)\): \(V_2'-V_1'=(E_2-E_1)\left(1+\dfrac{2R}{R_G}\right)\).</li>
+        <li>If \(E_1=E_2\) (pure common mode), \(i=0\) and both outputs simply equal the common voltage: the first stage passes common mode at gain 1 while amplifying the difference.</li>
+        <li>The differential stage subtracts and removes the common mode:
+          $$E_o=\left(1+\frac{2R}{R_G}\right)\frac{R_4}{R_3}\,(E_2-E_1)$$</li>
+      </ol>
+      <div class="takeaway"><p>Both inputs go straight into op-amp + terminals, so each has a very high input impedance and no loading of the bridge. One resistor \(R_G\) sets the gain, and CMRR of 100 dB or more is routine in integrated in-amps.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 · Worked example: in-amp on a strain bridge -->
+<section class="slide" id="ex-inamp" data-title="Worked example: amplifying a strain-gauge bridge">
+  <p class="eyebrow">Worked example</p>
+  <h2>Scaling a strain-gauge bridge to 0–5 V with an in-amp</h2>
+  <div class="cols wide-l">
+    <div class="example">
+      <p class="given">A quarter bridge has 120 Ω arms, excitation \(E_i=5\) V and an active strain gauge with gauge factor 2.0, so \(\delta R/R=2\,\varepsilon\). Strain ranges from 0 to 2000 µε (\(2\times10^{-3}\)). An in-amp with \(R=25\) kΩ, \(R_3=R_4\) (unity second stage) and CMRR = 100 dB must give 5 V at full scale. Find (a) the full-scale bridge output, (b) the gain and \(R_G\), (c) the error caused by the common-mode voltage.</p>
+      <p class="small"><b>Known</b>: \(E_i\), arms, gauge factor, strain range, \(R\), CMRR. <b>Find</b>: \(E_o\), \(G\), \(R_G\), common-mode error. <b>Assumptions</b>: ideal in-amp apart from finite CMRR; amplifier draws no current from the bridge.</p>
+      <ol class="steps">
+        <li>(a) \(\delta R/R=2.0\times2\times10^{-3}=0.004\). Exact quarter bridge: \(E_o=5\times\dfrac{0.004}{4+0.008}=4.990\) mV.</li>
+        <li>(b) Gain: \(G=5\ \text{V}/4.990\ \text{mV}=1002\). Choose \(G\approx1000\): \(1+2R/R_G=1000\Rightarrow R_G=50\,000/999=50.05\ \Omega\). The nearest standard 49.9 Ω gives \(G=1003\) and 5.005 V at full scale.</li>
+        <li>(c) Each bridge output node sits near \(E_i/2=2.5\) V: that is the common-mode voltage. CMRR = 100 dB means the common-mode gain is \(10^5\) times smaller than the difference gain, so the error is \(2.5/10^5=25\ \mu\)V referred to the input.</li>
+        <li>Relative to the 4.99 mV full-scale signal, 25 µV is 0.5 %. An in-amp with 120 dB CMRR would cut it to 0.05 %.</li>
+        <li><b>What this means</b>: the bridge gives mV on top of volts of common mode. Only an amplifier that subtracts very precisely, and loads neither node, can use it. A plain inverting amplifier would have loaded the 120 Ω bridge and amplified the 2.5 V too.</li>
+      </ol>
+    </div>
+    <div>
+      <div class="quiz" data-correct="2">
+        <p class="q">In the in-amp, \(R=25\) kΩ. Which \(R_G\) gives a gain of 101 (second stage unity)?</p>
+        <div class="opts">
+          <button class="opt" data-why="That gives \(1+50\,000/250=201\).">250 Ω</button>
+          <button class="opt" data-why="That gives \(1+50\,000/5000=11\).">5 kΩ</button>
+          <button class="opt" data-why="Right. \(1+2(25\,000)/R_G=101\Rightarrow R_G=50\,000/100=500\ \Omega\).">500 Ω</button>
+        </div>
+      </div>
+      <div class="note" data-label="Why so much gain?"><p>A data-acquisition converter reading 0–5 V with 12 bits resolves 1.2 mV. Fed the raw 4.99 mV bridge signal it would see only four steps across the whole strain range. After the gain of 1000, the same converter resolves about 0.5 µε.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 · Special-purpose circuits -->
+<section class="slide" id="special" data-title="Special-purpose circuits">
+  <p class="eyebrow">Special-purpose circuits</p>
+  <h2>Integrate, differentiate, compare, hold, convert charge, send as current</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 110" aria-label="(a) Integrator: R at the input, capacitor C in the feedback path. (b) Differentiator: capacitor C at the input, R in the feedback path">
+          <text x="4" y="12" class="t-muted" font-size="11">(a) integrator</text>
+          <path d="M95 40 V90 L140 65 Z" class="box"/><text x="99" y="57" font-size="14">−</text><text x="99" y="85" font-size="13">+</text>
+          <path d="M4 50 H22 M58 50 H95 M75 50 V22 H106 M112 22 H160 V65 M140 65 H190 M95 78 H85 V100 M78 100 H92" class="ln"/>
+          <rect x="22" y="43" width="36" height="14" class="box"/><text x="40" y="74" text-anchor="middle" font-size="11">R</text>
+          <path d="M106 12 V32 M112 12 V32" class="ln" style="stroke-width:2.5"/><text x="118" y="14" font-size="11">C</text>
+          <text x="4" y="44" font-size="11">Eᵢ</text><text x="172" y="58" font-size="11">Eₒ</text>
+          <g transform="translate(205 0)">
+          <text x="4" y="12" class="t-muted" font-size="11">(b) differentiator</text>
+          <path d="M95 40 V90 L140 65 Z" class="box"/><text x="99" y="57" font-size="14">−</text><text x="99" y="85" font-size="13">+</text>
+          <path d="M4 50 H37 M43 50 H95 M75 50 V22 H92 M128 22 H160 V65 M140 65 H190 M95 78 H85 V100 M78 100 H92" class="ln"/>
+          <path d="M37 40 V60 M43 40 V60" class="ln" style="stroke-width:2.5"/><text x="34" y="74" font-size="11">C</text>
+          <rect x="92" y="15" width="36" height="14" class="box"/><text x="134" y="27" font-size="11">R</text>
+          <text x="4" y="44" font-size="11">Eᵢ</text><text x="172" y="58" font-size="11">Eₒ</text>
+          </g>
+        </svg>
+      </figure>
+      <p><b>Integrator.</b> The − node is a virtual ground, so \(i=E_i/R\) flows into C, whose voltage obeys \(i=C\,d(0-E_o)/dt\). Hence
+        \(E_o=-\dfrac{1}{RC}\displaystyle\int E_i\,dt\). A constant 1 V with \(R=100\) kΩ, \(C=1\ \mu\)F gives a ramp of −10 V/s, the basis of integrating voltmeters and ramp converters. Integration averages out high-frequency noise.</p>
+      <p><b>Differentiator.</b> Swap R and C: \(E_o=-RC\,dE_i/dt\). It amplifies noise in proportion to frequency: a 1 mV ripple at 10 kHz has the same derivative (63 V/s) as a 1 V signal at 10 Hz. A small resistor in series with C limits the high-frequency gain.</p>
+    </div>
+    <div>
+      <p><b>Comparator.</b> An op-amp with no feedback: the output sits at \(+E_{sat}\) when \(E_1-E_2\) exceeds a tiny threshold (tens of µV) and at \(-E_{sat}\) when it is below. With \(E_2\) a reference, it answers “is the signal above the reference?”, the basic decision inside every analog-to-digital converter.</p>
+      <p><b>Sample-and-hold.</b> A fast switch connects the signal to a capacitor C through a small resistance, so C tracks the input. On command the switch opens and C, read by a follower with tiny input current, holds the value steady while a converter digitises it.</p>
+      <p><b>Charge amplifier.</b> An inverting op-amp with a capacitor \(C_r\) as feedback. The crystal’s charge \(q\) is forced onto \(C_r\), so \(E_o\approx-q/C_r\), independent of cable capacitance (strictly \(E_o=-q/(C_r+C_T/A_o)\), with \(C_T\) the total of crystal, cable and feedback capacitance). A charge of 230 pC (100 N on a quartz element with \(d\approx2.3\) pC/N) into \(C_r=1000\) pF gives −0.23 V for any cable length.</p>
+      <p><b>4–20 mA current loop.</b> The transmitter converts the signal to a current between 4 mA (zero) and 20 mA (full scale). Wire resistance cannot change a current set by a current source, so the signal survives hundreds of metres. A 250 Ω resistor at the receiver gives 1–5 V, and a reading of 0 mA reveals a broken wire.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 11 · Filters: concepts -->
+<section class="slide" id="filters" data-title="Filters: passband, stopband and cutoff">
+  <p class="eyebrow">Filters</p>
+  <h2>A filter passes one band of frequencies and blocks the rest</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 115" aria-label="Ideal magnitude ratio shapes for low-pass, high-pass, band-pass and notch filters">
+          <g><path d="M8 20 V90 H92" class="ln-thin"/><path d="M10 30 H50 V90" class="ln-acc"/><text x="50" y="106" text-anchor="middle" class="t-mono" font-size="11">low-pass</text><text x="46" y="100" font-size="10" class="t-muted" dy="-12">f_c</text></g>
+          <g transform="translate(100 0)"><path d="M8 20 V90 H92" class="ln-thin"/><path d="M10 90 H50 V30 H90" class="ln-acc"/><text x="50" y="106" text-anchor="middle" class="t-mono" font-size="11">high-pass</text></g>
+          <g transform="translate(200 0)"><path d="M8 20 V90 H92" class="ln-thin"/><path d="M10 90 H35 V30 H65 V90 H90" class="ln-acc"/><text x="50" y="106" text-anchor="middle" class="t-mono" font-size="11">band-pass</text></g>
+          <g transform="translate(300 0)"><path d="M8 20 V90 H92" class="ln-thin"/><path d="M10 30 H44 V90 H56 V30 H90" class="ln-acc"/><text x="50" y="106" text-anchor="middle" class="t-mono" font-size="11">notch</text></g>
+          <text x="12" y="14" class="t-muted" font-size="11">M(f): 1 in the passband, 0 in the stopband; f increases to the right</text>
+        </svg>
+        <figcaption>Ideal (brick-wall) filters. Band-pass keeps frequencies between a lower cutoff f<sub>c1</sub> and an upper cutoff f<sub>c2</sub>; notch removes a narrow band such as mains hum.</figcaption>
+      </figure>
+      <div class="define"><p>The <dfn>passband</dfn> is the frequency range a filter lets through; the <dfn>stopband</dfn> is the range it blocks; the <dfn>cutoff frequency</dfn> \(f_c\) is the boundary, defined as the frequency where the output power is halved, so the magnitude ratio is \(M=1/\sqrt2=0.707\), or −3 dB (\(20\log 0.707=-3.0\)). The <dfn>transition band</dfn> lies between them, and its steepness is the <dfn>roll-off</dfn>, in dB per decade of frequency.</p></div>
+    </div>
+    <div>
+      <p>A <b>low-pass</b> filter keeps slow content and removes fast noise, and it is the anti-aliasing filter in front of every sampled measurement. A <b>high-pass</b> filter removes a DC offset or slow drift. <b>Band-pass</b> combines the two; a <b>notch</b> removes one narrow band.</p>
+      <p>A real filter cannot be a brick wall. It also shifts the phase of what it passes, and different frequencies are delayed by different amounts, which can distort a waveform. Designs optimise one of three things, and no single design achieves all three:</p>
+      <ol>
+        <li>the flattest possible magnitude in the passband (<b>Butterworth</b>);</li>
+        <li>a phase that is linear in frequency, so every component is delayed by the same time and shapes are preserved (<b>Bessel</b>);</li>
+        <li>the steepest possible roll-off (other families, at the cost of ripple).</li>
+      </ol>
+      <p><b>Passive</b> filters use only R, L and C; <b>active</b> filters add op-amps, which provide gain, avoid inductors and isolate the load.</p>
+      <div class="analogy"><p>A filter is a doorman checking the frequency of each guest. A first-order doorman is lenient near the line and lets many slightly-too-fast guests in. A high-order doorman checks every ID and turns away almost everyone above the line.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 12 · RC filter -->
+<section class="slide" id="rc" data-title="The RC filter, derived">
+  <p class="eyebrow">First-order filters</p>
+  <h2>The RC low-pass filter is the first-order system of Topic 02</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 120" aria-label="(a) RC low-pass: series R, capacitor C to ground, output across C. (b) RC high-pass: series C, R to ground, output across R">
+          <text x="4" y="12" class="t-muted" font-size="11">(a) low-pass</text>
+          <path d="M10 40 H50 M100 40 H170 M130 40 V62 M130 68 V100 M10 100 H170" class="ln"/>
+          <rect x="50" y="32" width="50" height="16" class="box"/><text x="75" y="28" text-anchor="middle" font-size="12">R</text>
+          <path d="M116 62 H144 M116 68 H144" class="ln" style="stroke-width:2.5"/><text x="150" y="70" font-size="12">C</text>
+          <text x="6" y="74" font-size="12">Eᵢ</text><text x="168" y="74" font-size="12" text-anchor="end" dx="24">Eₒ</text>
+          <circle cx="170" cy="40" r="3" class="fill-ink"/><circle cx="170" cy="100" r="3" class="fill-ink"/>
+          <g transform="translate(210 0)">
+          <text x="4" y="12" class="t-muted" font-size="11">(b) high-pass</text>
+          <path d="M10 40 H67 M73 40 H170 M130 40 V55 M130 85 V100 M10 100 H170" class="ln"/>
+          <path d="M67 28 V52 M73 28 V52" class="ln" style="stroke-width:2.5"/><text x="70" y="68" text-anchor="middle" font-size="12">C</text>
+          <rect x="122" y="55" width="16" height="30" class="box"/><text x="146" y="75" font-size="12">R</text>
+          <text x="6" y="74" font-size="12">Eᵢ</text><text x="168" y="74" font-size="12" dx="4">Eₒ</text>
+          <circle cx="170" cy="40" r="3" class="fill-ink"/><circle cx="170" cy="100" r="3" class="fill-ink"/>
+          </g>
+        </svg>
+      </figure>
+      <ol class="steps">
+        <li>Low-pass, no load on the output. The capacitor current is \(i=C\,dE_o/dt\) and the same current flows through R, so Kirchhoff’s voltage law gives \(E_i=iR+E_o\):
+          $$RC\,\frac{dE_o}{dt}+E_o=E_i$$</li>
+        <li>This is the first-order system of Topic 02 with time constant \(\tau=RC\). For a sine input at \(\omega=2\pi f\) its magnitude ratio and phase are
+          $$M(f)=\frac{1}{\sqrt{1+(\omega\tau)^2}},\qquad\phi=-\tan^{-1}(\omega\tau)$$</li>
+        <li>Set \(M=0.707\): \(\omega\tau=1\), so \(f_c=\dfrac{1}{2\pi RC}\) and \(M=1/\sqrt{1+(f/f_c)^2}\). Far above \(f_c\), \(M\approx f_c/f\): ten times the frequency, one tenth the amplitude, a roll-off of 20 dB/decade.</li>
+        <li>The high-pass circuit takes its output across R and gives \(M=1/\sqrt{1+(f_c/f)^2}\) with the same \(f_c\).</li>
+      </ol>
+    </div>
+    <div class="example">
+      <p class="given">Design a one-stage RC low-pass filter with \(f_c=100\) Hz using \(R=50\ \Omega\). Then, with the nearest stock capacitor, find the cutoff, the dynamic error \(\delta=M-1\) and the attenuation at 192 Hz.</p>
+      <ol class="steps">
+        <li>\(\tau=RC=\dfrac{1}{2\pi(100)}=1.59\) ms, so \(C=1.59\times10^{-3}/50=31.8\ \mu\)F.</li>
+        <li>Stock value 33 µF: \(f_c=\dfrac{1}{2\pi(50)(33\times10^{-6})}=96.5\) Hz.</li>
+        <li>At 192 Hz, \(f/f_c=1.99\): \(M=1/\sqrt{1+1.99^2}=0.449\), so \(\delta=-0.551\): 55 % of the 192 Hz content is removed.</li>
+        <li>Attenuation \(=10\log[1+(f/f_c)^2]=10\log(4.96)=7.0\) dB; the phase lag is 63°.</li>
+        <li><b>What this means</b>: one octave above cutoff a first-order filter still passes 45 % of the amplitude. For sharp separation you need more stages.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- 13 · Butterworth, Bessel, active -->
+<section class="slide" id="butterworth" data-title="Butterworth, Bessel and active filters">
+  <p class="eyebrow">Higher-order filters</p>
+  <h2>Cascade reactive elements for a flatter passband and a steeper roll-off</h2>
+  <div class="cols">
+    <div>
+      <p>Adding capacitors and inductors in a ladder (each one a <b>stage</b>) raises the filter’s order \(k\). The <dfn>Butterworth</dfn> design chooses the element values so the passband is as flat as possible. Its magnitude ratio is</p>
+      <div class="eq"><span class="label">k-stage Butterworth low-pass</span>
+        $$M(f)=\frac{1}{\sqrt{1+(f/f_c)^{2k}}}$$
+        $$A=10\log_{10}\!\left[1+(f/f_c)^{2k}\right]\ \text{dB}$$
+      </div>
+      <p class="small">\(k=1\) is the RC filter. Every \(k\) gives −3 dB at \(f_c\); well above it the roll-off is \(20k\) dB/decade. For high-pass, replace \(f/f_c\) by \(f_c/f\).</p>
+      <canvas id="cvBW" data-h="220" aria-label="Butterworth magnitude ratio against normalised frequency for k = 1 to 5 on log axes"></canvas>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 110" aria-label="Third-order LC ladder low-pass filter: source resistance Rs, shunt capacitor C1, series inductor L2, shunt capacitor C3, load RL">
+          <path d="M10 30 H30 M70 30 H140 M200 30 H320 M110 30 V54 M110 60 V90 M250 30 V54 M250 60 V90 M320 30 V45 M320 75 V90 M10 90 H320" class="ln"/>
+          <rect x="30" y="22" width="40" height="16" class="box"/><text x="50" y="16" text-anchor="middle" font-size="11">R_s</text>
+          <path d="M96 54 H124 M96 60 H124" class="ln" style="stroke-width:2.5"/><text x="128" y="62" font-size="11">C₁</text>
+          <path d="M140 30 q7.5 -12 15 0 q7.5 -12 15 0 q7.5 -12 15 0 q7.5 -12 15 0" class="ln"/><text x="170" y="50" text-anchor="middle" font-size="11">L₂</text>
+          <path d="M236 54 H264 M236 60 H264" class="ln" style="stroke-width:2.5"/><text x="268" y="62" font-size="11">C₃</text>
+          <rect x="312" y="45" width="16" height="30" class="box"/><text x="334" y="64" font-size="11">R_L</text>
+          <text x="4" y="64" font-size="11">Eᵢ</text><text x="360" y="64" font-size="11">Eₒ</text>
+        </svg>
+      </figure>
+      <div class="tbl compact"><table>
+        <tr><th>k</th><th>C₁</th><th>L₂</th><th>C₃</th><th>L₄</th><th>C₅</th></tr>
+        <tr><td>2</td><td>1.414</td><td>1.414</td><td></td><td></td><td></td></tr>
+        <tr><td>3</td><td>1.000</td><td>2.000</td><td>1.000</td><td></td><td></td></tr>
+        <tr><td>4</td><td>0.765</td><td>1.848</td><td>1.848</td><td>0.765</td><td></td></tr>
+        <tr><td>5</td><td>0.618</td><td>1.618</td><td>2.000</td><td>1.618</td><td>0.618</td></tr>
+      </table></div>
+      <p class="small">Normalised Butterworth values (F and H) for \(R_s=R_L=1\ \Omega\) and \(\omega_c=1\) rad/s, given by \(2\sin[(2i-1)\pi/2k]\). Scale to real \(R=R_s=R_L\) and \(f_c\) with \(L=L_iR/(2\pi f_c)\) and \(C=C_i/(2\pi f_cR)\).</p>
+      <p class="small"><b>Bessel</b> filters choose element values for a nearly linear phase instead: all passband frequencies are delayed by the same time, so a step or a pulse keeps its shape without ringing. The price is a softer knee near \(f_c\). <b>Active</b> version: the inverting amplifier with a capacitor \(C_2\) across \(R_2\) is a first-order low-pass with \(f_c=1/(2\pi R_2C_2)\) and gain \(-R_2/R_1\); for 100 Hz with \(R_2=100\) kΩ, \(C_2=15.9\) nF.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 14 · Filter simulator -->
+<section class="slide" id="filter-sim" data-title="Filter simulator">
+  <p class="eyebrow">Simulator · Butterworth and Bessel filters</p>
+  <h2>Clean a 5 Hz signal buried under hum and hiss</h2>
+  <div class="sim" id="simFilt">
+    <div class="simhead"><span>Filter bench</span><span class="legend"><span><i style="background:var(--muted)"></i>input</span><span><i style="background:var(--acc)"></i>filtered output</span><span><i style="background:var(--grn)"></i>clean signal alone</span><span><i style="background:var(--blu)"></i>M(f)</span></span></div>
+    <div class="duo">
+      <canvas id="cvFiltM" data-h="250" aria-label="Magnitude ratio against frequency on log axes, with input and output component amplitudes as dots"></canvas>
+      <canvas id="cvFiltT" data-h="250" aria-label="Input signal and filtered output against time"></canvas>
+    </div>
+    <div class="controls">
+      <div class="ctl"><label for="fsig">Input</label>
+        <select id="fsig" data-key="sig"><option value="sine">5 Hz sine + 50 Hz hum + hiss</option><option value="sq">5 Hz square wave + hiss</option></select></div>
+      <div class="ctl"><label for="ftype">Filter</label>
+        <select id="ftype" data-key="type"><option value="lp">Butterworth low-pass</option><option value="bes">Bessel low-pass</option><option value="hp">Butterworth high-pass</option></select></div>
+      <div class="ctl"><label for="fk">Order k <output data-for="k"></output></label>
+        <input type="range" id="fk" data-key="k" min="1" max="7" step="1" value="1" data-fmt="0"></div>
+      <div class="ctl"><label for="ffc"><span>Cutoff f<sub>c</sub></span> <output data-for="fc"></output></label>
+        <input type="range" id="ffc" data-key="fc" data-scale="log" data-min="2" data-max="500" min="0" max="1000" value="380" data-fmt="-1" data-unit=" Hz"></div>
+    </div>
+    <div class="readout" id="roFilt"></div>
+  </div>
+  <div class="try"><p>Sine input, Butterworth, f<sub>c</sub> ≈ 20 Hz, k = 1: hum survives at about 37 %. Raise k to 4: hum drops to about 3 % and hiss disappears, but the output now lags the clean signal by about 21 ms. Now choose the square-wave input with f<sub>c</sub> ≈ 60 Hz and k = 6: the Butterworth output rings after every edge and overshoots by roughly 30 %. Switch to Bessel with the same k: the edges are softer but clean, with almost no overshoot, because every harmonic is delayed by nearly the same time. High-pass at 2 Hz removes nothing useful here; push it to 20 Hz and the 5 Hz signal itself disappears.</p></div>
+</section>
+
+<!-- 15 · Worked example: order selection -->
+<section class="slide" id="ex-order" data-title="Worked example: choosing the filter order">
+  <p class="eyebrow">Worked example</p>
+  <h2>How many stages for 60 dB at ten times the cutoff?</h2>
+  <div class="cols wide-l">
+    <div class="example">
+      <p class="given">A Butterworth low-pass filter must have \(f_c=3\) kHz and attenuate content at 30 kHz by at least 60 dB. Source and load resistances are both 50 Ω. Find the number of stages and the element values of an LC ladder.</p>
+      <p class="small"><b>Known</b>: \(f_c\), \(f=30\) kHz, \(A\ge60\) dB, \(R_s=R_L=50\ \Omega\). <b>Find</b>: \(k\), \(L\), \(C\). <b>Assumptions</b>: ideal L and C; ladder as drawn on the previous slides.</p>
+      <ol class="steps">
+        <li>Normalised frequency: \(f/f_c=30\,000/3000=10\).</li>
+        <li>Solve the attenuation formula for \(k\): \(10^{A/10}=1+10^{2k}\Rightarrow k=\dfrac{\log_{10}(10^{6}-1)}{2\log_{10}10}=3.00\). Check: \(k=2\) gives 40.0 dB (too little); \(k=3\) gives 60.0 dB. So <b>k = 3</b>.</li>
+        <li>Table row \(k=3\): \(C_1=C_3=1.000\) F, \(L_2=2.000\) H (normalised).</li>
+        <li>Scale: \(L=\dfrac{L_2R}{2\pi f_c}=\dfrac{2(50)}{2\pi(3000)}=5.31\) mH.</li>
+        <li>\(C=\dfrac{C_1}{2\pi f_cR}=\dfrac{1}{2\pi(3000)(50)}=1.06\ \mu\)F for both \(C_1\) and \(C_3\).</li>
+        <li><b>What this means</b>: a 1 kHz signal component passes with \(M=1/\sqrt{1+(1/3)^6}=0.9993\), a loss of only 0.07 %, while 30 kHz is cut to one-thousandth. Three reactive parts buy a 1000:1 separation over one decade.</li>
+      </ol>
+    </div>
+    <div>
+      <canvas id="cvAtt" data-h="250" aria-label="Attenuation in dB against f over fc for Butterworth orders 1 to 5, with the 60 dB requirement at f/fc = 10 marked"></canvas>
+      <div class="quiz" data-correct="1">
+        <p class="q">A first-order RC filter has \(f_c=100\) Hz. What fraction of a 200 Hz signal’s amplitude passes?</p>
+        <div class="opts">
+          <button class="opt" data-why="0.707 is the ratio at \(f=f_c\), not at \(2f_c\).">0.707</button>
+          <button class="opt" data-why="Right. \(M=1/\sqrt{1+2^2}=0.447\), an attenuation of 7.0 dB.">0.447</button>
+          <button class="opt" data-why="0.25 would be \(1/2^2\), which is roughly a second-order filter far above cutoff.">0.25</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 16 · Grounds, shields, wires -->
+<section class="slide" id="grounds" data-title="Grounds, ground loops, shields and wires">
+  <p class="eyebrow">Grounds, shielding and connecting wires</p>
+  <h2>One ground point, shield at one end, twist the pair</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 270" aria-label="(a) Ground loop: transducer grounded at G1 and meter grounded at G2, with a voltage difference between grounds driving current through the signal return wire. (b) Correct: grounded transducer, shielded twisted pair, shield grounded at the source end only, floating meter">
+          <text x="4" y="14" class="t-muted" font-size="12">(a) ground loop: two ground points</text>
+          <rect x="10" y="24" width="80" height="44" rx="5" class="box-acc"/><text x="50" y="50" text-anchor="middle" font-size="12">sensor</text>
+          <rect x="300" y="24" width="80" height="44" rx="5" class="box-blu"/><text x="340" y="50" text-anchor="middle" font-size="12">meter</text>
+          <path d="M90 36 H300 M90 58 H300" class="ln"/>
+          <path d="M50 68 V100 M340 68 V100 M50 100 H175 M215 100 H340" class="ln-thin"/>
+          <circle cx="195" cy="100" r="14" class="box"/><text x="195" y="104" text-anchor="middle" font-size="11">ΔV</text>
+          <text x="40" y="118" font-size="11">G₁</text><text x="330" y="118" font-size="11">G₂</text>
+          <path d="M150 64 H240 M232 60 L242 64 L232 68" class="ln-acc"/>
+          <text x="110" y="142" font-size="11" class="t-acc">loop current through the signal return</text>
+          <text x="4" y="164" class="t-muted" font-size="12">(b) correct: single ground, shield grounded once</text>
+          <rect x="10" y="170" width="80" height="50" rx="5" class="box-acc"/><text x="50" y="199" text-anchor="middle" font-size="12">sensor</text>
+          <rect x="300" y="170" width="80" height="50" rx="5" class="box-blu"/><text x="340" y="192" text-anchor="middle" font-size="12">meter</text><text x="340" y="208" text-anchor="middle" font-size="10" class="t-muted">floating</text>
+          <path d="M90 186 C120 176 140 206 170 194 S220 176 250 186 S285 196 300 186" class="ln"/>
+          <path d="M90 206 C120 216 140 186 170 198 S220 216 250 206 S285 196 300 206" class="ln"/>
+          <rect x="104" y="172" width="182" height="48" rx="12" class="ln-thin dash"/><text x="122" y="234" font-size="11" class="t-muted">shield (grounded at sensor end)</text>
+          <path d="M110 220 V248 M50 220 V248 H110 M38 248 H62 M42 254 H58 M46 260 H54" class="ln"/>
+          <path d="M340 220 V244" class="ln-thin dash"/><text x="340" y="258" text-anchor="middle" font-size="11" class="t-acc">no ground here</text>
+        </svg>
+      </figure>
+      <div class="analogy"><p>Two surveyors measure heights from “ground level”, one standing on the street and one in the basement. Each is right about his own zero, but subtract their readings and you get the depth of the basement, not the height of anything you meant to measure.</p></div>
+    </div>
+    <div>
+      <p><b>Ground.</b> A <dfn>ground</dfn> is a return path to earth, but it is not an absolute zero: building wiring carries current and picks up voltage, so two ground points differ. That difference is a <b>common-mode voltage</b>. A <dfn>ground loop</dfn> forms when a circuit is grounded at two points: the difference drives a current through the signal return wire, adding hum or an offset to the reading. <b>Rule</b>: ground the whole system at one point; let the other end float. A third-prong mains ground on an instrument can create the second point unless its supply is isolated.</p>
+      <p><b>Shields.</b> Long wires act as antennas. Mains wiring couples to them through stray capacitance: 1 pF to 230 V at 50 Hz has a reactance of 3.2 GΩ and injects about 72 nA, which is 72 mV across a 1 MΩ input but only 72 µV across 1 kΩ. A <dfn>shield</dfn> (foil or braid connected to ground at <b>one</b> end) intercepts this electric field. Low source impedance helps too.</p>
+      <p><b>Twisted pairs.</b> A changing magnetic field (motors, transformers) induces voltages in the loop formed by the two wires. Twisting reverses the loop orientation every half twist, so successive induced voltages cancel; more twists per metre, better cancellation.</p>
+      <p class="small"><b>Wires</b>: plain single or flat cable only for signals of a volt or more; shielded twisted pair for low-level (below about 100 mV) signals; coaxial cable for low-level high-frequency signals; optical fibre for long runs in electrically noisy plant.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 17 · Check yourself -->
+<section class="slide" id="check" data-title="Check yourself">
+  <p class="eyebrow">Check yourself</p>
+  <h2>Four quick checks on Part E</h2>
+  <div class="cols">
+    <div class="quiz" data-correct="1">
+      <p class="q">An inverting amplifier has \(R_1=2\) kΩ and \(R_2=60\) kΩ on a ±15 V supply (swing ±13.5 V). The input is 0.5 V DC. The output is…</p>
+      <div class="opts">
+        <button class="opt" data-why="That ignores the inversion and saturation: \(-30\times0.5=-15\) V is beyond the swing.">+15 V</button>
+        <button class="opt" data-why="Right. The ideal output would be \(-(60/2)(0.5)=-15\) V, beyond the −13.5 V limit, so it saturates there.">about −13.5 V (saturated)</button>
+        <button class="opt" data-why="−15 V is the ideal result, but the output cannot reach the supply rail.">−15 V</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="2">
+      <p class="q">Why use a voltage follower when its gain is only 1?</p>
+      <div class="opts">
+        <button class="opt" data-why="Its gain is essentially exactly 1, but that is not why it is used.">To correct gain errors of the sensor</button>
+        <button class="opt" data-why="A follower passes noise as faithfully as signal.">To remove noise</button>
+        <button class="opt" data-why="Right. It presents an almost infinite input impedance to the sensor and an almost zero output impedance to the next stage, removing loading error.">To isolate a high-impedance source from the load</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="0">
+      <p class="q">You need at least 40 dB of attenuation at \(f=4f_c\) with a Butterworth low-pass. The smallest order is…</p>
+      <div class="opts">
+        <button class="opt" data-why="Right. \(A=10\log(1+4^{2k})\): k = 3 gives 36.1 dB, k = 4 gives 48.2 dB. So k = 4.">4</button>
+        <button class="opt" data-why="k = 3 gives \(10\log(1+4^6)=36.1\) dB, short of 40 dB.">3</button>
+        <button class="opt" data-why="k = 2 gives only \(10\log(1+4^4)=24.1\) dB.">2</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="1">
+      <p class="q">A thermocouple signal shows 50 Hz hum that vanishes when you unplug the data logger’s mains lead and run it on battery. The likely cause is…</p>
+      <div class="opts">
+        <button class="opt" data-why="Magnetic pickup would not depend on whether the logger is mains powered.">Magnetic pickup on untwisted leads</button>
+        <button class="opt" data-why="Right. The mains earth gave the system a second ground point. Removing it broke the ground loop.">A ground loop through the mains earth</button>
+        <button class="opt" data-why="An inadequate anti-aliasing filter does not explain why hum disappears on battery power.">An inadequate anti-aliasing filter</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 18 · Summary -->
+<section class="slide" id="summary" data-title="Summary">
+  <p class="eyebrow">Summary</p>
+  <h2>Part E on one page</h2>
+  <div class="tbl wrap compact"><table>
+    <tr><th>Idea</th><th>Key relation</th><th>Remember</th></tr>
+    <tr><td>Op-amp, open loop</td><td>\(E_o=A_o(E_+-E_-)\)</td><td>Saturates within ~70 µV</td></tr>
+    <tr><td>Feedback</td><td>\(G=A_o/(1+A_o\beta)\to1/\beta\)</td><td>Rules: no input current; \(E_+=E_-\)</td></tr>
+    <tr><td>Inverting / non-inverting</td><td>\(-R_2/R_1\); \(1+R_2/R_1\)</td><td>Z<sub>in</sub> = R₁ / very high</td></tr>
+    <tr><td>Follower / differential</td><td>\(G\approx1\); \((R_2/R_1)(E_2-E_1)\)</td><td>Buffer; rejects common mode</td></tr>
+    <tr><td>Instrumentation amp</td><td>\((1+2R/R_G)(R_4/R_3)(E_2-E_1)\)</td><td>High Z<sub>in</sub>, high CMRR</td></tr>
+    <tr><td>Integrator / differentiator</td><td>\(-\frac{1}{RC}\int E_i\,dt\); \(-RC\,\dot E_i\)</td><td>Differentiators amplify noise</td></tr>
+    <tr><td>RC filter</td><td>\(f_c=1/(2\pi RC)\), \(M=[1+(f/f_c)^2]^{-1/2}\)</td><td>−3 dB at \(f_c\); 20 dB/decade</td></tr>
+    <tr><td>Butterworth, order k</td><td>\(A=10\log[1+(f/f_c)^{2k}]\)</td><td>Flat passband; Bessel: linear phase</td></tr>
+    <tr><td>Grounding</td><td>one ground point</td><td>Shield at one end; twist pairs</td></tr>
+  </table></div>
+  <div class="cols">
+    <div>
+      <h3>You should now be able to…</h3>
+      <ul>
+        <li>derive the gain of any standard op-amp circuit from the two ideal rules;</li>
+        <li>size an instrumentation amplifier and estimate its common-mode error;</li>
+        <li>predict gain–bandwidth limits and saturation;</li>
+        <li>derive the RC filter, choose a Butterworth order and scale its elements;</li>
+        <li>diagnose and cure ground loops and pickup.</li>
+      </ul>
+    </div>
+    <div>
+      <div class="watch">
+        <h3>Watch next</h3>
+        <a href="https://www.youtube.com/results?search_query=op+amp+golden+rules+inverting+non+inverting" target="_blank" rel="noopener">Op-amp golden rules and basic circuits <small>YouTube search</small></a>
+        <a href="https://www.youtube.com/results?search_query=instrumentation+amplifier+explained" target="_blank" rel="noopener">Instrumentation amplifier explained <small>YouTube search</small></a>
+        <a href="https://www.youtube.com/results?search_query=butterworth+vs+bessel+filter" target="_blank" rel="noopener">Butterworth versus Bessel filters <small>YouTube search</small></a>
+        <a href="https://www.youtube.com/results?search_query=ground+loops+shielding+explained" target="_blank" rel="noopener">Ground loops and shielding <small>YouTube search</small></a>
+      </div>
+      <p class="further">Further reading: Figliola &amp; Beasley, §6.6–6.9</p>
+      <div class="row"><a class="btn" href="d04b.html">&larr; Part B · Bridges, loading and impedance</a><a class="btn primary" href="d05a.html">Next topic: Digital Devices &amp; Data Acquisition &rarr;</a></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---- cover: noisy small signal -> large clean signal ---- */
+  let coverT = 0;
+  function drawCover() {
+    const tEnd = 14, tt = Math.min(coverT, tEnd), a = [], b = [];
+    for (let i = 0; i <= 700; i++) {
+      const t = tEnd * i / 700; if (t > tt) break;
+      const s = Math.sin(0.8 * t) + 0.3 * Math.sin(2.1 * t + 1);
+      a.push([t, -1.15 + 0.12 * s + 0.08 * Math.sin(37 * t) + 0.05 * Math.sin(83 * t + 2)]);
+      b.push([t, 0.45 + 0.75 * Math.sin(0.8 * t - 0.25) + 0.22 * Math.sin(2.1 * t + 0.4)]);
+    }
+    Deck.plot($('coverTrace'), { x: [0, tEnd], y: [-1.6, 1.6], pad: { l: 8, r: 8, t: 6, b: 6 }, xticks: [], yticks: [],
+      series: [{ pts: a, color: 'muted', width: 1.4 }, { pts: b, color: 'acc', width: 2.4 }] });
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (coverT < 15) { coverT += RM ? 15 : dt * 3; drawCover(); } });
+
+  /* ---- op-amp bench ---- */
+  Deck.onShow('opamp-sim', () => {
+    const get = Deck.controls('simOA', () => draw());
+    const GBW = 1e6, A0 = 2e5, ESAT = 13.5;
+    function draw() {
+      const v = get(), c = v.c;
+      document.getElementById('oar1').closest('.ctl').style.opacity = c === 'fol' ? .4 : 1;
+      document.getElementById('oar2').closest('.ctl').style.opacity = c === 'fol' ? .4 : 1;
+      let G0, NG, zin;
+      if (c === 'inv') { G0 = -v.r2 / v.r1; NG = 1 + v.r2 / v.r1; zin = 'Z_in = R₁ = ' + fmtR(v.r1); }
+      else if (c === 'non') { G0 = 1 + v.r2 / v.r1; NG = G0; zin = 'Z_in: very high'; }
+      else if (c === 'fol') { G0 = A0 / (1 + A0); NG = 1; zin = 'Z_in: very high'; }
+      else { G0 = v.r2 / v.r1; NG = 1 + v.r2 / v.r1; zin = 'Z_in = ' + fmtR(v.r1) + ' and ' + fmtR(v.r1 + v.r2); }
+      const fB = GBW / NG, mag = Math.abs(G0) / Math.sqrt(1 + Math.pow(v.f / fB, 2)), lag = Math.atan(v.f / fB);
+      const sgn = G0 < 0 ? -1 : 1;
+      const inp = [], inp2 = [], out = []; let clipped = false;
+      const T = 1 / v.f;
+      for (let i = 0; i <= 400; i++) {
+        const t = 2 * T * i / 400, w = 2 * Math.PI * v.f * t;
+        let e = sgn * mag * v.v * Math.sin(w - lag);
+        if (c === 'dif') { inp.push([t * 1e3, 1 + 0.5 * v.v * Math.sin(w)]); inp2.push([t * 1e3, 1 - 0.5 * v.v * Math.sin(w)]); }
+        else inp.push([t * 1e3, v.v * Math.sin(w)]);
+        if (e > ESAT) { e = ESAT; clipped = true; } if (e < -ESAT) { e = -ESAT; clipped = true; }
+        out.push([t * 1e3, e]);
+      }
+      const ymax = Math.max(0.12, (c === 'dif' ? 1 + 0.5 * v.v : v.v), Math.min(ESAT, mag * v.v)) * 1.15;
+      const ser = [{ pts: inp, color: 'blu', width: 1.6 }];
+      if (c === 'dif') ser.push({ pts: inp2, color: 'blu', width: 1.6, dash: [4, 3] });
+      ser.push({ pts: out, color: 'acc', width: 2.4 });
+      Deck.plot($('cvOAt'), { x: [0, 2 * T * 1e3], y: [-ymax, ymax], xlabel: 'time (ms)', ylabel: 'voltage (V)', series: ser,
+        hlines: clipped ? [{ y: ESAT, color: 'red', dash: [3, 3], label: '+13.5 V' }, { y: -ESAT, color: 'red', dash: [3, 3] }] : [] });
+      const Gabs = Math.abs(G0);
+      Deck.plot($('cvOAf'), { x: [10, 1e7], y: [0.1, 1e6], logx: true, logy: true, xlabel: 'frequency (Hz)', ylabel: '|gain|',
+        series: [{ f: f => A0 / Math.sqrt(1 + Math.pow(f * A0 / GBW, 2)), color: 'muted', width: 1.6, dash: [5, 4] },
+                 { f: f => Gabs / Math.sqrt(1 + Math.pow(f / fB, 2)), color: 'acc', width: 2.4 }],
+        vlines: [{ x: fB, color: 'blu', dash: [3, 4], label: 'f_B' }],
+        points: [{ x: v.f, y: Math.max(0.1, mag), color: 'ink', r: 5 }] });
+      const sp = t => '<span>' + t + '</span>';
+      $('roOA').innerHTML = sp('ideal gain <b>' + (+G0.toPrecision(4)) + '</b>') + sp('bandwidth f_B <b>' + fmtF(fB) + '</b>') + sp('gain at ' + fmtF(v.f) + ' <b>' + (sgn * mag).toPrecision(3) + '</b>, lag <b>' + (lag * 180 / Math.PI).toFixed(0) + '°</b>') + sp(zin) + sp(clipped ? '<b>output clipped at ±13.5 V</b>' : 'peak out <b>' + (mag * v.v).toPrecision(3) + ' V</b>');
+    }
+    function fmtR(r) { return r >= 1e6 ? (+(r / 1e6).toPrecision(3)) + ' MΩ' : r >= 1e3 ? (+(r / 1e3).toPrecision(3)) + ' kΩ' : (+r.toPrecision(3)) + ' Ω'; }
+    function fmtF(f) { return f >= 1e6 ? (+(f / 1e6).toPrecision(3)) + ' MHz' : f >= 1e3 ? (+(f / 1e3).toPrecision(3)) + ' kHz' : (+f.toPrecision(3)) + ' Hz'; }
+    return draw;
+  });
+
+  /* ---- static Butterworth family (slide 13) ---- */
+  Deck.onShow('butterworth', () => {
+    function draw() {
+      const cols = ['ylw', 'grn', 'blu', 'acc', 'red'];
+      const ser = [1, 2, 3, 4, 5].map((k, i) => ({ f: x => 1 / Math.sqrt(1 + Math.pow(x, 2 * k)), color: cols[i], width: 2 }));
+      const r = Deck.plot($('cvBW'), { x: [0.1, 10], y: [0.001, 1.5], logx: true, logy: true, xlabel: 'f / f_c', ylabel: 'M(f)', series: ser,
+        hlines: [{ y: 0.707, color: 'muted', dash: [2, 4], label: '0.707 (−3 dB)' }] });
+      const ctx = r.ctx; ctx.font = Deck.font(11, true); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      [1, 2, 3, 4, 5].forEach((k, i) => { const x = 3.2, y = 1 / Math.sqrt(1 + Math.pow(x, 2 * k)); ctx.fillStyle = Deck.color(cols[i]); ctx.fillText('k=' + k, r.X(x) + 4, r.Y(y) - 2); });
+    }
+    return draw;
+  });
+
+  /* ---- attenuation chart (slide 15) ---- */
+  Deck.onShow('ex-order', () => {
+    function draw() {
+      const cols = ['ylw', 'grn', 'blu', 'acc', 'red'];
+      const ser = [1, 2, 3, 4, 5].map((k, i) => ({ f: x => 10 * Math.log10(1 + Math.pow(x, 2 * k)), color: cols[i], width: k === 3 ? 3 : 1.6 }));
+      const r = Deck.plot($('cvAtt'), { x: [1, 20], y: [0, 120], logx: true, xlabel: 'f / f_c', ylabel: 'attenuation (dB)', series: ser,
+        xticks: [1, 2, 5, 10, 20], hlines: [{ y: 60, color: 'muted', dash: [3, 4] }], vlines: [{ x: 10, color: 'muted', dash: [3, 4] }],
+        points: [{ x: 10, y: 60, color: 'ink', r: 5, label: 'need ≥ 60 dB', align: 'right' }] });
+      const ctx = r.ctx; ctx.font = Deck.font(11, true); ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      [1, 2, 3, 4, 5].forEach((k, i) => { const x = 18, y = 10 * Math.log10(1 + Math.pow(x, 2 * k)); if (y < 118) { ctx.fillStyle = Deck.color(cols[i]); ctx.fillText('k=' + k, r.X(x) - 4, r.Y(y) - 8); } });
+    }
+    return draw;
+  });
+
+  /* ---- filter bench ---- */
+  const cmul = (a, b) => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]];
+  const cdiv = (a, b) => { const d = b[0] * b[0] + b[1] * b[1]; return [(a[0] * b[0] + a[1] * b[1]) / d, (a[1] * b[0] - a[0] * b[1]) / d]; };
+  function butter(k, fn, hp) { // H(j fn), fn = f/fc
+    const s = hp ? [0, -1 / fn] : [0, fn]; let H = [1, 0];
+    for (let i = 1; i <= k; i++) {
+      const th = Math.PI * (2 * i + k - 1) / (2 * k), p = [Math.cos(th), Math.sin(th)];
+      H = cmul(H, cdiv([-p[0], -p[1]], [s[0] - p[0], s[1] - p[1]]));
+    }
+    return H;
+  }
+  function fact(n) { let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; }
+  const besselCache = {};
+  function besselCoef(k) {
+    if (besselCache[k]) return besselCache[k];
+    const a = []; for (let j = 0; j <= k; j++) a.push(fact(2 * k - j) / (Math.pow(2, k - j) * fact(j) * fact(k - j)));
+    const evalMag = w => { let re = 0, im = 0, pw = [1, 0]; for (let j = 0; j <= k; j++) { re += a[j] * pw[0]; im += a[j] * pw[1]; pw = cmul(pw, [0, w]); } return Math.hypot(re, im); };
+    let lo = 0.01, hi = 20; for (let it = 0; it < 80; it++) { const m = (lo + hi) / 2; if (evalMag(m) < Math.SQRT2 * a[0]) lo = m; else hi = m; }
+    besselCache[k] = { a: a, w3: (lo + hi) / 2 }; return besselCache[k];
+  }
+  function bessel(k, fn) {
+    const { a, w3 } = besselCoef(k); let den = [0, 0], pw = [1, 0];
+    for (let j = 0; j <= k; j++) { den = [den[0] + a[j] * pw[0], den[1] + a[j] * pw[1]]; pw = cmul(pw, [0, fn * w3]); }
+    return cdiv([a[0], 0], den);
+  }
+  const HISS = (function () {
+    const c = []; let s = 12345; const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+    for (let i = 0; i < 24; i++) c.push({ f: 90 + 360 * i / 23 + 6 * rnd(), a: 0.04 + 0.05 * rnd(), p: 6.283 * rnd() });
+    return c;
+  })();
+  const SIG = {
+    sine: [{ f: 5, a: 1, p: 0, sig: 1 }, { f: 50, a: 0.4, p: 0.3 }].concat(HISS),
+    sq: (function () { const c = []; for (let n = 1; n <= 59; n += 2) c.push({ f: 5 * n, a: 4 / Math.PI / n, p: 0, sig: 1 }); return c.concat(HISS.map(h => ({ f: h.f + 300, a: h.a, p: h.p }))); })()
+  };
+  Deck.onShow('filter-sim', () => {
+    const get = Deck.controls('simFilt', () => draw());
+    function draw() {
+      const v = get(), k = v.k, fc = v.fc, ty = v.type, comps = SIG[v.sig];
+      const Hf = f => ty === 'bes' ? bessel(k, f / fc) : butter(k, f / fc, ty === 'hp');
+      const H = comps.map(c => Hf(c.f));
+      const Mf = f => Math.hypot.apply(null, Hf(f));
+      Deck.plot($('cvFiltM'), { x: [1, 1000], y: [0.001, 2], logx: true, logy: true, xlabel: 'frequency f (Hz)', ylabel: 'amplitude (V) and M(f)',
+        vlines: [{ x: fc, color: 'blu', dash: [3, 4], label: 'f_c' }], hlines: [{ y: 0.707, color: 'muted', dash: [2, 4], label: '0.707' }],
+        series: [{ f: Mf, color: 'blu', width: 2 },
+          { pts: comps.map(c => [c.f, c.a]), color: 'muted', dotsOnly: true, r: 3.2 },
+          { pts: comps.map((c, i) => [c.f, Math.max(1.1e-3, c.a * Math.hypot(H[i][0], H[i][1]))]), color: 'acc', dotsOnly: true, r: 3.2 }] });
+      const inp = [], out = [], cln = [];
+      for (let j = 0; j <= 900; j++) {
+        const t = 0.4 * j / 900; let a = 0, b = 0, s = 0;
+        comps.forEach((c, i) => { const w = 2 * Math.PI * c.f * t + c.p; a += c.a * Math.sin(w); if (c.sig) s += c.a * Math.sin(w); b += c.a * Math.hypot(H[i][0], H[i][1]) * Math.sin(w + Math.atan2(H[i][1], H[i][0])); });
+        inp.push([t, a]); out.push([t, b]); cln.push([t, s]);
+      }
+      Deck.plot($('cvFiltT'), { x: [0, 0.4], y: [-2.4, 2.4], xlabel: 'time t (s)', ylabel: 'signal (V)',
+        series: [{ pts: inp, color: 'muted', width: 1 }, { pts: cln, color: 'grn', width: 1.3, dash: [4, 4] }, { pts: out, color: 'acc', width: 2.4 }] });
+      const H5 = Hf(5), m5 = Math.hypot(H5[0], H5[1]), ph5 = Math.atan2(H5[1], H5[0]);
+      const sp = t => '<span>' + t + '</span>';
+      let extra;
+      if (v.sig === 'sine') { const m50 = Mf(50); extra = sp('hum M(50 Hz) <b>' + m50.toPrecision(3) + '</b> (' + (-20 * Math.log10(m50)).toFixed(1) + ' dB)'); }
+      else { let mx = -9; out.forEach(p => { if (p[1] > mx) mx = p[1]; }); extra = sp('output peak <b>' + mx.toFixed(2) + ' V</b> (square wave is 1.00 V): overshoot <b>' + Math.max(0, (mx - 1) * 100).toFixed(0) + ' %</b>'); }
+      $('roFilt').innerHTML = sp('M(5 Hz) <b>' + m5.toFixed(3) + '</b>') + extra + sp('phase at 5 Hz <b>' + (ph5 * 180 / Math.PI).toFixed(1) + '°</b> = delay <b>' + (Math.abs(ph5) / (2 * Math.PI * 5) * 1000).toFixed(1) + ' ms</b>') + sp(ty === 'bes' ? 'Bessel: softer knee, near-constant delay' : 'roll-off <b>' + (20 * k) + ' dB/decade</b>');
+    }
+    return draw;
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,801 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Meters and Instruments</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="deck.css">
+<style>
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:640px){.duo{grid-template-columns:1fr}}
+  .tbl.compact th,.tbl.compact td{padding:6px 10px;font-size:.88rem}
+</style>
+<script>window.DECK = { num: "04a", title: "Meters and Electrical Instruments" };</script>
+<script src="deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+
+<!-- 1 · cover -->
+<section class="slide cover center" id="cover" data-title="Cover">
+  <p class="num">TOPIC 04 · PART A OF 3</p>
+  <h1>Meters and Electrical Instruments</h1>
+  <p class="lead">A transducer hands you a current, a voltage, a resistance or a train of pulses. This part shows the instruments that read them: moving-coil and AC meters, the null-balance potentiometer, digital and electronic voltmeters, oscilloscopes, recorders and counters, and how each one can disturb what it measures.</p>
+  <div class="parts"><span>A · Meters and electrical instruments</span><a href="d04b.html">B · Bridges, loading and impedance</a><a href="d04c.html">C · Amplifiers, filters and grounding</a></div>
+  <canvas class="bigtrace" id="coverTrace" data-h="110" aria-label="Animated trace: a slowly varying quantity and the small electrical signal it produces"></canvas>
+  <ol class="agenda">
+    <li>The D’Arsonval movement, shunts and multipliers</li>
+    <li>AC meters and what “rms” really means</li>
+    <li>Ohmmeter and null-balance potentiometer</li>
+    <li>Digital and electronic voltmeters, loading</li>
+    <li>Oscilloscopes: phase, sampling, choosing one</li>
+    <li>Recorders and electronic counters</li>
+  </ol>
+</section>
+
+<!-- 2 · where -->
+<section class="slide" id="where" data-title="Where we are: from transducer to reading">
+  <p class="eyebrow">Where we are</p>
+  <h2>The transducers are built; now we read them</h2>
+  <div class="cols">
+    <div>
+      <p>Topic 03 built the transducers. The <b>passive</b> ones of its part A (potentiometer, strain gauge, RTD, LVDT, capacitive and eddy-current sensors) change a resistance, an inductance or a capacitance, and must be excited and read without being loaded. The ones of its part B mostly <b>generate</b> a signal: a piezoelectric crystal gives a charge, a photocell a current or voltage, a Hall plate or a search coil a voltage, and an encoder a train of pulses.</p>
+      <p>Every one of those outputs ends up at an instrument that turns it into a number or a trace. This part is about those instruments: how they work inside, what quantity they really respond to, how fast they can follow, and how much they disturb the circuit they are connected to.</p>
+      <div class="define"><p>The <dfn>rms value</dfn> (root mean square) of a periodic current is \(I_{rms}=\sqrt{\tfrac1T\int_0^Ti^2\,dt}\): the steady current that would heat a resistor equally. For a sine wave of peak \(I_p\) it is \(I_p/\sqrt2\). The <dfn>average (rectified) value</dfn> \(\tfrac1T\int_0^T\lvert i\rvert\,dt\) is \(2I_p/\pi\) for a sine. Their ratio, 1.11 for a sine, is the <dfn>form factor</dfn>.</p></div>
+    </div>
+    <div>
+      <div class="tbl wrap compact"><table>
+        <tr><th>Transducer output</th><th>Typical instrument</th></tr>
+        <tr><td>slowly varying voltage (potentiometer, demodulated LVDT, thermocouple)</td><td>digital voltmeter, null potentiometer, recorder</td></tr>
+        <tr><td>small ΔR (strain gauge, RTD)</td><td>bridge (Part D), then voltmeter</td></tr>
+        <tr><td>fast voltage (piezoelectric, photodiode)</td><td>amplifier (Part E), then oscilloscope or digitizer</td></tr>
+        <tr><td>current (photoemissive tube, 4–20 mA loop)</td><td>ammeter, or a known resistor and a voltmeter</td></tr>
+        <tr><td>pulses (encoder, gear-tooth pickup)</td><td>electronic counter</td></tr>
+      </table></div>
+      <div class="analogy"><p>A transducer writes a message in an electrical language; an instrument is the reader. Some readers only skim the average, some read every word (rms), some can follow a fast speaker (an oscilloscope), and some simply count the words (a counter). Choosing an instrument means choosing the right reader for the message.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 · darsonval -->
+<section class="slide" id="darsonval" data-title="The D’Arsonval movement">
+  <p class="eyebrow">Measuring current</p>
+  <h2>The D’Arsonval movement: a coil that twists in a magnet</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 270" aria-label="D'Arsonval movement seen from above: permanent magnet poles N and S with curved faces, iron core, coil sides carrying current in and out, pointer, spiral spring and scale">
+          <path d="M60 230 A170 170 0 0 1 340 230" class="ln-thin"/>
+          <g class="ln-thin"><path d="M80 190 l-8 -6 M118 138 l-7 -7 M160 108 l-5 -8 M200 98 V88 M240 108 l5 -8 M282 138 l7 -7 M320 190 l8 -6"/></g>
+          <text x="200" y="80" text-anchor="middle" class="t-mono t-muted">scale</text>
+          <path d="M20 160 H110 A90 90 0 0 0 110 300" class="box" style="fill:var(--red-soft)"/>
+          <rect x="20" y="160" width="40" height="110" class="fill-panel"/>
+          <path d="M380 160 H290 A90 90 0 0 1 290 300" class="box" style="fill:var(--blu-soft)"/>
+          <text x="40" y="225" font-size="18" text-anchor="middle">N</text><text x="360" y="225" font-size="18" text-anchor="middle">S</text>
+          <circle cx="200" cy="230" r="52" class="fill-grid" stroke="var(--muted)"/>
+          <text x="200" y="262" text-anchor="middle" font-size="11" class="t-muted">iron core</text>
+          <g class="ln-thin dash"><path d="M110 200 H148 M110 230 H148 M110 260 H148 M252 200 H290 M252 230 H290 M252 260 H290"/></g>
+          <circle cx="138" cy="230" r="9" class="box-acc"/><path d="M132 224 L144 236 M144 224 L132 236" class="ln-acc" style="stroke-width:1.6"/>
+          <circle cx="262" cy="230" r="9" class="box-acc"/><circle cx="262" cy="230" r="2.5" class="fill-acc"/>
+          <path d="M138 214 V180 M132 188 L138 178 L144 188" class="ln-blu"/><text x="146" y="190" class="t-blu">F</text>
+          <path d="M262 246 V270" class="ln-blu"/><path d="M256 262 L262 272 L268 262" class="ln-blu"/><text x="270" y="270" class="t-blu">F</text>
+          <path d="M200 230 L268 128" class="ln-acc" style="stroke-width:3"/>
+          <path d="M200 230 m-6 0 a6 6 0 1 1 12 0 a9 9 0 1 1 -18 0 a12 12 0 1 1 24 0" class="ln-thin"/>
+          <circle cx="200" cy="230" r="4" class="fill-ink"/>
+          <text x="276" y="126" class="t-acc">pointer</text>
+          <text x="214" y="214" font-size="11" class="t-muted">spring</text>
+          <text x="104" y="152" font-size="11" class="t-muted">radial field</text>
+        </svg>
+        <figcaption>Top view. Current flows into the page on the left coil side and out on the right; the two forces form a couple that turns the coil and pointer against a spiral spring.</figcaption>
+      </figure>
+    </div>
+    <div>
+      <p>A straight wire of length \(l\) carrying current \(I\) at right angles to a field \(B\) feels a force \(F=IlB\). A rectangular coil of \(N\) turns and area \(A\) has two such sides pushed in opposite directions, so it feels a torque:</p>
+      <div class="eq"><span class="label">Torque on a current loop</span>$$T_m=N\,I\,A\,B\sin\alpha$$</div>
+      <div class="symbols"><span>\(\alpha\)</span><span>angle between the coil’s normal and the field</span><span>\(B\)</span><span>flux density, T (Wb/m²)</span></div>
+      <p>The curved pole faces and the iron core make the field <b>radial</b>, so the coil sides always cut it at right angles and \(\sin\alpha=1\) at every pointer angle. A spiral spring of stiffness \(k\) resists with torque \(k\theta\). At rest:</p>
+      <div class="eq"><span class="label">Steady deflection</span>$$k\theta=NIAB\quad\Rightarrow\quad \theta=\frac{NAB}{k}\,I$$</div>
+      <p>The scale is linear in current. <b>Quick number</b>: 20 turns of area 1 in² (6.45 cm²) carrying 20 mA in 0.4 T give \(T_m=20(0.020)(6.45\times10^{-4})(0.4)=1.03\times10^{-4}\) N·m, about the torque of a 1 g mass hung 1 cm from a pivot.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 4 · galv -->
+<section class="slide" id="galv" data-title="Galvanometer: deflection and null modes">
+  <p class="eyebrow">Measuring current · two modes of use</p>
+  <h2>Deflection mode reads the pointer; null mode drives it to zero</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simGalv">
+      <div class="simhead"><span>Galvanometer</span><span class="muted small">pointer = mass–spring–damper</span></div>
+      <canvas id="cvGalv" data-h="220" aria-label="Animated galvanometer dial with pointer"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="gI">Coil current I <output data-for="I"></output></label>
+          <input type="range" id="gI" data-key="I" min="-50" max="50" step="1" value="30" data-fmt="0" data-unit=" µA"></div>
+        <div class="ctl"><label for="gz">Damping ratio ζ <output data-for="z"></output></label>
+          <input type="range" id="gz" data-key="z" min="0.1" max="1.5" step="0.05" value="0.4" data-fmt="2"></div>
+      </div>
+      <div class="readout" id="roGalv"></div>
+    </div>
+    <div>
+      <p>The moving coil has inertia \(J\), bearing friction acts as damping \(c\), and the spring gives stiffness \(k\). Newton’s law for rotation gives \(J\ddot\theta+c\dot\theta+k\theta=T_m\): a second-order system, exactly the model of Topic 02. A lightly damped pointer overshoots and swings before it settles.</p>
+      <p><dfn>Deflection mode</dfn>: the pointer’s steady angle is the reading. The coil takes energy from the circuit to turn, so the circuit is disturbed; this is a <dfn>loading error</dfn> (Part D quantifies it).</p>
+      <p><dfn>Null mode</dfn>: a <dfn>galvanometer</dfn> is a very sensitive movement with its zero in the middle of the scale. You adjust a known quantity until it reads zero. At zero current the meter takes no energy, so the loading error vanishes. Sensitive mechanical galvanometers resolve about 0.1 µA per division.</p>
+      <div class="try"><p>Set ζ = 0.15 and flip I from +30 to −30 µA: the pointer rings. Raise ζ to about 0.7: it arrives quickly with a small overshoot. Meters are damped near this value, partly by eddy currents in the coil frame.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 · ex-meter -->
+<section class="slide" id="ex-meter" data-title="Worked example: shunts and multipliers">
+  <p class="eyebrow">Worked example</p>
+  <h2>One meter movement, many ranges: shunts and multipliers</h2>
+  <div class="cols wide-l">
+    <div class="example">
+      <p class="given">A movement reads full scale at \(I_m=50\ \mu\)A and its coil resistance is \(R_m=1000\ \Omega\). (a) What shunt resistor makes it a 0–10 mA ammeter? (b) What series resistor makes it a 0–10 V voltmeter? (c) The 0–2 V range is used on a source of 1.000 V with 10 kΩ internal resistance. What does it read?</p>
+      <p class="small"><b>Known</b>: \(I_m\), \(R_m\), ranges. <b>Find</b>: \(R_{sh}\), \(R_{se}\), reading. <b>Assumptions</b>: linear movement; resistors exact.</p>
+      <ol class="steps">
+        <li>(a) At full scale only 50 µA may pass the coil, so the shunt in parallel carries \(10-0.05=9.95\) mA. Both see the same voltage \(I_mR_m=50\times10^{-6}\times1000=0.05\) V.</li>
+        <li>\(R_{sh}=\dfrac{0.05\ \text{V}}{9.95\times10^{-3}\ \text{A}}=5.03\ \Omega.\) Smaller shunts give larger ranges: 0.050 Ω for 0–1 A.</li>
+        <li>(b) At 10 V the total series resistance must limit the current to 50 µA: \(R_{se}+R_m=\dfrac{10}{50\times10^{-6}}=200\ \text{k}\Omega\), so \(R_{se}=199\ \text{k}\Omega\). The meter’s figure of merit is \(1/I_m=20\ \text{k}\Omega/\text{V}\).</li>
+        <li>(c) On the 2 V range the meter’s resistance is \(2\times20\ \text{k}\Omega=40\ \text{k}\Omega\). The current is \(1.000/(10\,000+40\,000)=20\ \mu\)A, and the meter shows \(20\times10^{-6}\times40\,000=0.800\) V.</li>
+        <li><b>What this means</b>: the meter reads 20 % low, not because it is badly calibrated, but because it draws current through the source’s own resistance. That is a loading error.</li>
+      </ol>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 200" aria-label="Ammeter: movement with a parallel shunt resistor. Voltmeter: movement with a series multiplier resistor">
+          <text x="10" y="16" class="t-muted" font-size="12">ammeter: shunt in parallel</text>
+          <path d="M10 60 H50 M50 40 V80 M50 40 H80 M120 40 H150 V80 M50 80 H80 M120 80 H150 M150 60 H190" class="ln"/>
+          <circle cx="100" cy="40" r="16" class="box-acc"/><text x="100" y="45" text-anchor="middle" font-size="12">M</text>
+          <rect x="80" y="72" width="40" height="16" class="box"/><text x="100" y="106" text-anchor="middle" font-size="12">R_sh</text>
+          <text x="12" y="52" font-size="12">I</text>
+          <text x="220" y="16" class="t-muted" font-size="12">voltmeter: multiplier in series</text>
+          <path d="M210 60 H240 M280 60 H310 M342 60 H390" class="ln"/>
+          <rect x="240" y="52" width="40" height="16" class="box"/><text x="260" y="88" text-anchor="middle" font-size="12">R_se</text>
+          <circle cx="326" cy="60" r="16" class="box-acc"/><text x="326" y="65" text-anchor="middle" font-size="12">M</text>
+          <circle cx="210" cy="60" r="3.5" class="fill-ink"/><circle cx="390" cy="60" r="3.5" class="fill-ink"/>
+          <rect x="10" y="130" width="380" height="60" rx="6" class="fill-grid"/>
+          <text x="20" y="152" font-size="12">Ammeter: low total resistance, wired in series.</text>
+          <text x="20" y="176" font-size="12">Voltmeter: high total resistance, wired in parallel.</text>
+        </svg>
+      </figure>
+      <div class="quiz" data-correct="1">
+        <p class="q">To make the reading in part (c) less than 1 % low, the meter’s resistance should be at least about…</p>
+        <div class="opts">
+          <button class="opt" data-why="With 100 kΩ the reading is \(100/(100+10)=0.909\), still 9 % low.">100 kΩ</button>
+          <button class="opt" data-why="Reading ratio \(R_V/(R_V+10\ \text{k}\Omega)\ge0.99\) needs \(R_V\ge99\times10\ \text{k}\Omega\approx1\ \text{M}\Omega\). A meter needs about 100 times the source resistance.">1 MΩ</button>
+          <button class="opt" data-why="Equal resistances halve the reading. That is the worst choice for a voltmeter.">10 kΩ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · acmeters -->
+<section class="slide" id="acmeters" data-title="Meters for alternating current">
+  <p class="eyebrow">Measuring alternating current</p>
+  <h2>A permanent-magnet meter cannot follow AC; these movements can</h2>
+  <div class="cols">
+    <div>
+      <p>The D’Arsonval coil turns in proportion to the instantaneous current. On a 50 Hz current its inertia averages the torque to zero and it reads nothing. Other movements give a torque that does not change sign:</p>
+      <ul>
+        <li><b>Iron-vane (moving-iron)</b>: the current flows in a fixed coil and pulls a soft-iron vane against a spring. The pull depends on the square of the current, so the deflection follows \(I_{rms}^2\). Simple and robust; eddy currents and hysteresis in the iron limit accuracy. Low frequencies, about 25–125 Hz.</li>
+        <li><b>Electrodynamometer</b>: the permanent magnet is replaced by fixed coils carrying the same current as the moving coil. Torque \(\propto i_{fixed}\,i_{moving}=i^2\), averaging to \(I_{rms}^2\) for any waveform. It can be calibrated with DC and used for AC, up to about 2 kHz in special designs.</li>
+        <li><b>Rectifier type</b>: diodes rectify the AC and a D’Arsonval movement reads the <i>average</i>. The scale is multiplied by the sine form factor 1.11, so it reads rms correctly only for sine waves.</li>
+        <li><b>Thermocouple meter</b>: the current heats a small resistor (power \(I_{rms}^2R\)); a thermocouple on it drives a DC movement. True rms for any waveform, up to about 100 MHz.</li>
+        <li><b>Electrostatic voltmeter</b>: charged plates attract against a spring with force \(\propto V_{rms}^2\). Needs above about 100 V, works to about 50 MHz and draws no DC current (about 20 pF for a 5000 V meter).</li>
+      </ul>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 200" aria-label="(a) Iron-vane movement: fixed coil, iron vane on a pivot with pointer and spring. (b) Thermocouple meter: heater element carrying AC with a thermocouple junction connected to a D'Arsonval meter">
+          <text x="8" y="16" class="t-muted" font-size="12">(a) iron vane</text>
+          <rect x="30" y="70" width="80" height="50" rx="4" class="box"/>
+          <g class="ln-acc"><path d="M38 70 V120 M48 70 V120 M58 70 V120 M68 70 V120 M78 70 V120 M88 70 V120 M98 70 V120"/></g>
+          <text x="70" y="140" text-anchor="middle" font-size="11">fixed coil, current i</text>
+          <rect x="112" y="88" width="46" height="14" class="box-blu"/><text x="128" y="118" text-anchor="middle" class="t-blu" font-size="11">iron vane</text>
+          <circle cx="170" cy="95" r="4" class="fill-ink"/><path d="M170 95 L196 40" class="ln-acc" style="stroke-width:2.5"/>
+          <path d="M176 34 A60 60 0 0 1 214 46" class="ln-thin"/><text x="100" y="30" font-size="11" class="t-muted">scale ∝ I²<tspan baseline-shift="sub" font-size="8">rms</tspan></text>
+          <path d="M170 95 m-4 0 a4 4 0 1 1 8 0 a7 7 0 1 1 -14 0" class="ln-thin"/><text x="176" y="132" font-size="11" class="t-muted">spring</text>
+          <text x="216" y="16" class="t-muted" font-size="12">(b) thermocouple meter</text>
+          <path d="M220 60 H260 M340 60 H380" class="ln"/><text x="222" y="52" font-size="11">i (AC)</text>
+          <path d="M260 60 l6 -8 l8 16 l8 -16 l8 16 l8 -16 l8 16 l8 -16 l8 16 l8 -16 l4 8 H340" class="ln-acc"/>
+          <text x="300" y="44" text-anchor="middle" font-size="11" class="t-acc">heater R</text>
+          <path d="M300 64 L290 110 M300 64 L310 110" class="ln"/><circle cx="300" cy="64" r="3" class="fill-ink"/>
+          <text x="318" y="88" font-size="11">thermo-</text><text x="318" y="101" font-size="11">couple</text>
+          <path d="M290 110 V150 H284 M310 110 V150 H316" class="ln"/><circle cx="300" cy="160" r="18" class="box"/><text x="300" y="165" text-anchor="middle" font-size="12">M</text>
+          <text x="300" y="194" text-anchor="middle" font-size="11" class="t-muted">D’Arsonval movement</text>
+        </svg>
+        <figcaption>(a) The vane is drawn into the coil whichever way the current flows. (b) Heating depends on the rms current, so the thermocouple’s emf does too.</figcaption>
+      </figure>
+      <div class="quiz" data-correct="2">
+        <p class="q">A rectifier-type meter, calibrated for sine waves, measures a symmetric square wave of ±1 V. It shows…</p>
+        <div class="opts">
+          <button class="opt" data-why="The true rms of a ±1 V square wave is 1.00 V, but a rectifier meter does not respond to rms.">1.00 V, the correct rms</button>
+          <button class="opt" data-why="0.90 V would be the result if the average were divided by 1.11; the scale multiplies it.">0.90 V</button>
+          <button class="opt" data-why="Right. The rectified average is 1.00 V and the scale multiplies by the sine form factor 1.11, so it shows 1.11 V: 11 % high. Use a true-rms meter for non-sinusoidal signals.">1.11 V, 11 % high</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 · ohmmeter -->
+<section class="slide" id="ohmmeter" data-title="Measuring resistance: the ohmmeter">
+  <p class="eyebrow">Measuring resistance</p>
+  <h2>The ohmmeter: Ohm’s law with a backwards scale</h2>
+  <div class="cols">
+    <div>
+      <p>The simplest way to measure resistance is to apply a known voltage and measure the current, \(R=E/I\). An analog ohmmeter puts a battery \(E\), a zero-adjust resistor and a meter movement in series with the unknown \(R_x\). With the leads shorted you trim the zero-adjust until the meter reads full scale \(I_{fs}\); the internal resistance is then \(R_{int}=E/I_{fs}\).</p>
+      <ol class="steps">
+        <li>With \(R_x\) connected the current is \(I=\dfrac{E}{R_{int}+R_x}\).</li>
+        <li>Divide by the full-scale current: \(\dfrac{I}{I_{fs}}=\dfrac{R_{int}}{R_{int}+R_x}\).</li>
+        <li>So \(R_x=0\) reads full scale, \(R_x=R_{int}\) reads half scale, and \(R_x\to\infty\) reads zero. The scale runs backwards and is crowded at the high end.</li>
+        <li>Numbers: \(E=1.5\) V and \(I_{fs}=1\) mA give \(R_{int}=1500\ \Omega\). Then 500 Ω reads 75 %, 1.5 kΩ reads 50 %, 4.5 kΩ reads 25 %, 13.5 kΩ reads 10 %. Range switches change \(R_{int}\) with shunts so the useful middle of the scale covers other decades.</li>
+      </ol>
+      <div class="pitfall"><p>The test current heats the resistor by \(I^2R\). A fine RTD or strain-gauge wire can be shifted, or even burnt out like a fuse, by an ohmmeter’s current. Check the test current before measuring delicate sensors.</p></div>
+    </div>
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 260" aria-label="Series ohmmeter circuit with battery, zero adjust, meter and unknown resistor; and a nonlinear ohm scale from infinity at left to zero at right">
+          <path d="M30 60 H90 M130 60 H200 M232 60 H300 V140 H250 M210 140 H30 V112 M30 90 V60" class="ln"/>
+          <path d="M18 92 H42 M24 104 H36 M18 108" class="ln"/><text x="50" y="104" font-size="12">E</text>
+          <path d="M30 104 V112" class="ln"/>
+          <rect x="90" y="52" width="40" height="16" class="box"/><path d="M96 74 L126 46 M120 46 H126 V52" class="ln-thin"/><text x="110" y="40" text-anchor="middle" font-size="11">zero adjust</text>
+          <circle cx="216" cy="60" r="16" class="box-acc"/><text x="216" y="65" text-anchor="middle" font-size="12">M</text>
+          <rect x="210" y="132" width="40" height="16" class="box-blu"/><text x="230" y="166" text-anchor="middle" class="t-blu">Rₓ</text>
+          <circle cx="210" cy="140" r="3.5" class="fill-ink"/><circle cx="250" cy="140" r="3.5" class="fill-ink"/>
+          <text x="310" y="104" font-size="11" class="t-muted">test leads</text>
+          <path d="M60 250 A150 150 0 0 1 340 250" class="ln"/>
+          <g class="ln-thin"><path d="M70 205 l-10 -6 M200 100 V112 M330 205 l10 -6 M130 132 l-6 -9 M270 132 l6 -9"/></g>
+          <g font-size="12" class="t-mono"><text x="40" y="196">∞</text><text x="105" y="122">4.5k</text><text x="190" y="94">1.5k</text><text x="268" y="122">500</text><text x="346" y="196">0</text></g>
+          <text x="200" y="244" text-anchor="middle" class="t-muted" font-size="12">ohm scale (Ω), R_int = 1.5 kΩ</text>
+        </svg>
+        <figcaption>Series ohmmeter and its nonlinear scale. Half scale marks Rₓ = R<sub>int</sub>.</figcaption>
+      </figure>
+      <div class="quiz" data-correct="1">
+        <p class="q">With \(R_{int}=1500\ \Omega\), a resistor makes the pointer stop at one third of full scale. What is \(R_x\)?</p>
+        <div class="opts">
+          <button class="opt" data-why="One third of 1500 assumes a linear scale. The scale is not linear.">500 Ω</button>
+          <button class="opt" data-why="\(1/3=1500/(1500+R_x)\Rightarrow R_x=3000\ \Omega\).">3000 Ω</button>
+          <button class="opt" data-why="4500 Ω gives \(1500/6000=0.25\), a quarter of full scale.">4500 Ω</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 · potentiometer -->
+<section class="slide" id="potentiometer" data-title="Null-balance voltage: the potentiometer">
+  <p class="eyebrow">Measuring voltage · null balance</p>
+  <h2>The potentiometer weighs an unknown voltage against a known one</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 190" aria-label="Potentiometer instrument: a known supply across a slide wire; the unknown voltage and a galvanometer connected between one end of the wire and the sliding contact">
+          <rect x="80" y="72" width="240" height="16" class="box"/>
+          <text x="200" y="106" text-anchor="middle" class="t-muted" font-size="12">slide wire, total R_T</text>
+          <path d="M40 80 H80 M320 80 H360 M40 80 V150 H184 M198 150 H360 V80" class="ln"/>
+          <path d="M184 136 V164 M198 142 V158" class="ln"/><text x="191" y="182" text-anchor="middle">Eᵢ (known)</text>
+          <path d="M40 80 V30 H70 M102 30 H150 M182 30 H240 V60" class="ln"/>
+          <path d="M234 58 L240 70 L246 58" class="ln-acc"/>
+          <circle cx="86" cy="30" r="16" class="box-blu"/><text x="86" y="35" text-anchor="middle" font-size="12">Eₘ</text>
+          <circle cx="166" cy="30" r="16" class="box"/><text x="166" y="35" text-anchor="middle">G</text>
+          <circle cx="40" cy="80" r="4" class="fill-ink"/><text x="22" y="76">B</text>
+          <text x="250" y="58" class="t-acc">A (slider)</text>
+          <text x="86" y="62" text-anchor="middle" class="t-blu" font-size="11">unknown</text>
+          <path d="M80 120 H240" class="ln-thin"/><path d="M80 114 V126 M240 114 V126" class="ln-thin"/><text x="160" y="134" text-anchor="middle" font-size="11" class="t-muted">x · R_T</text>
+        </svg>
+        <figcaption>Slide A until the galvanometer G reads zero. Then the unknown equals the known fraction of the wire voltage.</figcaption>
+      </figure>
+      <p>The slide wire is a <dfn>voltage divider</dfn>: a uniform resistor whose voltage drop is proportional to length, so the voltage between B and the slider A is \(E_{AB}=(R_x/R_T)\,E_i=x\,E_i\). When G reads zero, no current flows through the unknown source, and</p>
+      <div class="eq"><span class="label">Potentiometer at balance</span>$$E_m=E_{AB}=\frac{R_x}{R_T}\,E_i$$</div>
+      <p class="small">The supply \(E_i\) is first set against a standard cell of known emf. Good instruments reach uncertainties below 1 µV, which is why they once calibrated thermocouples. Digital voltmeters replaced them by using a very high input resistance instead of a null.</p>
+    </div>
+    <div class="sim" id="simNull">
+      <div class="simhead"><span>Deflection vs null</span><span class="muted small">true source: 1.000 V behind R<sub>s</sub></span></div>
+      <canvas id="cvNull" data-h="220" aria-label="Meter dial and bar chart comparing true and indicated voltage"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="nm">Method</label>
+          <select id="nm" data-key="mode"><option value="defl">Deflection voltmeter</option><option value="null">Potentiometer (null)</option></select></div>
+        <div class="ctl"><label for="nrs"><span>Source resistance R<sub>s</sub></span> <output data-for="rs"></output></label>
+          <input type="range" id="nrs" data-key="rs" data-scale="log" data-min="10" data-max="1000000" min="0" max="1000" value="600" data-fmt="-1" data-unit=" Ω"></div>
+        <div class="ctl"><label for="nrm"><span>Voltmeter resistance R<sub>m</sub></span> <output data-for="rm"></output></label>
+          <input type="range" id="nrm" data-key="rm" data-scale="log" data-min="1000" data-max="10000000" min="0" max="1000" value="400" data-fmt="-1" data-unit=" Ω"></div>
+        <div class="ctl"><label for="nx">Slider position x <output data-for="x"></output></label>
+          <input type="range" id="nx" data-key="x" min="0" max="1" step="0.0005" value="0.4" data-fmt="4"></div>
+      </div>
+      <div class="readout" id="roNull"></div>
+      <div class="try"><p>Deflection: with R<sub>s</sub> = 10 kΩ and R<sub>m</sub> = 40 kΩ the meter reads 0.800 V. Switch to null, wire supply 2.000 V, and move x until G sits at zero: x = 0.5000 reads 1.000 V for any R<sub>s</sub>. With R<sub>s</sub> = 1 MΩ the needle barely moves near balance, so finding the null gets harder.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 · dvm -->
+<section class="slide" id="dvm" data-title="Digital meters: counting clock pulses">
+  <p class="eyebrow">Digital meters</p>
+  <h2>A digital voltmeter turns voltage into time, and time into a count</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simDVM">
+      <div class="simhead"><span>Ramp-type digital voltmeter</span><span class="legend"><span><i style="background:var(--acc)"></i>reference ramp</span><span><i style="background:var(--blu)"></i>unknown Eₓ</span><span><i style="background:var(--grn)"></i>counting window</span></span></div>
+      <canvas id="cvDVM" data-h="250" aria-label="Reference ramp falling from 10 V to 0, the unknown voltage level, and the clock pulses counted between equality and zero"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="dvx">Unknown voltage Eₓ <output data-for="ex"></output></label>
+          <input type="range" id="dvx" data-key="ex" min="0.2" max="9.8" step="0.001" value="2.337" data-fmt="3" data-unit=" V"></div>
+        <div class="ctl"><label for="dvc">Clock rate</label>
+          <select id="dvc" data-key="fc"><option value="1">1 pulse/s</option><option value="10">10 pulses/s</option><option value="100">100 pulses/s</option></select></div>
+      </div>
+      <div class="readout" id="roDVM"></div>
+    </div>
+    <div>
+      <p>The heart of a digital meter is a <b>clock</b>, usually a quartz crystal oscillator, shaped into one pulse per cycle. In the simplest voltmeter an internal reference falls linearly from 10 V to 0 at a known rate, here 0.1 V/s. A comparator starts a counter when the reference equals the unknown, and a second comparator stops it when the reference reaches zero. The time elapsed is \(E_x/(0.1\ \text{V/s})\), so with one pulse per second a count of 23 means 2.3 V.</p>
+      <div class="try"><p>With 1 pulse/s the display steps in 0.1 V and Eₓ = 2.337 V shows 2.3. Switch to 100 pulses/s: the same ramp now gives 233 counts and 2.33 V. Resolution is the ramp rate divided by the clock rate. Real meters run the clock at megahertz, and most bench meters integrate the input over a fixed time instead (dual-slope), which also averages out mains hum.</p></div>
+      <p class="small">An ammeter is a voltmeter across a precision internal resistor; an ohmmeter passes a known current through the unknown. A <b>3½-digit</b> display counts to ±1999, so on a 2 V range it resolves 1 mV. Analog meters respond to current; digital meters respond to voltage and draw very little.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 10 · evm -->
+<section class="slide" id="evm" data-title="Electronic voltmeters and loading">
+  <p class="eyebrow">Electronic voltmeters · worked example</p>
+  <h2>High input impedance is what makes an electronic voltmeter honest</h2>
+  <div class="cols">
+    <div>
+      <p>An <dfn>electronic voltmeter</dfn> (EVM) puts an amplifier between the input and the display. A function switch sends DC straight to a range divider; AC first passes a divider and a rectifier (or a true-rms converter). The amplifier then drives a pointer or a digital display. Because the amplifier draws almost no current, the input resistance is set by the divider: typically 10 MΩ for a digital multimeter and above 100 MΩ for laboratory electrometers.</p>
+      <figure>
+        <svg viewBox="0 0 400 140" aria-label="Electronic voltmeter block diagram: input, function switch AC or DC, AC divider and rectifier, range divider, amplifier, readout">
+          <text x="4" y="74" font-size="12">input</text><path d="M40 70 H60" class="ln"/>
+          <rect x="60" y="50" width="62" height="40" rx="5" class="box"/><text x="91" y="67" text-anchor="middle" font-size="11">function</text><text x="91" y="81" text-anchor="middle" font-size="11">AC / DC</text>
+          <path d="M122 62 H136 V30 H150 M122 78 H230" class="ln-thin"/><text x="140" y="96" font-size="10" class="t-muted">DC path</text>
+          <rect x="150" y="10" width="116" height="36" rx="5" class="box-acc"/><text x="208" y="25" text-anchor="middle" font-size="10">AC divider +</text><text x="208" y="39" text-anchor="middle" font-size="10">rectifier</text>
+          <path d="M266 30 H276 V64" class="ln-thin"/>
+          <rect x="230" y="64" width="60" height="30" rx="5" class="box"/><text x="260" y="76" text-anchor="middle" font-size="10">range</text><text x="260" y="88" text-anchor="middle" font-size="10">divider</text>
+          <path d="M290 79 H302" class="ln"/><path d="M302 64 V94 L332 79 Z" class="box"/><text x="316" y="112" text-anchor="middle" font-size="10">amplifier</text>
+          <path d="M332 79 H344" class="ln"/><rect x="344" y="62" width="52" height="34" rx="5" class="box-blu"/><text x="370" y="83" text-anchor="middle" font-size="11">display</text>
+        </svg>
+      </figure>
+      <div class="analogy"><p>Measuring the pressure in a bicycle tyre with a gauge that lets out half the air gives a low reading of a tyre you have just changed. A low-resistance voltmeter does the same to a high-resistance circuit. An EVM is a gauge that lets out almost nothing.</p></div>
+    </div>
+    <div class="example">
+      <p class="given">A constant 100 V is applied across two 0.5 MΩ resistors in series. The voltage across the lower one (true value 50 V) is measured (a) with a volt-ohmmeter of internal resistance 100 kΩ on its 100 V range, and (b) with an EVM of input resistance 17 MΩ. What does each read?</p>
+      <p class="small"><b>Known</b>: \(E=100\) V, \(R_1=R_2=0.5\) MΩ, \(R_m=0.1\) or 17 MΩ. <b>Find</b>: indicated \(E_{AB}\) and error. <b>Assumptions</b>: ideal supply; meters are pure resistances.</p>
+      <ol class="steps">
+        <li>The meter is in parallel with the lower resistor, and that combination forms a divider with the upper one:
+          $$R_p=\frac{R_2R_m}{R_2+R_m},\qquad E_{AB}=E\,\frac{R_p}{R_p+R_1}$$</li>
+        <li>(a) \(R_p=\dfrac{0.5\times0.1}{0.6}=0.0833\) MΩ, \(E_{AB}=100\times\dfrac{0.0833}{0.5833}=14.3\) V: an error of −71 %.</li>
+        <li>(b) \(R_p=\dfrac{0.5\times17}{17.5}=0.4857\) MΩ, \(E_{AB}=100\times\dfrac{0.4857}{0.9857}=49.28\) V: an error of −1.4 %.</li>
+        <li><b>What this means</b>: the cheap meter is not inaccurate, it is the wrong tool for a megohm circuit. If the circuit resistance is known, the reading can be corrected; better, use a meter whose resistance is at least 100 times the source resistance seen at the terminals (here 0.25 MΩ).</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- 11 · scope -->
+<section class="slide" id="scope" data-title="The oscilloscope">
+  <p class="eyebrow">Measuring voltage · seeing the waveform</p>
+  <h2>The oscilloscope draws voltage against time</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 400 240" aria-label="Cathode-ray tube oscilloscope: electron gun, vertical deflection plates driven by the input amplifier, horizontal plates driven by the sweep generator, phosphor screen with trace">
+          <path d="M20 90 H150 L330 40 V200 L150 150 H20 Z" class="box"/>
+          <rect x="28" y="108" width="34" height="24" class="box-acc"/><text x="45" y="148" text-anchor="middle" font-size="11">gun</text>
+          <path d="M62 120 H190 L322 92" class="ln-acc" style="stroke-width:1.6"/>
+          <rect x="96" y="96" width="44" height="6" class="fill-blu"/><rect x="96" y="138" width="44" height="6" class="fill-blu"/>
+          <text x="96" y="88" class="t-blu" font-size="11">vertical plates</text>
+          <rect x="160" y="110" width="8" height="20" class="fill-muted"/><rect x="172" y="114" width="8" height="20" class="fill-muted"/>
+          <text x="150" y="168" font-size="11" class="t-muted">horizontal plates</text>
+          <rect x="322" y="44" width="10" height="152" class="fill-grid" stroke="var(--ink)"/>
+          <path d="M340 60 C350 90 360 110 370 120 S390 150 395 180" class="ln-acc"/>
+          <text x="340" y="214" font-size="11">screen</text>
+          <rect x="20" y="10" width="110" height="34" rx="5" class="box"/><text x="75" y="31" text-anchor="middle" font-size="12">input amp</text>
+          <path d="M8 27 H20 M118 44 V96" class="ln-thin"/><text x="2" y="20" font-size="12">E</text>
+          <rect x="140" y="196" width="140" height="34" rx="5" class="box"/><text x="210" y="217" text-anchor="middle" font-size="12">trigger + sweep</text>
+          <path d="M170 196 V134" class="ln-thin"/>
+          <path d="M290 222 l10 -16 v16 l10 -16 v16 l10 -16 v16" class="ln-thin"/>
+        </svg>
+        <figcaption>Cathode-ray oscilloscope. The input voltage moves the beam up and down; a sawtooth sweep moves it across at constant speed.</figcaption>
+      </figure>
+    </div>
+    <div>
+      <p>An electron gun fires a narrow beam at a phosphor screen, which glows where it is hit. Electrons are charged, so a voltage across a pair of plates bends the beam. The input signal, after a calibrated amplifier, drives the <b>vertical plates</b>. A sawtooth voltage on the <b>horizontal plates</b> sweeps the beam across the screen at constant speed and snaps it back. The trace is therefore voltage (volts per division) against time (seconds per division).</p>
+      <p>The <dfn>trigger</dfn> starts each sweep when the input crosses a chosen level on a chosen slope, so successive sweeps land on top of each other and a repeating waveform stands still.</p>
+      <p>A <b>digital oscilloscope</b> does the same job by sampling the input with an analog-to-digital converter, storing the samples, and redrawing them on a screen. It can also store long records, average, and compute spectra.</p>
+      <div class="takeaway"><p>A single-number meter tells you one value. A scope shows magnitude, frequency, distortion, noise and the AC and DC parts all at once, which is why it is the first tool to reach for when a signal looks wrong.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 12 · lissajous -->
+<section class="slide" id="lissajous" data-title="Phase and frequency with Lissajous figures">
+  <p class="eyebrow">Oscilloscope · X–Y mode</p>
+  <h2>Two signals against each other reveal phase and frequency ratio</h2>
+  <div class="cols wide-r">
+    <div>
+      <p>Switch off the sweep and drive the horizontal plates with a second signal: the beam then draws one signal against the other, a <dfn>Lissajous figure</dfn>. To measure the phase shift \(\varphi\) of a network, feed the oscillator to the horizontal input and the network’s output to the vertical input.</p>
+      <ol class="steps">
+        <li>Horizontal \(x=X\sin\omega t\), vertical \(y=A\sin(\omega t+\varphi)\): one frequency, so the trace is an ellipse.</li>
+        <li>Where the ellipse crosses the vertical axis, \(x=0\), so \(\sin\omega t=0\) and \(y=\pm A\sin\varphi\). Call that intercept \(B\).</li>
+        <li>The ellipse’s highest point is \(y=A\). So
+          $$\varphi=\sin^{-1}\frac{B}{A}$$</li>
+        <li>\(\varphi=0\): a straight line sloping up to the right. 90°: an ellipse with axes along x and y (a circle if \(X=A\)). 180°: a line sloping up to the left.</li>
+      </ol>
+      <p class="small">With different frequencies the figure closes only if their ratio is a ratio of whole numbers, and then <b>vertical frequency / horizontal frequency = number of maxima along the top edge / number of maxima along the side edge</b>. Against a known oscillator this measures an unknown frequency.</p>
+    </div>
+    <div class="sim" id="simLiss">
+      <div class="simhead"><span>Lissajous figure</span><span class="muted small">x = horizontal input, y = vertical input</span></div>
+      <canvas id="cvLiss" data-h="280" aria-label="Lissajous figure of two sinusoids"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="lr">Vertical : horizontal frequency</label>
+          <select id="lr" data-key="r"><option value="1">1 : 1</option><option value="2">2 : 1</option><option value="0.5">1 : 2</option><option value="1.5">3 : 2</option><option value="0.6666667">2 : 3</option><option value="3">3 : 1</option></select></div>
+        <div class="ctl"><label for="lp">Phase shift φ <output data-for="p"></output></label>
+          <input type="range" id="lp" data-key="p" min="0" max="180" step="1" value="30" data-fmt="0" data-unit="°"></div>
+      </div>
+      <div class="readout" id="roLiss"></div>
+      <div class="try"><p>At 1 : 1 set φ = 30°: the intercept B is half the height A, and \(\sin^{-1}0.5=30^\circ\). Slide φ to 90° (upright ellipse) and on to 180° (a line leaning left). Then choose 2 : 1 and count two tops across the top edge against one along the side.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 13 · digscope -->
+<section class="slide" id="digscope" data-title="Digital and sampling oscilloscopes, choosing a scope">
+  <p class="eyebrow">Oscilloscope · digital, sampling, selection</p>
+  <h2>Choosing a scope: bandwidth, rise time, sampling and triggering</h2>
+  <div class="cols">
+    <div>
+      <p>A <b>digital storage oscilloscope</b> digitizes the input and stores it in memory; a 12-bit converter gives 4096 vertical levels. Stored records can be expanded, averaged, transformed to spectra and sent to a computer. <b>Real-time sampling</b> captures a whole waveform from a single trigger, so it is the only choice for a one-shot event such as an impact.</p>
+      <p>A <b>sampling oscilloscope</b> works like a stroboscope on a <i>repetitive</i> signal too fast for its amplifiers: it takes one sample per cycle, each a little later in the cycle than the last, and assembles a slowed-down replica. Equivalent-time sampling of this kind reaches bandwidths of gigahertz.</p>
+      <figure>
+        <svg viewBox="0 0 400 150" aria-label="Sampling oscilloscope: fast repetitive waveform with one sample taken per cycle at a progressively later point, and the slowed replica built from the samples">
+          <path d="M10 50 C20 10 30 10 40 50 S60 90 70 50 S90 10 100 50 S120 90 130 50 S150 10 160 50 S180 90 190 50 S210 10 220 50 S240 90 250 50 S270 10 280 50 S300 90 310 50 S330 10 340 50 S360 90 370 50" class="ln-blu" style="stroke-width:1.6"/>
+          <g class="fill-acc"><circle cx="10" cy="50" r="3.5"/><circle cx="76" cy="32" r="3.5"/><circle cx="142" cy="21" r="3.5"/><circle cx="208" cy="21" r="3.5"/><circle cx="274" cy="32" r="3.5"/><circle cx="340" cy="50" r="3.5"/></g>
+          <text x="10" y="102" font-size="11" class="t-blu">fast repetitive signal: one sample per cycle, each later</text>
+          <path d="M10 130 C40 116 110 108 142 109 L208 109 C240 108 310 116 340 130" class="ln-acc" style="stroke-width:1.6"/>
+          <g class="fill-acc"><circle cx="10" cy="130" r="3"/><circle cx="76" cy="117" r="3"/><circle cx="142" cy="109" r="3"/><circle cx="208" cy="109" r="3"/><circle cx="274" cy="117" r="3"/><circle cx="340" cy="130" r="3"/></g>
+          <text x="10" y="146" font-size="11" class="t-acc">displayed: a slowed replica of the waveform’s shape</text>
+        </svg>
+      </figure>
+    </div>
+    <div>
+      <p>Choosing a scope starts from the signal, not the catalogue:</p>
+      <ul class="small">
+        <li><b>One-shot or repetitive?</b> One-shot needs real-time sampling at a high rate.</li>
+        <li><b>Fastest edge.</b> A first-order system’s 10–90 % rise time and bandwidth are linked by \(f_{BW}\approx0.35/t_r\). A 3.5 ns edge needs about 100 MHz.</li>
+        <li><b>Rise times add in quadrature</b>: \(t_{shown}=\sqrt{t_{signal}^2+t_{scope}^2}\). A scope five times faster than the signal shows its edge only 2 % slow.</li>
+        <li><b>Vertical sensitivity and range</b>: the smallest volts per division needed, and DC offset to view a small ripple riding on a large level (1 V of variation on 40 V needs 40 V of offset).</li>
+        <li><b>Time base and record length</b>: the longest and shortest times to view set the memory: samples = sampling rate × record time.</li>
+        <li><b>Triggering</b>: level and slope, single sweep for transients, and qualified triggers (too wide, too narrow, missing pulse) to catch rare faults.</li>
+      </ul>
+      <div class="quiz" data-correct="1">
+        <p class="q">A pulse edge truly rises in 10 ns. It is viewed on a 35 MHz scope. Roughly what rise time does the screen show?</p>
+        <div class="opts">
+          <button class="opt" data-why="That ignores the scope’s own rise time, \(0.35/35\ \text{MHz}=10\) ns.">10 ns</button>
+          <button class="opt" data-why="Right. The scope’s rise time is \(0.35/(35\times10^6)=10\) ns, so \(\sqrt{10^2+10^2}=14\) ns: 41 % slow.">14 ns</button>
+          <button class="opt" data-why="Rise times add in quadrature, not linearly.">20 ns</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 · scope-bw -->
+<section class="slide" id="scope-bw" data-title="Worked example: how fast a scope must be">
+  <p class="eyebrow">Worked example · with simulator</p>
+  <h2>How fast must a scope be to show a 12 MHz square wave?</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simHarm">
+      <div class="simhead"><span>Square wave from harmonics</span><span class="legend"><span><i style="background:var(--muted)"></i>ideal square wave</span><span><i style="background:var(--acc)"></i>sum of harmonics kept</span></span></div>
+      <canvas id="cvHarm" data-h="250" aria-label="Square wave built from its odd harmonics"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="hn">Highest harmonic kept <output data-for="n"></output></label>
+          <input type="range" id="hn" data-key="n" min="1" max="21" step="2" value="5" data-fmt="0"></div>
+      </div>
+      <div class="readout" id="roHarm"></div>
+    </div>
+    <div class="example">
+      <p class="given">A serial data line carries 12 Mbit/s for frames 1 ms long. Treat it as a 12 MHz square wave. What bandwidth, sampling rate and memory must a digital scope have to show one frame with recognisable edges?</p>
+      <ol class="steps">
+        <li>A square wave of frequency \(f\) is a sum of sines at \(f, 3f, 5f, \dots\) with amplitudes \(1, \tfrac13, \tfrac15,\dots\). The simulator shows that keeping up to the 5th harmonic gives a recognisable square shape.</li>
+        <li>Highest frequency to pass: \(5\times12\ \text{MHz}=60\) MHz, so the scope’s bandwidth must be at least 60 MHz.</li>
+        <li>A sampled record can only represent frequencies below half the sampling rate (the sampling theorem, treated in Topic 05). So \(f_s\ge2\times60\ \text{MHz}=120\times10^{6}\) samples/s.</li>
+        <li>Memory for one frame: \(120\times10^{6}\ \text{s}^{-1}\times10^{-3}\ \text{s}=120\,000\) samples.</li>
+        <li><b>What this means</b>: scope bandwidth is set by the harmonics, not the fundamental. Real scopes sample at 4 to 5 times their bandwidth for cleaner pictures.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- 15 · counters -->
+<section class="slide" id="counters" data-title="Recorders and counters">
+  <p class="eyebrow">Recorders and counters · worked example</p>
+  <h2>Keeping a record, and counting pulses against a crystal clock</h2>
+  <div class="cols">
+    <div>
+      <p><b>Recorders.</b> A <b>strip-chart recorder</b> is a self-balancing potentiometer: a servo motor keeps moving the slider (and a pen) to the null point, so the trace is a loading-free record of a slow voltage, useful up to about 5 Hz, for example for thermocouples. Today most records are digital: data loggers, digitizers and storage scopes write directly to memory.</p>
+      <p><b>Counters.</b> Almost every frequency measurement is a count of events in a known time. An electronic counter has four blocks: input conditioning (turns the signal into clean pulses), a crystal <b>time base</b>, a <b>gate</b> that opens for a set time, and a counter with display.</p>
+      <figure>
+        <svg viewBox="0 0 400 110" aria-label="Electronic counter: input conditioning, gate, counter and display, with a time base controlling the gate">
+          <text x="2" y="44" font-size="11">signal</text><path d="M40 40 H52" class="ln"/>
+          <rect x="52" y="22" width="80" height="36" rx="5" class="box"/><text x="92" y="38" text-anchor="middle" font-size="11">input</text><text x="92" y="51" text-anchor="middle" font-size="11">shaping</text>
+          <path d="M132 40 H160" class="ln"/><path d="M144 30 h4 v-6 h4 v6 h4 v-6 h4" class="ln-thin"/>
+          <rect x="160" y="22" width="60" height="36" rx="5" class="box-acc"/><text x="190" y="45" text-anchor="middle" font-size="12">gate</text>
+          <path d="M220 40 H250" class="ln"/>
+          <rect x="250" y="22" width="140" height="36" rx="5" class="box-blu"/><text x="320" y="45" text-anchor="middle" font-size="12">counter + display</text>
+          <rect x="126" y="74" width="128" height="30" rx="5" class="box"/><text x="190" y="93" text-anchor="middle" font-size="11">crystal time base</text>
+          <path d="M190 74 V58" class="ln-thin"/><text x="258" y="70" font-size="10" class="t-muted">opens the gate for T<tspan baseline-shift="sub" font-size="8">g</tspan></text>
+        </svg>
+      </figure>
+      <div class="eq"><span class="label">Frequency and period modes</span>$$f=\frac{N}{T_g}\ \ (\pm1\ \text{count}),\qquad T=\frac{N}{f_{clock}}\ \ (\pm1\ \text{count})$$</div>
+    </div>
+    <div class="example">
+      <p class="given">An engine runs at about 1500 rpm. A counter measures its speed. (a) A magnetic pickup faces a 60-tooth wheel; the counter uses a 1 s gate. (b) A single mark gives one pulse per revolution; 1 s gate, then 10 s gate. (c) The one-per-revolution signal is timed in period mode with a 1 MHz time base. Find the reading and its ±1-count uncertainty each time.</p>
+      <ol class="steps">
+        <li>(a) Pulse rate \(60\times1500/60=1500\) Hz; in 1 s, \(N=1500\pm1\). With 60 teeth and a 1 s gate the count <i>is</i> the speed in rpm: 1500 ± 1 rpm, ±0.07 %.</li>
+        <li>(b) 25 Hz gives \(N=25\pm1\) in 1 s: ±4 %, ±60 rpm. A 10 s gate gives \(250\pm1\): ±0.4 %, but the reading is ten times slower to arrive.</li>
+        <li>(c) One period is \(1/25=0.04\) s, so \(N=0.04\times10^6=40\,000\pm1\) clock counts: ±0.0025 %. Speed \(=60/T=1500.0\) rpm.</li>
+        <li><b>What this means</b>: for low frequencies measure the period; for high frequencies count in a gate. A stopwatch and a revolution counter, with about 0.2 s of human reaction time, would need a run of minutes for the same accuracy.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- 16 · check -->
+<section class="slide" id="check" data-title="Check yourself">
+  <p class="eyebrow">Check yourself</p>
+  <h2>Four quick checks on Part C</h2>
+  <div class="cols">
+    <div class="quiz" data-correct="1">
+      <p class="q">Why does a D’Arsonval meter use curved pole faces and an iron core?</p>
+      <div class="opts">
+        <button class="opt" data-why="The magnet is permanent; the shape does not change its strength much.">To make the magnet stronger</button>
+        <button class="opt" data-why="Yes. A radial field keeps \(\sin\alpha=1\) at every angle, so \(\theta=NAB\,I/k\) is linear in current.">To make the field radial, so the scale is linear</button>
+        <button class="opt" data-why="Damping comes mostly from eddy currents and friction, not the pole shape.">To damp the pointer</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="1">
+      <p class="q">Why is a potentiometer (null) measurement free of loading error at balance?</p>
+      <div class="opts">
+        <button class="opt" data-why="The supply value matters: the reading is \(xE_i\). It is set against a standard cell.">Because the supply voltage cancels out</button>
+        <button class="opt" data-why="At balance the galvanometer current is zero, so no current flows through the unknown source and no voltage is lost across its internal resistance.">Because no current is drawn from the unknown source</button>
+        <button class="opt" data-why="The galvanometer’s resistance does not appear in the balance condition, but that is a consequence of zero current, not the reason.">Because the galvanometer has zero resistance</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="0">
+      <p class="q">Which instrument reads the true rms of a distorted 400 Hz current?</p>
+      <div class="opts">
+        <button class="opt" data-why="Right. Its deflection follows the heating \(I_{rms}^2R\), whatever the waveform, and it works far above 400 Hz.">A thermocouple meter</button>
+        <button class="opt" data-why="A rectifier meter reads the average and multiplies by 1.11, correct only for sine waves.">A rectifier-type meter</button>
+        <button class="opt" data-why="A D’Arsonval movement reads the average, which is zero for a symmetric AC current.">A D’Arsonval movement on its own</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="2">
+      <p class="q">A counter with a 1 s gate shows 50 for a 50 Hz signal. What is the best way to get a reading good to 0.01 % within one second?</p>
+      <div class="opts">
+        <button class="opt" data-why="A longer gate helps, but 0.01 % at 50 Hz needs 10 000 counts, a 200 s gate.">Use a 10 s gate</button>
+        <button class="opt" data-why="The ±1 count uncertainty is set by the gate time, not by the display.">Use a display with more digits</button>
+        <button class="opt" data-why="Right. One period of 20 ms timed with a 1 MHz clock gives 20 000 counts, ±0.005 %, in 20 ms.">Switch to period mode</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 17 · summary -->
+<section class="slide" id="summary" data-title="Summary">
+  <p class="eyebrow">Summary</p>
+  <h2>Part C on one page</h2>
+  <div class="tbl wrap compact"><table>
+    <tr><th>Idea</th><th>Key relation</th><th>Remember</th></tr>
+    <tr><td>D’Arsonval movement</td><td>\(\theta=NAB\,I/k\)</td><td>Shunts for current, multipliers for voltage</td></tr>
+    <tr><td>AC meters</td><td>deflection \(\propto I_{rms}^2\); rectifier reads average × 1.11</td><td>True rms: thermocouple, electrodynamometer</td></tr>
+    <tr><td>Ohmmeter</td><td>\(I/I_{fs}=R_{int}/(R_{int}+R_x)\)</td><td>Half scale at \(R_x=R_{int}\)</td></tr>
+    <tr><td>Potentiometer</td><td>\(E_m=(R_x/R_T)E_i\) at null</td><td>No current drawn, no loading</td></tr>
+    <tr><td>Ramp DVM</td><td>count = \(E_x\,f_{clock}/\text{ramp rate}\)</td><td>Resolution = ramp rate / clock rate</td></tr>
+    <tr><td>Meter loading</td><td>\(E_{ind}=E\,R_p/(R_p+R_1)\)</td><td>Meter ≥ 100 × source resistance</td></tr>
+    <tr><td>Lissajous phase</td><td>\(\varphi=\sin^{-1}(B/A)\)</td><td>Line 0°, upright ellipse 90°</td></tr>
+    <tr><td>Scope bandwidth</td><td>\(f_{BW}\approx0.35/t_r\); \(t_{shown}=\sqrt{t_s^2+t_o^2}\)</td><td>Pass the 5th harmonic</td></tr>
+    <tr><td>Counter</td><td>\(f=N/T_g\), \(T=N/f_{clock}\), ±1 count</td><td>Low f: period mode</td></tr>
+  </table></div>
+  <div class="cols">
+    <div>
+      <h3>You should now be able to…</h3>
+      <ul>
+        <li>explain why a D’Arsonval scale is linear and size shunts and multipliers;</li>
+        <li>say which AC meter reads rms, average or peak, and correct a rectifier meter’s reading;</li>
+        <li>explain deflection versus null modes and compute loading errors of voltmeters;</li>
+        <li>describe how a digital voltmeter and a counter work and find their resolution;</li>
+        <li>measure phase with a Lissajous figure and choose a scope’s bandwidth, sampling rate and memory.</li>
+      </ul>
+    </div>
+    <div>
+      <div class="watch">
+        <h3>Watch next</h3>
+        <a href="https://www.youtube.com/results?search_query=moving+coil+galvanometer+working+principle" target="_blank" rel="noopener">Moving-coil galvanometer principle <small>YouTube search</small></a>
+        <a href="https://www.youtube.com/results?search_query=oscilloscope+lissajous+phase+measurement" target="_blank" rel="noopener">Phase measurement with Lissajous figures <small>YouTube search</small></a>
+        <a href="https://www.youtube.com/results?search_query=frequency+counter+gate+time+explained" target="_blank" rel="noopener">How a frequency counter works <small>YouTube search</small></a>
+      </div>
+      <p class="further">Further reading: Holman, Experimental Methods for Engineers, 8th ed., §4.4–4.5 and §4.13–4.18</p>
+      <div class="row"><a class="btn" href="d03b.html">&larr; Previous topic: Sensing Elements</a><a class="btn primary" href="d04b.html">Part B · Bridges, loading and impedance &rarr;</a></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---- cover: measurand and small sensor signal ---- */
+  let coverT = 0;
+  function drawCover() {
+    const tEnd = 14, tt = Math.min(coverT, tEnd), a = [], b = [];
+    for (let i = 0; i <= 600; i++) {
+      const t = tEnd * i / 600; if (t > tt) break;
+      const m = Math.sin(0.7 * t) + 0.4 * Math.sin(1.9 * t + 1);
+      a.push([t, m]); b.push([t, 0.35 * m - 1.1 + 0.05 * Math.sin(41 * t) + 0.04 * Math.sin(67 * t + 1)]);
+    }
+    Deck.plot($('coverTrace'), { x: [0, tEnd], y: [-1.8, 1.6], pad: { l: 8, r: 8, t: 6, b: 6 }, xticks: [], yticks: [],
+      series: [{ pts: a, color: 'blu', width: 2.2 }, { pts: b, color: 'acc', width: 2 }] });
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (coverT < 15) { coverT += RM ? 15 : dt * 3; drawCover(); } });
+
+  /* ---- galvanometer ---- */
+  let gTh = 0, gOm = 0, drawG = null, getG = null;
+  Deck.onShow('galv', () => {
+    getG = Deck.controls('simGalv', () => {});
+    function draw() {
+      const v = getG(), cv = $('cvGalv'); const { ctx, W, H } = Deck.sizeCanvas(cv);
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const cx = W / 2, cy = H - 30, R = Math.min(W * 0.42, H - 54), a0 = -Math.PI / 2;
+      ctx.strokeStyle = Deck.color('muted'); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(cx, cy, R, a0 - 0.95, a0 + 0.95); ctx.stroke();
+      ctx.font = Deck.font(11, true); ctx.fillStyle = Deck.color('muted'); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      for (let k = -5; k <= 5; k++) {
+        const an = a0 + k * 0.17, r2 = R - (k % 5 === 0 ? 14 : 8);
+        ctx.beginPath(); ctx.moveTo(cx + R * Math.cos(an), cy + R * Math.sin(an)); ctx.lineTo(cx + r2 * Math.cos(an), cy + r2 * Math.sin(an)); ctx.stroke();
+        if (k % 5 === 0) ctx.fillText((k * 10) + ' µA', cx + (R + 14) * Math.cos(an), cy + (R + 14) * Math.sin(an) + 6);
+      }
+      ctx.fillStyle = Deck.alpha('red', .25); ctx.fillRect(cx - R * 0.55 - 20, cy - 24, 20, 32);
+      ctx.fillStyle = Deck.alpha('blu', .25); ctx.fillRect(cx + R * 0.55, cy - 24, 20, 32);
+      ctx.fillStyle = Deck.color('ink'); ctx.font = Deck.font(12); ctx.textBaseline = 'middle';
+      ctx.fillText('N', cx - R * 0.55 - 10, cy - 8); ctx.fillText('S', cx + R * 0.55 + 10, cy - 8);
+      const an = a0 + gTh;
+      ctx.strokeStyle = Deck.color('acc'); ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + (R - 6) * Math.cos(an), cy + (R - 6) * Math.sin(an)); ctx.stroke(); ctx.lineCap = 'butt';
+      ctx.fillStyle = Deck.color('ink'); ctx.beginPath(); ctx.arc(cx, cy, 6, 0, 7); ctx.fill();
+      const target = v.I / 50 * 0.85;
+      $('roGalv').innerHTML = 'steady θ = NAB·I/k → <b>' + (target * 180 / Math.PI).toFixed(1) + '°</b> &nbsp; now <b>' + (gTh * 180 / Math.PI).toFixed(1) + '°</b> &nbsp; ' + (v.z < 1 ? 'underdamped: overshoots' : 'no overshoot');
+    }
+    drawG = draw; return draw;
+  });
+  Deck.loop('galv', dt => {
+    if (!drawG) return;
+    const v = getG(), target = v.I / 50 * 0.85, wn = 2 * Math.PI * 0.9;
+    if (RM) { gTh = target; gOm = 0; drawG(); return; }
+    const n = 4, h = dt / n;
+    for (let i = 0; i < n; i++) { const acc = wn * wn * (target - gTh) - 2 * v.z * wn * gOm; gOm += acc * h; gTh += gOm * h; }
+    gTh = Math.max(-1.1, Math.min(1.1, gTh));
+    drawG();
+  });
+
+  /* ---- harmonics ---- */
+  Deck.onShow('scope-bw', () => {
+    const get = Deck.controls('simHarm', draw);
+    function draw() {
+      const n = get().n, f = 12, T = 1000 / f; // ns
+      const sq = [], ps = [];
+      for (let i = 0; i <= 900; i++) {
+        const t = 2 * T * i / 900; let s = 0;
+        for (let k = 1; k <= n; k += 2) s += 4 / Math.PI / k * Math.sin(2 * Math.PI * k * t / T);
+        ps.push([t, s]); sq.push([t, (t % T) < T / 2 ? 1 : -1]);
+      }
+      Deck.plot($('cvHarm'), { x: [0, 2 * T], y: [-1.5, 1.5], xlabel: 'time (ns)', ylabel: 'voltage (relative)',
+        series: [{ pts: sq, color: 'muted', width: 1.5, steps: false }, { pts: ps, color: 'acc', width: 2.4 }] });
+      const fmax = n * f;
+      $('roHarm').innerHTML = 'harmonics kept: <b>' + ((n + 1) / 2) + '</b> (1st to ' + n + 'th) &nbsp; highest frequency <b>' + fmax + ' MHz</b> &nbsp; sampling ≥ <b>' + (2 * fmax) + ' MS/s</b> &nbsp; 1 ms record = <b>' + (2 * fmax * 1000).toLocaleString('en-US') + ' samples</b>';
+    }
+    return draw;
+  });
+
+  /* ---- deflection vs null ---- */
+  Deck.onShow('potentiometer', () => {
+    const get = Deck.controls('simNull', draw);
+    const Em = 1.0, Ei = 2.0, RT = 100, Rg = 100;
+    function dial(ctx, cx, cy, R, ang, labels, col) {
+      const a0 = -Math.PI / 2;
+      ctx.strokeStyle = Deck.color('muted'); ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.arc(cx, cy, R, a0 - 1.0, a0 + 1.0); ctx.stroke();
+      ctx.font = Deck.font(11, true); ctx.fillStyle = Deck.color('muted'); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      labels.forEach(([fr, txt]) => { const an = a0 - 1.0 + 2.0 * fr; ctx.beginPath(); ctx.moveTo(cx + R * Math.cos(an), cy + R * Math.sin(an)); ctx.lineTo(cx + (R - 10) * Math.cos(an), cy + (R - 10) * Math.sin(an)); ctx.stroke(); ctx.fillText(txt, cx + (R + 12) * Math.cos(an), cy + (R + 12) * Math.sin(an) + 6); });
+      const an = a0 + ang;
+      ctx.strokeStyle = Deck.color(col); ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + (R - 4) * Math.cos(an), cy + (R - 4) * Math.sin(an)); ctx.stroke(); ctx.lineCap = 'butt';
+      ctx.fillStyle = Deck.color('ink'); ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 7); ctx.fill();
+    }
+    function draw() {
+      const v = get(), null_ = v.mode === 'null';
+      document.getElementById('nrm').closest('.ctl').style.opacity = null_ ? .45 : 1;
+      document.getElementById('nx').closest('.ctl').style.opacity = null_ ? 1 : .45;
+      const { ctx, W, H } = Deck.sizeCanvas($('cvNull'));
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const dw = W * 0.56, R = Math.min(dw * 0.4, H - 70), cx = dw / 2, cy = H - 34;
+      let ind, Isrc, txt;
+      if (!null_) {
+        Isrc = Em / (v.rs + v.rm); ind = Isrc * v.rm;
+        dial(ctx, cx, cy, R, -1.0 + 2.0 * Math.min(1, ind / 2), [[0, '0'], [0.25, '0.5'], [0.5, '1.0'], [0.75, '1.5'], [1, '2 V']], 'acc');
+        ctx.fillStyle = Deck.color('ink'); ctx.font = Deck.font(12); ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText('voltmeter, 0–2 V', cx, cy + 10);
+        txt = 'reading <b>' + ind.toFixed(4) + ' V</b> &nbsp; current drawn from source <b>' + (Isrc * 1e6).toPrecision(3) + ' µA</b> &nbsp; loading error <b>' + ((ind - Em) / Em * 100).toFixed(2) + ' %</b>';
+      } else {
+        const Eab = v.x * Ei, Rth = v.x * (1 - v.x) * RT, Ig = (Eab - Em) / (v.rs + Rg + Rth);
+        ind = Eab; Isrc = Ig;
+        dial(ctx, cx, cy, R, 1.0 * Math.tanh(Ig / 5e-6), [[0, '−'], [0.5, '0'], [1, '+']], Math.abs(Ig) < 5e-8 ? 'grn' : 'acc');
+        ctx.fillStyle = Deck.color('ink'); ctx.font = Deck.font(12); ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText('galvanometer G', cx, cy + 10);
+        txt = 'dial reading x·Eᵢ = <b>' + Eab.toFixed(4) + ' V</b> &nbsp; galvanometer current <b>' + (Ig * 1e6).toFixed(3) + ' µA</b> &nbsp; ' + (Math.abs(Ig) < 5e-8 ? '<b>balanced: reading = true value</b>' : 'not balanced: move x toward ' + (Ig > 0 ? 'smaller' : 'larger') + ' values');
+      }
+      // bars
+      const bx = dw + 10, bw = W - bx - 12, ys = [H * 0.28, H * 0.58];
+      ctx.font = Deck.font(11, true); ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+      [['true Eₘ', Em, 'blu'], [null_ ? 'dial x·Eᵢ' : 'indicated', ind, 'acc']].forEach(([lab, val, col], k) => {
+        ctx.fillStyle = Deck.color('muted'); ctx.fillText(lab + '  ' + val.toFixed(3) + ' V', bx, ys[k] - 4);
+        ctx.fillStyle = Deck.alpha('muted', .2); ctx.fillRect(bx, ys[k], bw, 16);
+        ctx.fillStyle = Deck.color(col); ctx.fillRect(bx, ys[k], bw * Math.min(1, val / 2), 16);
+      });
+      ctx.fillStyle = Deck.color('muted'); ctx.textBaseline = 'top'; ctx.fillText('bar scale 0–2 V', bx, ys[1] + 24);
+      $('roNull').innerHTML = txt;
+    }
+    return draw;
+  });
+  /* ---- ramp DVM ---- */
+  let dvT = 0, dvDraw = null, dvGet = null, dvKey = '';
+  Deck.onShow('dvm', () => {
+    dvGet = Deck.controls('simDVM', () => { dvT = 0; dvDraw && dvDraw(); });
+    function draw() {
+      const v = dvGet(), ex = v.ex, fc = +v.fc, rate = 0.1, t1 = (10 - ex) / rate, tNow = Math.min(dvT, 100);
+      const ramp = [[0, 10], [tNow, 10 - rate * tNow]];
+      const r = Deck.plot($('cvDVM'), { x: [0, 100], y: [0, 10.5], xlabel: 'time (s)', ylabel: 'voltage (V)',
+        bands: tNow > t1 ? [{ x0: t1, x1: tNow, color: 'grn', alpha: .15 }] : [],
+        hlines: [{ y: ex, color: 'blu', dash: [6, 4], label: 'Eₓ = ' + ex.toFixed(3) + ' V' }],
+        series: [{ pts: ramp, color: 'acc', width: 2.4 }] });
+      // clock pulses inside the counting window
+      const ctx = r.ctx, n = tNow > t1 ? Math.floor((tNow - t1) * fc + 1e-9) : 0;
+      if (fc <= 10) {
+        ctx.strokeStyle = Deck.color('grn'); ctx.lineWidth = 1.4;
+        for (let k = 1; k <= n; k++) { const x = r.X(t1 + k / fc); ctx.beginPath(); ctx.moveTo(x, r.box.y1); ctx.lineTo(x, r.box.y1 - 12); ctx.stroke(); }
+      }
+      const shown = n * rate / fc;
+      $('roDVM').innerHTML = 'count <b>' + n + '</b> &nbsp; display <b>' + shown.toFixed(fc === 1 ? 1 : fc === 10 ? 2 : 3) + ' V</b> &nbsp; ' + (tNow >= 100 ? 'final; quantization error <b>' + ((shown - ex) * 1000).toFixed(0) + ' mV</b>' : 'counting… t = ' + tNow.toFixed(0) + ' s');
+    }
+    dvDraw = draw; return draw;
+  });
+  Deck.loop('dvm', dt => { if (!dvDraw) return; if (dvT < 100) { dvT += RM ? 100 : dt * 16; dvDraw(); } });
+
+  /* ---- Lissajous ---- */
+  Deck.onShow('lissajous', () => {
+    const get = Deck.controls('simLiss', draw);
+    function draw() {
+      const v = get(), r = +v.r, ph = v.p * Math.PI / 180, cv = $('cvLiss');
+      const W = Math.max(240, cv.clientWidth || 400), H = (W < 520 ? Math.round(280 * Math.max(0.7, W / 620)) : 280);
+      const side = H - 14 - 30, padL = Math.max(40, (W - side) / 2), padR = Math.max(18, W - padL - side);
+      const pts = [], n = 2000;
+      for (let i = 0; i <= n; i++) { const t = 2 * Math.PI * 6 * i / n; pts.push([Math.sin(t), Math.sin(r * t + ph)]); }
+      const B = Math.abs(Math.sin(ph));
+      const o = { x: [-1.2, 1.2], y: [-1.2, 1.2], pad: { l: padL, r: padR, t: 14, b: 30 }, xticks: [-1, 0, 1], yticks: [-1, 0, 1],
+        hlines: [{ y: 0, color: 'muted', dash: [2, 3] }], vlines: [{ x: 0, color: 'muted', dash: [2, 3] }],
+        series: [{ pts: pts, color: 'acc', width: 2 }] };
+      if (r === 1) { o.points = [{ x: 0, y: B, color: 'blu', r: 5, label: 'B' }, { x: Math.cos(ph) >= 0 ? Math.cos(ph) : Math.cos(ph), y: 1, color: 'ink', r: 4, label: 'A' }]; }
+      Deck.plot(cv, o);
+      $('roLiss').innerHTML = r === 1 ? 'B/A = <b>' + B.toFixed(3) + '</b> &nbsp; sin⁻¹(B/A) = <b>' + (Math.asin(B) * 180 / Math.PI).toFixed(1) + '°</b> &nbsp; ' + (v.p > 90 ? 'ellipse leans left: φ = 180° − ' + (Math.asin(B) * 180 / Math.PI).toFixed(1) + '° = <b>' + v.p + '°</b>' : 'leans right: φ = <b>' + v.p + '°</b>')
+        : 'frequency ratio vertical/horizontal = <b>' + document.getElementById('lr').selectedOptions[0].text + '</b>: count maxima along the top edge and along the side edge';
+    }
+    return draw;
+  });
+})();
+</script>
+</body>
+</html>

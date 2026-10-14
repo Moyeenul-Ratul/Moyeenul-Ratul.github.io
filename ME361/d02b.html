@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Second-Order Systems</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap">
+<link rel="stylesheet" href="deck.css">
+<script>window.DECK = { num: "02b", title: "Second-Order Systems" };</script>
+<script src="deck.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<main class="deck">
+
+<!-- 1 · Cover -->
+<section class="slide cover center" id="cover" data-title="Cover">
+  <p class="num">TOPIC 02 · PART B OF 3</p>
+  <h1>Second-Order Systems</h1>
+  <p class="lead">Why an accelerometer rings like a struck bell, how two numbers, the natural frequency ωₙ and the damping ratio ζ, predict that ringing, and how to choose them so the instrument reports vibration without exaggerating it.</p>
+  <div class="parts"><a href="d02a.html">A · Models &amp; first order</a><span>B · Second-order systems</span><a href="d02c.html">C · Transfer functions &amp; distortion</a></div>
+  <canvas class="bigtrace" id="coverTrace" data-h="120" aria-label="Animated step responses of three second-order instruments: lightly damped and ringing, damping ratio 0.7, and overdamped"></canvas>
+  <ol class="agenda">
+    <li>Mass, spring and damper: the accelerometer model</li>
+    <li>Natural frequency ωₙ and damping ratio ζ</li>
+    <li>Step response: ringing, rise and settling</li>
+    <li>Reading ζ and ωₙ from a step-test trace</li>
+    <li>Sine input: magnitude, phase, resonance</li>
+    <li>Choosing ωₙ and ζ; why ζ ≈ 0.7</li>
+  </ol>
+</section>
+
+<!-- 2 · Where we are -->
+<section class="slide" id="recap" data-title="Where we are">
+  <p class="eyebrow">Where we are</p>
+  <h2>First-order sensors creep up on the answer; now add inertia</h2>
+  <div class="cols">
+    <div>
+      <p>Part A modelled an instrument as a differential equation whose order is its highest derivative. A <b>first-order</b> instrument, such as a thermometer, obeys \(\tau\dot y+y=KF(t)\). It stores energy but has no inertia. Its main results were:</p>
+      <div class="tbl"><table>
+        <tr><th>Input</th><th>First-order result</th></tr>
+        <tr><td>Step</td><td>\(\Gamma=e^{-t/\tau}\): 63.2 % at τ, 90 % at 2.3τ</td></tr>
+        <tr><td>Sine, frequency ω</td><td>\(M=1/\sqrt{1+(\omega\tau)^2}\), \(\Phi=-\tan^{-1}\omega\tau\)</td></tr>
+      </table></div>
+      <p>Here \(K\) is the static sensitivity, \(M\) the <i>magnitude ratio</i> (output amplitude divided by the amplitude a perfect instrument would give) and \(\Phi\) the <i>phase shift</i>.</p>
+      <p>A first-order reading can never overshoot. Its rate of change is proportional to the error still left, so it slows down as it nears the answer and arrives gently.</p>
+    </div>
+    <div>
+      <p><b>What changes in this part.</b> Instruments with a moving mass, such as accelerometers, pressure transducers with a diaphragm and microphones, carry momentum. The moving part reaches the correct position still travelling, overshoots, is pulled back by the spring, and swings to and fro until friction removes the energy. A second derivative appears in the model, and two new numbers describe the instrument.</p>
+      <div class="analogy"><p>A car crossing a speed bump. The body is the mass, the springs pull it back and the shock absorbers (dampers) eat the energy. Worn shock absorbers: the car bounces several times. Very stiff ones: a harsh, slow return. A well-tuned car bounces about once. An accelerometer faces exactly the same trade-off.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 · Model -->
+<section class="slide" id="model" data-title="The mass-spring-damper model">
+  <p class="eyebrow">Order 2 · build the model</p>
+  <h2>An accelerometer is a small mass on a spring inside a box</h2>
+  <div class="cols">
+    <div>
+      <figure>
+        <svg viewBox="0 0 410 280" aria-label="Left: seismic accelerometer, a housing bolted to a vibrating body, containing a mass resting on a spring and a damper above a piezoelectric crystal; displacement x of the body and y of the mass are measured upward. Right: free-body diagram of the mass with spring force k times y minus x and damper force c times y-dot minus x-dot acting downward">
+          <rect x="20" y="236" width="230" height="22" class="fill-grid" />
+          <text x="30" y="252" class="t-muted">vibrating body</text>
+          <rect x="40" y="40" width="190" height="196" rx="6" class="box" />
+          <text x="48" y="34" class="t-muted">housing (moves with body)</text>
+          <rect x="52" y="214" width="166" height="14" class="fill-muted" />
+          <text x="112" y="209" class="t-mono">crystal</text>
+          <path d="M95 214 V206 l-12 -5 24 -9 -24 -9 24 -9 -24 -9 24 -9 -12 -5 V146" class="ln" />
+          <text x="66" y="186">k</text>
+          <path d="M175 214 V196" class="ln" /><rect x="163" y="164" width="24" height="34" class="fill-panel" stroke="currentColor" style="stroke:var(--ink);stroke-width:1.6" /><path d="M167 180 H183 M175 180 V146" class="ln" />
+          <text x="194" y="186">c</text>
+          <rect x="70" y="96" width="130" height="50" rx="4" class="box-acc" />
+          <text x="135" y="126" text-anchor="middle">m</text>
+          <path d="M14 230 V196" class="ln-blu" /><path d="M8 204 L14 194 L20 204" class="ln-blu" /><text x="4" y="188" class="t-blu">x</text>
+          <path d="M214 122 V84" class="ln-acc" /><path d="M208 92 L214 82 L220 92" class="ln-acc" /><text x="222" y="92" class="t-acc">y</text>
+          <rect x="300" y="100" width="90" height="44" rx="4" class="box-acc" />
+          <text x="345" y="127" text-anchor="middle">m</text>
+          <path d="M320 146 V196" class="ln" /><path d="M314 188 L320 198 L326 188" class="ln" />
+          <text x="280" y="216" class="t-mono">k(y−x)</text>
+          <path d="M370 146 V196" class="ln" /><path d="M364 188 L370 198 L376 188" class="ln" />
+          <text x="344" y="234" class="t-mono">c(ẏ−ẋ)</text>
+          <path d="M345 92 V60" class="ln-thin dash" /><text x="352" y="70" class="t-mono t-muted">mÿ</text>
+          <text x="345" y="268" text-anchor="middle" class="t-muted">free-body diagram</text>
+        </svg>
+        <figcaption>A <dfn>seismic accelerometer</dfn>: the housing is bolted to the body, the <dfn>seismic mass</dfn> m is held by a spring k and a damper c (internal friction), and the crystal produces a charge proportional to how much it is squeezed, i.e. to the relative displacement z = y − x.</figcaption>
+      </figure>
+    </div>
+    <div>
+      <ol class="steps">
+        <li>Let \(x(t)\) be the body (and housing) position and \(y(t)\) the mass position, both upward from rest. The spring is stretched by \(y-x\); the damper is sheared at speed \(\dot y-\dot x\).</li>
+        <li>Newton’s second law on the mass: \(m\ddot y=-k(y-x)-c(\dot y-\dot x)\).</li>
+        <li>The crystal senses the relative motion \(z=y-x\). Substitute \(y=z+x\), so \(\ddot y=\ddot z+\ddot x\):
+          $$m\ddot z+c\dot z+kz=-m\ddot x$$</li>
+        <li>Output terms are on the left; the input on the right is the body’s <b>acceleration</b> \(a=\ddot x\). In the general model this is \(a_2=m,\ a_1=c,\ a_0=k\): second order.</li>
+        <li>At steady acceleration, \(kz=-ma\): the spring deflection is proportional to acceleration, \(z=-(m/k)\,a\). That is why the device measures acceleration. (The minus sign says only that the mass lags behind: accelerate the box upward and the spring is compressed.)</li>
+      </ol>
+      <p class="small">Assumptions: one rigid mass, a linear spring, damping force proportional to relative speed (viscous damping), motion along one axis.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 4 · Standard form -->
+<section class="slide" id="standard" data-title="Natural frequency and damping ratio">
+  <p class="eyebrow">Order 2 · the two numbers</p>
+  <h2>Divide by the stiffness and two numbers appear: ωₙ and ζ</h2>
+  <div class="cols">
+    <div>
+      <p>Every second-order instrument obeys \(a_2\ddot y+a_1\dot y+a_0y=F(t)\). Divide by \(a_0\) and name the coefficients:</p>
+      <div class="eq"><span class="label">Second-order standard form</span>
+        $$\frac{1}{\omega_n^2}\ddot y+\frac{2\zeta}{\omega_n}\dot y+y=K\,F(t)$$
+        $$\omega_n=\sqrt{\frac{a_0}{a_2}},\qquad \zeta=\frac{a_1}{2\sqrt{a_0a_2}},\qquad K=\frac{1}{a_0}$$
+      </div>
+      <div class="symbols">
+        <span>\(\omega_n\)</span><span><dfn>natural frequency</dfn>, rad/s: the frequency at which the system would oscillate for ever if it had no damping</span>
+        <span>\(\zeta\)</span><span><dfn>damping ratio</dfn>, dimensionless: actual damping ÷ the damping that just stops oscillation</span>
+        <span>\(K\)</span><span>static sensitivity: output per unit input once everything is steady</span>
+      </div>
+      <p>For the accelerometer, \(a_2=m\), \(a_1=c\), \(a_0=k\):</p>
+      <p style="text-align:center">\(\omega_n=\sqrt{k/m},\quad \zeta=\dfrac{c}{2\sqrt{km}},\quad |K|=\dfrac{m}{k}=\dfrac{1}{\omega_n^2}\)</p>
+    </div>
+    <div>
+      <div class="why"><p>Where does \(\sqrt{k/m}\) come from? With no damping and no input, \(m\ddot z=-kz\). A sine \(z=\sin\omega t\) satisfies this only if \(m\omega^2=k\). The quantity \(c_c=2\sqrt{km}\) is the <dfn>critical damping coefficient</dfn>; we will see that \(c=c_c\) is exactly where oscillation stops, so \(\zeta=c/c_c\).</p></div>
+      <p><b>Numbers.</b> A seismic mass \(m=10\) g on a spring \(k=1.1\times10^4\) N/m gives \(\omega_n=\sqrt{1.1\times10^6}=1049\) rad/s (\(f_n=\omega_n/2\pi=167\) Hz). For \(\zeta=0.7\) the damper needs \(c=2(0.7)\sqrt{(1.1\times10^4)(0.010)}=14.7\) N·s/m.</p>
+      <div class="quiz" data-correct="2">
+        <p class="q">You make the seismic mass four times heavier, keeping k and c. What happens?</p>
+        <div class="opts">
+          <button class="opt" data-why="\(\omega_n=\sqrt{k/m}\) falls when m rises, so the instrument gets slower, not faster.">ωₙ doubles, ζ halves</button>
+          <button class="opt" data-why="ζ contains \(\sqrt m\) in the denominator, so it changes too.">ωₙ halves, ζ unchanged</button>
+          <button class="opt" data-why="\(\omega_n\propto1/\sqrt m\) halves; \(\zeta\propto1/\sqrt m\) halves; sensitivity \(m/k\) quadruples. A heavier mass gives a bigger signal but a slower, less damped instrument.">ωₙ halves, ζ halves, sensitivity ×4</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 · Three regimes -->
+<section class="slide" id="regimes" data-title="Three kinds of free motion">
+  <p class="eyebrow">Order 2 · free motion</p>
+  <h2>Released from a displaced position, the mass can do three different things</h2>
+  <div class="cols">
+    <div>
+      <p>Before any input, ask how the system moves on its own. Set \(F=0\) and try \(y=e^{\lambda t}\). Each derivative brings out a factor λ, so the <dfn>characteristic equation</dfn> is</p>
+      <div class="eq"><span class="label">Characteristic equation and its roots</span>
+        $$\frac{\lambda^2}{\omega_n^2}+\frac{2\zeta}{\omega_n}\lambda+1=0\ \Rightarrow\ \lambda_{1,2}=-\zeta\omega_n\pm\omega_n\sqrt{\zeta^2-1}$$
+      </div>
+      <p>The sign under the root decides everything:</p>
+      <div class="tbl wrap"><table>
+        <tr><th>Damping</th><th>Roots</th><th>Free (transient) motion</th></tr>
+        <tr><td>\(\zeta&lt;1\), <dfn>underdamped</dfn></td><td>complex</td><td>\(Ce^{-\zeta\omega_n t}\sin(\omega_d t+\theta)\), with \(\omega_d=\omega_n\sqrt{1-\zeta^2}\)</td></tr>
+        <tr><td>\(\zeta=1\), <dfn>critically damped</dfn></td><td>equal, \(-\omega_n\)</td><td>\((C_1+C_2t)\,e^{-\omega_n t}\)</td></tr>
+        <tr><td>\(\zeta&gt;1\), <dfn>overdamped</dfn></td><td>two real, negative</td><td>\(C_1e^{\lambda_1t}+C_2e^{\lambda_2t}\)</td></tr>
+      </table></div>
+      <p class="small">\(C, \theta, C_1, C_2\) are fixed by the starting position and speed.</p>
+    </div>
+    <div>
+      <figure>
+        <canvas id="cvFree" data-h="250" aria-label="Free motion after release from unit displacement for damping ratio 0.2, 1 and 2, with the decaying envelope of the underdamped case"></canvas>
+        <figcaption><span class="legend"><span><i style="background:var(--acc)"></i>ζ = 0.2</span><span><i style="background:var(--blu)"></i>ζ = 1</span><span><i style="background:var(--grn)"></i>ζ = 2</span><span><i style="background:var(--muted)"></i>envelope ±e<sup>−ζωₙt</sup>/√(1−ζ²)</span></span>Released from y = 1 at rest. Only the underdamped mass swings through zero; the critically damped one returns fastest without crossing.</figcaption>
+      </figure>
+      <div class="analogy"><p>A door with a hydraulic closer. Too little oil: it slams and bounces (underdamped). Far too much: it creeps shut over half a minute (overdamped). Adjusted just right, it closes quickly and does not bounce (critical).</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · Step response formulas -->
+<section class="slide" id="step-family" data-title="Step response: the formulas">
+  <p class="eyebrow">Order 2 · step input</p>
+  <h2>Hit it with a sudden step and the damping ratio sets the shape</h2>
+  <div class="cols">
+    <div>
+      <p>Apply \(F(t)=A\,U(t)\) (a jump from 0 to \(A\) at \(t=0\)) to a system at rest, \(y(0)=\dot y(0)=0\). The answer is the steady value \(KA\) plus the free motion of the previous slide, with constants chosen to start at rest:</p>
+      <div class="eq"><span class="label">Second-order step response</span>
+        $$\zeta&lt;1:\ \ \frac{y}{KA}=1-e^{-\zeta\omega_n t}\Big[\cos\omega_d t+\frac{\zeta}{\sqrt{1-\zeta^2}}\sin\omega_d t\Big]$$
+        $$\zeta=1:\ \ \frac{y}{KA}=1-(1+\omega_n t)\,e^{-\omega_n t}$$
+        $$\zeta&gt;1:\ \ \frac{y}{KA}=1-\frac{\zeta+\sqrt{\zeta^2-1}}{2\sqrt{\zeta^2-1}}e^{\lambda_1t}+\frac{\zeta-\sqrt{\zeta^2-1}}{2\sqrt{\zeta^2-1}}e^{\lambda_2t}$$
+      </div>
+      <p class="small">with \(\lambda_{1,2}=(-\zeta\pm\sqrt{\zeta^2-1})\,\omega_n\). Check the first one: at \(t=0\) the bracket is 1, so \(y=0\); its slope there is also zero, as it must be for a mass starting at rest.</p>
+      <p>Time appears only as \(\omega_nt\). One chart in units of \(\omega_n t\) therefore serves every second-order instrument: a faster instrument (larger ωₙ) simply runs through the same curve in less time.</p>
+    </div>
+    <div>
+      <figure>
+        <canvas id="cvFamily" data-h="290" aria-label="Universal second-order step responses for damping ratios 0, 0.25, 0.5, 0.7, 1 and 2 plotted against omega-n times t"></canvas>
+        <figcaption><span class="legend"><span><i style="background:var(--muted)"></i>ζ = 0</span><span><i style="background:var(--red)"></i>0.25</span><span><i style="background:var(--ylw)"></i>0.5</span><span><i style="background:var(--acc)"></i>0.7</span><span><i style="background:var(--blu)"></i>1</span><span><i style="background:var(--grn)"></i>2</span></span>Universal step responses. Lower ζ rises sooner but rings longer; ζ = 0 never settles.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- 7 · Step sim -->
+<section class="slide" id="step-sim" data-title="Simulator: ringing">
+  <p class="eyebrow">Order 2 · ringing</p>
+  <h2>Turn the damping knob and watch the mass ring</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simStep2">
+      <div class="simhead"><span>Simulator</span><button class="btn" id="replay2" type="button">Replay</button></div>
+      <div style="display:grid;grid-template-columns:1fr 84px;gap:10px;align-items:stretch">
+        <canvas id="cvStep2" data-h="270" aria-label="Second-order step response for the chosen damping ratio, with the plus or minus 10 percent band and decay envelope"></canvas>
+        <canvas id="cvMass" data-h="270" aria-label="Animated mass on a spring following the response"></canvas>
+      </div>
+      <div class="controls">
+        <div class="ctl"><label for="z2">Damping ratio ζ <output data-for="z"></output></label>
+          <input type="range" id="z2" data-key="z" min="0.05" max="2.5" step="0.01" value="0.25" data-fmt="2"></div>
+      </div>
+      <div class="readout" id="roStep2"></div>
+    </div>
+    <div>
+      <p>When \(\zeta&lt;1\) the output oscillates about \(KA\) at the <dfn>ringing frequency</dfn></p>
+      <div class="eq"><span class="label">Ringing (damped natural) frequency and period</span>
+        $$\omega_d=\omega_n\sqrt{1-\zeta^2},\qquad T_d=\frac{2\pi}{\omega_d}$$
+      </div>
+      <p>Ringing is a property of the instrument, not of the input: any sudden disturbance makes it ring at \(\omega_d\), slightly below \(\omega_n\). The oscillation shrinks inside the envelope \(\pm e^{-\zeta\omega_nt}/\sqrt{1-\zeta^2}\), so \(1/\zeta\omega_n\) acts like a time constant for the decay.</p>
+      <p>The first peak comes half a period after the step, at \(t=\pi/\omega_d\). Substituting gives the <dfn>overshoot</dfn>, the peak excess as a fraction of the step:</p>
+      <p style="text-align:center">\(\text{OS}=e^{-\pi\zeta/\sqrt{1-\zeta^2}}\)</p>
+      <div class="try"><p>Start at ζ = 0.25: about 44 % overshoot and many swings. Move to 0.7: one small overshoot of 4.6 %. At 1.0 the overshoot vanishes; at 2.0 the rise becomes slow. Watch the readout: the 90 % rise time grows steadily with ζ, but the settling time is shortest near ζ ≈ 0.6–0.7.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 · Rise and settling -->
+<section class="slide" id="rise-settle" data-title="Rise time, settling time and the best damping">
+  <p class="eyebrow">Order 2 · how long to wait</p>
+  <h2>Little damping rises fast but settles late: ζ ≈ 0.7 balances the two</h2>
+  <div class="cols">
+    <div>
+      <div class="define"><p>The <dfn>rise time</dfn> \(t_r\) of a second-order system is the time to <i>first</i> reach 90 % of the change \(KA-y(0)\). The <dfn>settling time</dfn> \(t_s\) is the time after which the output stays within ±10 % of the change around \(KA\) (tighter bands, ±5 % or ±2 %, are also quoted).</p></div>
+      <p>All times scale with \(1/\omega_n\). The table is computed from the step-response formulas; multiply by \(1/\omega_n\) to get seconds.</p>
+      <div class="tbl"><table>
+        <tr><th>\(\zeta\)</th><th>overshoot</th><th>\(\omega_nt_r\)</th><th>\(\omega_nt_s\) ±10 %</th><th>\(\omega_nt_s\) ±5 %</th></tr>
+        <tr><td>0.25</td><td>44.4 %</td><td>1.73</td><td>7.64</td><td>10.8</td></tr>
+        <tr><td>0.5</td><td>16.3 %</td><td>2.13</td><td>4.71</td><td>5.29</td></tr>
+        <tr><td>0.6</td><td>9.5 %</td><td>2.35</td><td>2.35</td><td>5.23</td></tr>
+        <tr><td>0.7</td><td>4.6 %</td><td>2.63</td><td>2.63</td><td>2.90</td></tr>
+        <tr><td>1.0</td><td>0</td><td>3.89</td><td>3.89</td><td>4.74</td></tr>
+        <tr><td>2.0</td><td>0</td><td>8.87</td><td>8.87</td><td>11.5</td></tr>
+      </table></div>
+    </div>
+    <div>
+      <p><b>Reading the table.</b> Going from ζ = 1 down to 0.7 cuts the rise time by a third and the ±5 % settling time from 4.74/ωₙ to 2.90/ωₙ, about 40 % sooner, at the price of a 4.6 % overshoot. Going further, to 0.25, rises a little faster still but takes almost four times as long to settle. Where overshoot is below 10 %, the ±10 % settling time equals the rise time.</p>
+      <div class="takeaway"><p>Instruments meant to follow sudden changes are usually built with ζ between about 0.6 and 0.8.</p></div>
+      <div class="quiz" data-correct="1">
+        <p class="q">A transducer has ωₙ = 2000 rad/s and ζ = 0.7. Roughly how long until it is within ±5 % after a step?</p>
+        <div class="opts">
+          <button class="opt" data-why="That is \(1/\omega_n\). Settling to ±5 % takes 2.90 units of \(1/\omega_n\).">0.5 ms</button>
+          <button class="opt" data-why="\(t_s=2.90/\omega_n=2.90/2000=1.45\times10^{-3}\) s.">1.5 ms</button>
+          <button class="opt" data-why="You may have used \(f_n\) in Hz instead of \(\omega_n\) in rad/s, or the ζ = 2 row.">5.8 ms</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 · Log decrement -->
+<section class="slide" id="log-dec" data-title="Finding ζ and ωₙ from ringing">
+  <p class="eyebrow">Order 2 · from data to ζ and ωₙ</p>
+  <h2>Two successive peaks give the damping; their spacing gives the frequency</h2>
+  <div class="cols">
+    <div>
+      <p>A step test of an underdamped instrument shows peaks that shrink at a fixed ratio. Measure each peak from the final value: \(y_1=(y_{\max})_1-y_\infty\), \(y_2=(y_{\max})_2-y_\infty\), for two successive peaks on the same side.</p>
+      <ol class="steps">
+        <li>The deviation from the final value is an oscillation inside the envelope ±e<sup>−ζωₙt</sup>/√(1−ζ²). Same-side peaks are one period \(T_d\) apart.</li>
+        <li>So their ratio is \(\dfrac{y_1}{y_2}=e^{\zeta\omega_nT_d}=e^{2\pi\zeta/\sqrt{1-\zeta^2}}\), using \(T_d=2\pi/(\omega_n\sqrt{1-\zeta^2})\).</li>
+        <li>Take logs and call \(\Lambda=\ln(y_1/y_2)\), the <dfn>logarithmic decrement</dfn>: \(\Lambda\sqrt{1-\zeta^2}=2\pi\zeta\).</li>
+        <li>Square and solve for ζ:
+          $$\zeta=\frac{1}{\sqrt{1+\big(2\pi/\Lambda\big)^2}}$$</li>
+        <li>The peak spacing gives \(T_d\), hence \(\omega_d=2\pi/T_d\) and \(\omega_n=\omega_d/\sqrt{1-\zeta^2}\).</li>
+      </ol>
+    </div>
+    <div>
+      <div class="why"><p>Why ratios? The envelope is an exponential, and an exponential loses the same <i>fraction</i> in every equal time interval, exactly like the first-order error fraction Γ of part A. A ratio of two peaks cancels the step size \(KA\) and the sensitivity, so the result does not depend on calibration.</p></div>
+      <p><b>Quick check.</b> If each positive peak is one fifth of the one before, \(\Lambda=\ln5=1.609\), \(2\pi/\Lambda=3.90\) and \(\zeta=1/\sqrt{1+15.2}=0.248\).</p>
+      <p>With only one overshoot visible, use the overshoot instead: \(\text{OS}=e^{-\pi\zeta/\sqrt{1-\zeta^2}}\) inverts to \(\zeta=\dfrac{-\ln \text{OS}}{\sqrt{\pi^2+\ln^2\text{OS}}}\).</p>
+      <div class="pitfall"><p>Do not mistake \(\omega_d\), read off the trace, for \(\omega_n\). They differ by the factor \(\sqrt{1-\zeta^2}\): 3 % at ζ = 0.25 but 29 % at ζ = 0.7.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 · Worked example: trace -->
+<section class="slide" id="ex-trace" data-title="Worked example: reading a step-test trace">
+  <p class="eyebrow">Worked example 1</p>
+  <h2>Reading a pressure transducer’s step test</h2>
+  <div class="cols">
+    <div>
+      <canvas id="cvTrace" data-h="300" aria-label="Recorded transducer voltage after a pressure step from 1 to 2 atmospheres: rises from 1 V, peaks at 2.444 V at 6.49 ms, dips to 1.803 V at 12.98 ms, peaks again at 2.088 V at 19.47 ms and settles at 2 V"></canvas>
+      <div class="tbl"><table>
+        <tr><th>Feature read from the trace</th><th>t (ms)</th><th>E (V)</th></tr>
+        <tr><td>first reaches 1.9 V</td><td>3.46</td><td>1.900</td></tr>
+        <tr><td>1st peak</td><td>6.49</td><td>2.444</td></tr>
+        <tr><td>1st trough</td><td>12.98</td><td>1.803</td></tr>
+        <tr><td>last entry into 1.9–2.1 V</td><td>15.27</td><td>1.900</td></tr>
+        <tr><td>2nd peak</td><td>19.47</td><td>2.088</td></tr>
+      </table></div>
+    </div>
+    <div class="example">
+      <p class="given">A diaphragm pressure transducer has a linear static calibration with \(K=1\) V/atm. It sits at 1 atm; the pressure is suddenly raised to 2 atm and its output voltage is recorded (left). Find the rise time, the ±10 % settling time, the ringing frequency, the damping ratio and the natural frequency.</p>
+      <p class="small"><b>Known:</b> \(p(0)=1\) atm, \(p_\infty=2\) atm, \(K=1\) V/atm, trace. <b>Assumptions:</b> second-order behaviour (the trace rings, which supports this).</p>
+      <ol class="steps">
+        <li>Expected levels: \(E(0)=Kp(0)=1\) V, \(E_\infty=Kp_\infty=2\) V. The step seen on the trace is 1 V.</li>
+        <li>Rise time: first reaches \(1+0.9(1)=1.9\) V at \(t_r=3.5\) ms.</li>
+        <li>Settling: the trace last enters the \(2\pm0.1\) V band at 15.3 ms, while climbing out of the first trough, and never leaves it again (the second peak, 2.088 V, stays inside). So \(t_s=15.3\) ms.</li>
+        <li>Ringing: peaks at 6.49 and 19.47 ms, so \(T_d=12.98\) ms and \(\omega_d=2\pi/0.01298=484\) rad/s (\(f_d=77\) Hz).</li>
+        <li>Damping: \(y_1=0.444\), \(y_2=0.088\) V; \(\Lambda=\ln(0.444/0.088)=1.62\); \(\zeta=1/\sqrt{1+(2\pi/1.62)^2}=0.25\).</li>
+        <li>\(\omega_n=484/\sqrt{1-0.25^2}=500\) rad/s. Check with the overshoot: \(e^{-\pi(0.25)/0.968}=0.444\). ✓</li>
+        <li><b>Meaning:</b> a lightly damped transducer. It rises quickly but needs 15 ms to settle, and (next slides) its resonance at \(\omega_R=500\sqrt{1-2(0.25)^2}=468\) rad/s (74 Hz) will exaggerate pressure fluctuations near that frequency.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- 11 · Sine input -->
+<section class="slide" id="sine" data-title="Sine input: magnitude and phase">
+  <p class="eyebrow">Order 2 · periodic input</p>
+  <h2>Feed it a sine wave: the output may come out bigger, not only smaller</h2>
+  <div class="cols">
+    <div>
+      <p>Apply \(F(t)=A\sin\omega t\). After the transient dies, the output is a sine at the same frequency, \(y=B\sin(\omega t+\Phi)\). Write \(r=\omega/\omega_n\), the <dfn>frequency ratio</dfn>.</p>
+      <ol class="steps">
+        <li>Substitute \(y\), \(\dot y=B\omega\cos(\cdot)\), \(\ddot y=-B\omega^2\sin(\cdot)\) into the standard form: \(B(1-r^2)\sin(\omega t+\Phi)+2\zeta rB\cos(\omega t+\Phi)=KA\sin\omega t\).</li>
+        <li>Expand and match the \(\sin\omega t\) and \(\cos\omega t\) terms:
+          \(B[(1-r^2)\cos\Phi-2\zeta r\sin\Phi]=KA\) and \((1-r^2)\sin\Phi+2\zeta r\cos\Phi=0\).</li>
+        <li>The second gives \(\tan\Phi=-2\zeta r/(1-r^2)\). Squaring and adding gives \(B^2[(1-r^2)^2+(2\zeta r)^2]=(KA)^2\).</li>
+      </ol>
+      <div class="eq"><span class="label">Second-order frequency response</span>
+        $$M(\omega)=\frac{B}{KA}=\frac{1}{\sqrt{\big[1-r^2\big]^2+\big[2\zeta r\big]^2}}$$
+        $$\Phi(\omega)=-\tan^{-1}\frac{2\zeta r}{1-r^2},\qquad r=\frac{\omega}{\omega_n}$$
+      </div>
+      <p class="small">Take Φ between 0 and −180°: the phase passes −90° at r = 1, so use the quadrant of the point \((1-r^2,\,2\zeta r)\).</p>
+    </div>
+    <div>
+      <p><b>Three facts to remember.</b></p>
+      <ul>
+        <li>\(r\ll1\): \(M\approx1\), \(\Phi\approx0\). The input passes through unchanged.</li>
+        <li>\(r=1\): \(M=1/2\zeta\) and \(\Phi=-90^\circ\) for every ζ. With ζ = 0.1, the instrument reports <b>five times</b> the true amplitude.</li>
+        <li>\(r\gg1\): \(M\approx1/r^2\), \(\Phi\to-180^\circ\). The mass cannot follow; the signal is filtered out.</li>
+      </ul>
+      <p>Keep three frequencies apart. \(\omega\) belongs to the <b>input signal</b>. \(\omega_n\) and \(\omega_d\) belong to the <b>instrument</b>: \(\omega_n\) is set by mass and stiffness, \(\omega_d\) is what you see ringing after a step.</p>
+      <div class="analogy"><p>Pushing a child on a swing. Push in time with the swing’s own rhythm and small pushes build a huge swing. Push much faster than its rhythm and the swing hardly moves, always opposite to your hands (−180°).</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 12 · Bode / resonance sim -->
+<section class="slide" id="bode" data-title="Resonance and the frequency bands">
+  <p class="eyebrow">Order 2 · resonance</p>
+  <h2>Below, at and above resonance: where an instrument is honest</h2>
+  <div class="cols wide-l">
+    <div class="sim" id="simBode">
+      <div class="simhead"><span>Frequency response</span><span class="legend"><span><i style="background:var(--acc)"></i>your ζ</span><span><i style="background:var(--blu)"></i>ζ = 0.7</span></span></div>
+      <canvas id="cvBodeM" data-h="190" aria-label="Magnitude ratio against frequency ratio on log axes, with the 5 percent band and resonance peak"></canvas>
+      <canvas id="cvBodeP" data-h="150" aria-label="Phase shift against frequency ratio from 0 to minus 180 degrees"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="zb">Damping ratio ζ <output data-for="z"></output></label>
+          <input type="range" id="zb" data-key="z" min="0.05" max="2" step="0.01" value="0.2" data-fmt="2"></div>
+        <div class="ctl"><label for="rb">Signal frequency ω/ωₙ <output data-for="r"></output></label>
+          <input type="range" id="rb" data-key="r" data-scale="log" data-min="0.05" data-max="10" min="0" max="1000" value="400" data-fmt="-1"></div>
+      </div>
+      <div class="readout" id="roBode"></div>
+      <div class="try"><p>Set ζ = 0.2 and slide the frequency to the peak: about 2.5 times too big. At r = 1 the phase is −90°. Raise ζ past 0.71 and the peak disappears. The dashed ζ = 0.7 curve stays inside the green ±5 % band up to r ≈ 0.6.</p></div>
+    </div>
+    <div>
+      <p>Where is \(M\) largest? Minimise the denominator: \(\frac{d}{dr}\big[(1-r^2)^2+4\zeta^2r^2\big]=-4r(1-r^2)+8\zeta^2r=0\) gives \(r^2=1-2\zeta^2\).</p>
+      <div class="eq"><span class="label">Resonance frequency and peak</span>
+        $$\omega_R=\omega_n\sqrt{1-2\zeta^2},\qquad M_{\max}=\frac{1}{2\zeta\sqrt{1-\zeta^2}}$$
+      </div>
+      <p>A peak exists only if \(1-2\zeta^2&gt;0\), i.e. \(\zeta&lt;0.707\). The <dfn>resonance frequency</dfn> \(\omega_R\) is where a steady sine is most amplified; it is lower than \(\omega_d\), which is free ringing.</p>
+      <div class="define"><p>The <dfn>transmission band</dfn> is the low-frequency range where \(M\approx1\): measure here. The <dfn>resonance band</dfn> is around \(\omega_R\), where \(M&gt;1\). The <dfn>filter band</dfn> is at high frequency, where \(M\) is below 0.707 (−3 dB) and the signal is attenuated.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 13 · Worked example: transducer frequency response -->
+<section class="slide" id="ex-freq" data-title="Worked example: frequency response from a ringing test">
+  <p class="eyebrow">Worked example 2</p>
+  <h2>From a ringing test to a full frequency response</h2>
+  <div class="cols">
+    <div class="example">
+      <p class="given">A step test of a pressure transducer shows ringing at \(f_d=1200\) Hz, and the peak ratio gives \(\zeta=0.5\). Find ωₙ, the resonance frequency, and \(M\) and \(\Phi\) over a range of input frequencies.</p>
+      <p class="small"><b>Known:</b> \(\zeta=0.5\), \(f_d=1200\) Hz. <b>Assumptions:</b> second order; linear.</p>
+      <ol class="steps">
+        <li>\(\omega_d=2\pi(1200)=7540\) rad/s.</li>
+        <li>\(\omega_n=\omega_d/\sqrt{1-\zeta^2}=7540/0.866=8706\) rad/s.</li>
+        <li>\(\omega_R=\omega_n\sqrt{1-2(0.25)}=8706\times0.707=6156\) rad/s; \(M_{\max}=1/(2\times0.5\times0.866)=1.155\).</li>
+        <li>Sample point, \(\omega=2600\) rad/s: \(r=0.299\), \(1-r^2=0.911\), \(2\zeta r=0.299\); \(M=1/\sqrt{0.830+0.0892}=1.043\); \(\Phi=-\tan^{-1}(0.299/0.911)=-18.2^\circ\). The table repeats this for other ω.</li>
+        <li><b>Meaning:</b> up to about 2600 rad/s (414 Hz, \(r\approx0.3\)) the error stays under about 4 %. Near 6000–7500 rad/s the transducer reads 11–15 % high. Far above ωₙ it reads almost nothing.</li>
+      </ol>
+    </div>
+    <div>
+      <div class="tbl"><table>
+        <tr><th>\(\omega\) (rad/s)</th><th>\(r=\omega/\omega_n\)</th><th>\(M(\omega)\)</th><th>\(\Phi(\omega)\)</th></tr>
+        <tr><td>500</td><td>0.057</td><td>1.002</td><td>−3.3°</td></tr>
+        <tr><td>2 600</td><td>0.299</td><td>1.043</td><td>−18.2°</td></tr>
+        <tr><td>3 500</td><td>0.402</td><td>1.076</td><td>−25.6°</td></tr>
+        <tr><td>6 155 (ω<sub>R</sub>)</td><td>0.707</td><td>1.155</td><td>−54.7°</td></tr>
+        <tr><td>7 540 (ω<sub>d</sub>)</td><td>0.866</td><td>1.109</td><td>−73.9°</td></tr>
+        <tr><td>8 706 (ωₙ)</td><td>1.000</td><td>1.000</td><td>−90.0°</td></tr>
+        <tr><td>50 000</td><td>5.74</td><td>0.031</td><td>−169.8°</td></tr>
+      </table></div>
+      <div class="takeaway"><p>A useful rule: keep input frequencies below about 30 % of ωₙ to stay clear of resonance effects in a lightly damped instrument.</p></div>
+      <div class="quiz" data-correct="0">
+        <p class="q">At ω = ωₙ the magnitude ratio here is exactly 1.000. Does that make ωₙ a good frequency to measure at?</p>
+        <div class="opts">
+          <button class="opt" data-why="Right. M passes back through 1 on its way down from the resonance peak, but the phase is −90°, M changes fast with ω, and a small error in ωₙ or ζ changes M a lot. Accidental agreement, not a good operating point.">No: the phase is −90° and M is changing steeply there</button>
+          <button class="opt" data-why="M = 1 at one frequency is a coincidence of the curve falling from its peak; neighbouring frequencies are read 10 % high or low.">Yes: M = 1 means no amplitude error</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 · Worked example: accelerometer selection -->
+<section class="slide" id="ex-accel" data-title="Worked example: selecting an accelerometer">
+  <p class="eyebrow">Worked example 3</p>
+  <h2>Selecting an accelerometer for motion below 100 Hz</h2>
+  <div class="cols">
+    <div class="example">
+      <p class="given">An accelerometer must measure a motion whose important frequencies all lie below 100 Hz, with a dynamic error no larger than 5 %. Select acceptable values of ωₙ and ζ.</p>
+      <p class="small"><b>Known:</b> \(f\le100\) Hz, so \(\omega\le2\pi(100)=628\) rad/s; \(|\delta|=|M-1|\le0.05\). <b>Find:</b> ωₙ, ζ. <b>Assumptions:</b> second-order instrument.</p>
+      <ol class="steps">
+        <li>Requirement: \(0.95\le M(\omega)\le1.05\) for every \(0\le\omega\le628\) rad/s.</li>
+        <li>Two unknowns, one requirement: many designs work. Fix one. Choose \(\zeta=0.7\): its peak is \(M_{\max}=1.0002\), so \(M\) never exceeds 1.05 and only the lower limit matters.</li>
+        <li>With ζ = 0.7, \(1/M^2=(1-r^2)^2+1.96r^2=1-0.04r^2+r^4\). Set \(M=0.95\): \(r^4-0.04r^2-0.1080=0\).</li>
+        <li>Quadratic in \(r^2\): \(r^2=\tfrac12\big[0.04+\sqrt{0.0016+0.4321}\big]=0.3493\), so \(r_{\max}=0.591\). (Reading the drawn curve by eye gives about 0.6.)</li>
+        <li>Need \(628/\omega_n\le0.591\): \(\omega_n\ge1063\) rad/s, i.e. \(f_n\ge169\) Hz. The eye-read 0.6 would give 1047 rad/s, which is 5.3 % low at 100 Hz: just outside the limit.</li>
+        <li><b>One acceptable design: ζ = 0.7 and ωₙ ≥ 1063 rad/s.</b> At 100 Hz it lags by about 52°, a time delay of 1.4 ms.</li>
+      </ol>
+    </div>
+    <div>
+      <figure>
+        <canvas id="cvAccel" data-h="260" aria-label="Magnitude ratio for damping ratio 0.7 against frequency ratio, with the band from 0.95 to 1.05 shaded and the crossing at r = 0.591 marked"></canvas>
+        <figcaption>M(r) for ζ = 0.7, zoomed. Green: the ±5 % band. The curve leaves it at r = 0.591.</figcaption>
+      </figure>
+      <div class="note" data-label="The price of speed"><p>For an accelerometer \(|K|=1/\omega_n^2\). With \(\omega_n=1063\) rad/s, 1 g (9.81 m/s²) deflects the mass only \(9.81/1063^2=8.7\ \mu\)m. A higher ωₙ widens the band but shrinks the signal, which is why accelerometers use stiff piezoelectric crystals that turn micrometres into a measurable charge.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 15 · Why 0.7 -->
+<section class="slide" id="zeta07" data-title="Why ζ ≈ 0.7">
+  <p class="eyebrow">Design choice</p>
+  <h2>Why so many instruments are built with ζ ≈ 0.7</h2>
+  <div class="cols">
+    <div>
+      <p><b>1. The flattest magnitude curve.</b> Put \(\zeta=1/\sqrt2=0.707\) in the denominator of \(M\):</p>
+      <p style="text-align:center">\((1-r^2)^2+4(0.5)r^2=1-2r^2+r^4+2r^2=1+r^4\)</p>
+      <p>so \(M=1/\sqrt{1+r^4}\). The \(r^2\) terms cancel: \(M\) departs from 1 only as \(r^4\), as slowly as any second-order curve can, without a resonance peak. This is called a <dfn>maximally flat</dfn> response. Its −3 dB point is exactly \(r=1\).</p>
+      <p><b>2. Fast settling.</b> The step response overshoots only 4.6 % and settles to ±5 % in 2.9/ωₙ (critical damping: 4.7/ωₙ).</p>
+      <p><b>3. Nearly linear phase.</b> Over \(0\le r\le1\) the phase of ζ ≈ 0.7 grows almost in proportion to frequency, so all frequency components are delayed by about the same time and a complex waveform keeps its shape (part C).</p>
+      <div class="tbl"><table>
+        <tr><th>\(\zeta\)</th><th>within ±5 % up to \(r\)</th><th>within ±2 % up to \(r\)</th></tr>
+        <tr><td>0.4</td><td>0.27</td><td>0.17</td></tr>
+        <tr><td>0.6</td><td>0.84</td><td>0.29</td></tr>
+        <tr><td>0.65</td><td>0.72</td><td>0.64</td></tr>
+        <tr><td>0.7</td><td>0.59</td><td>0.47</td></tr>
+        <tr><td>1.0</td><td>0.23</td><td>0.14</td></tr>
+      </table></div>
+    </div>
+    <div>
+      <figure>
+        <canvas id="cvFlat" data-h="260" aria-label="Magnitude ratio against frequency ratio on linear axes for damping ratios 0.4, 0.6, 0.7 and 1.0 with the plus or minus 5 percent band"></canvas>
+        <figcaption><span class="legend"><span><i style="background:var(--red)"></i>ζ = 0.4</span><span><i style="background:var(--ylw)"></i>0.6</span><span><i style="background:var(--acc)"></i>0.7</span><span><i style="background:var(--blu)"></i>1.0</span></span>Green band: ±5 %. Low ζ bulges out of it; high ζ droops out of it early.</figcaption>
+      </figure>
+      <p>The table shows the trade-off precisely. If a small resonance bump is acceptable, ζ ≈ 0.6–0.65 stretches the usable band further; ζ = 0.7 gives up a little bandwidth for no bump at all and better phase. That is why designers aim for the range 0.6–0.8 rather than a single magic number.</p>
+      <div class="analogy"><p>Tuning shock absorbers: soft enough that the car does not feel every pebble late, firm enough that it never wallows. Engineers land in the same narrow window for the same reason.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 16 · Check yourself -->
+<section class="slide" id="check" data-title="Check yourself">
+  <p class="eyebrow">Self-test</p>
+  <h2>Check yourself</h2>
+  <div class="cols c3">
+    <div class="quiz" data-correct="2">
+      <p class="q">A step test shows ringing at \(f_d=1200\) Hz on a transducer with ζ = 0.5. Its natural frequency ωₙ is…</p>
+      <div class="opts">
+        <button class="opt" data-why="That is \(\omega_d=2\pi(1200)\). The natural frequency is higher than the ringing frequency whenever ζ &gt; 0.">7540 rad/s</button>
+        <button class="opt" data-why="You divided by \(1-\zeta^2\) instead of its square root.">10 050 rad/s</button>
+        <button class="opt" data-why="\(\omega_n=\omega_d/\sqrt{1-\zeta^2}=7540/0.866=8706\) rad/s.">8706 rad/s</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="0">
+      <p class="q">An accelerometer with ζ = 0.1 is shaken at exactly its natural frequency. It reports an amplitude…</p>
+      <div class="opts">
+        <button class="opt" data-why="\(M(\omega_n)=1/(2\zeta)=5\): five times the true amplitude, with a −90° phase shift.">about 5 times too large</button>
+        <button class="opt" data-why="At r = 1 a lightly damped system amplifies strongly.">about right</button>
+        <button class="opt" data-why="Near-zero readings occur far above ωₙ, not at it.">almost zero</button>
+      </div>
+    </div>
+    <div class="quiz" data-correct="1">
+      <p class="q">Which design gives a step response with no overshoot at all?</p>
+      <div class="opts">
+        <button class="opt" data-why="ζ = 0.7 overshoots by \(e^{-\pi(0.7)/0.714}=4.6\%\).">ζ = 0.7</button>
+        <button class="opt" data-why="For ζ ≥ 1 the roots are real; the response never crosses the final value. ζ = 1 is the fastest such design.">ζ = 1.0</button>
+        <button class="opt" data-why="ζ = 0.5 overshoots by 16.3 %.">ζ = 0.5</button>
+      </div>
+    </div>
+  </div>
+  <div class="reveal-box" data-label="Reveal answer">
+    <p><b>One more, by hand.</b> A second-order instrument is modelled by \(\ddot y+400\,\dot y+2.5\times10^5\,y=2.5\times10^5\,F(t)\) (time in s). Find ωₙ, ζ, K, the ringing frequency and the amplitude it reports for a 1-unit sine at 60 Hz.</p>
+    <div class="answer"><p>Divide by \(2.5\times10^5\): \(1/\omega_n^2=4\times10^{-6}\), so \(\omega_n=500\) rad/s; \(2\zeta/\omega_n=1.6\times10^{-3}\), so \(\zeta=0.40\); \(K=1\). \(\omega_d=500\sqrt{1-0.16}=458\) rad/s (72.9 Hz). At 60 Hz, \(\omega=377\) rad/s, \(r=0.754\): \(M=1/\sqrt{(1-0.569)^2+(0.603)^2}=1/\sqrt{0.186+0.364}=1.35\). It reports 1.35 units, 35 % high, because 60 Hz lies in the resonance band.</p></div>
+  </div>
+</section>
+
+<!-- 17 · Summary -->
+<section class="slide" id="summary" data-title="Summary">
+  <p class="eyebrow">Summary</p>
+  <h2>Part B on one page</h2>
+  <div class="tbl wrap"><table>
+    <tr><th>Idea</th><th>Result</th><th>Use it to</th></tr>
+    <tr><td>Model</td><td>\(\ddot y/\omega_n^2+2\zeta\dot y/\omega_n+y=KF\); accelerometer \(\omega_n=\sqrt{k/m}\), \(\zeta=c/2\sqrt{km}\), \(|K|=1/\omega_n^2\)</td><td>See which physical parts set speed and damping</td></tr>
+    <tr><td>Regimes</td><td>ζ &lt; 1 rings; ζ = 1 fastest without overshoot; ζ &gt; 1 sluggish</td><td>Predict the shape of a response</td></tr>
+    <tr><td>Step response</td><td>rings at \(\omega_d=\omega_n\sqrt{1-\zeta^2}\); OS \(=e^{-\pi\zeta/\sqrt{1-\zeta^2}}\); ζ = 0.7: \(t_r=2.63/\omega_n\)</td><td>Rise and settling times</td></tr>
+    <tr><td>From a trace</td><td>\(\Lambda=\ln(y_1/y_2)\), \(\zeta=1/\sqrt{1+(2\pi/\Lambda)^2}\), \(\omega_n=\omega_d/\sqrt{1-\zeta^2}\)</td><td>Identify an instrument by a step test</td></tr>
+    <tr><td>Sine input</td><td>\(M=1/\sqrt{(1-r^2)^2+(2\zeta r)^2}\), \(\Phi=-\tan^{-1}[2\zeta r/(1-r^2)]\)</td><td>Dynamic error at any frequency</td></tr>
+    <tr><td>Resonance</td><td>\(\omega_R=\omega_n\sqrt{1-2\zeta^2}\) if ζ &lt; 0.707; \(M(\omega_n)=1/2\zeta\)</td><td>Frequencies to avoid</td></tr>
+    <tr><td>Design</td><td>ζ ≈ 0.6–0.8; with ζ = 0.7, ±5 % up to \(r=0.59\)</td><td>Choose ωₙ for a signal band</td></tr>
+  </table></div>
+  <div class="cols">
+    <div>
+      <h3>You should now be able to…</h3>
+      <ul>
+        <li>derive the accelerometer equation and identify ωₙ, ζ and K;</li>
+        <li>sketch the step response for any ζ and quote overshoot, rise and settling times;</li>
+        <li>extract ζ, ωd and ωₙ from a recorded step test;</li>
+        <li>compute M and Φ for a sine input and locate resonance;</li>
+        <li>select ωₙ and ζ for a frequency band and error limit.</li>
+      </ul>
+    </div>
+    <div class="watch">
+      <h3>Watch next</h3>
+      <a href="https://www.youtube.com/results?search_query=second+order+system+damping+ratio+natural+frequency+step+response" target="_blank" rel="noopener">Damping ratio and natural frequency, visualised <small>YouTube search</small></a>
+      <a href="https://www.youtube.com/results?search_query=logarithmic+decrement+damping+ratio+free+vibration" target="_blank" rel="noopener">Logarithmic decrement from a free vibration <small>YouTube search</small></a>
+      <a href="https://www.youtube.com/results?search_query=accelerometer+frequency+response+resonance+seismic+mass" target="_blank" rel="noopener">How an accelerometer works and resonates <small>YouTube search</small></a>
+    </div>
+  </div>
+  <p class="further">Further reading: Figliola &amp; Beasley, §3.3 (second-order systems)</p>
+  <div class="row"><a class="btn" href="d02a.html">&larr; Part A · Models &amp; first order</a><a class="btn primary" href="d02c.html">Part C · Transfer functions &amp; distortion &rarr;</a></div>
+</section>
+
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  function step2(z, wt) { // unit step response, K=1, wt = ωn t, at rest initially
+    if (Math.abs(z - 1) < 1e-3) return 1 - (1 + wt) * Math.exp(-wt);
+    if (z < 1) { const s = Math.sqrt(1 - z * z); return 1 - Math.exp(-z * wt) * (Math.cos(s * wt) + z / s * Math.sin(s * wt)); }
+    const s = Math.sqrt(z * z - 1);
+    return 1 - ((z + s) * Math.exp((-z + s) * wt) - (z - s) * Math.exp((-z - s) * wt)) / (2 * s);
+  }
+  const M2 = (r, z) => 1 / Math.sqrt(Math.pow(1 - r * r, 2) + Math.pow(2 * z * r, 2));
+  const P2 = (r, z) => -Math.atan2(2 * z * r, 1 - r * r) * 180 / Math.PI;
+  const label = (p, txt, x, y, col, align) => { const c = p.ctx; c.fillStyle = Deck.color(col || 'ink'); c.font = Deck.font(11, true); c.textAlign = align || 'left'; c.textBaseline = 'middle'; c.fillText(txt, p.X(x), p.Y(y)); };
+
+  /* ---- cover ---- */
+  let coverT = 0;
+  function drawCover() {
+    const tEnd = 16, tt = Math.min(coverT, tEnd);
+    const zs = [0.15, 0.7, 1.6], cols = ['acc', 'blu', 'muted'];
+    const series = zs.map((z, k) => { const p = []; for (let i = 0; i <= 320; i++) { const t = tEnd * i / 320; if (t > tt) break; p.push([t, step2(z, t)]); } return { pts: p, color: cols[k], width: 2.3 }; });
+    series.unshift({ pts: [[0, 0], [0.001, 1], [tEnd, 1]], color: 'ink', width: 1.2, dash: [5, 4] });
+    Deck.plot($('coverTrace'), { x: [-0.3, tEnd], y: [-0.05, 1.7], pad: { l: 8, r: 8, t: 6, b: 6 }, xticks: [], yticks: [], series });
+  }
+  Deck.onShow('cover', () => () => drawCover());
+  Deck.loop('cover', dt => { if (coverT < 17) { coverT += dt * 3; drawCover(); } });
+
+  /* ---- free motion ---- */
+  Deck.onShow('regimes', () => {
+    function draw() {
+      const z0 = 0.2, s = Math.sqrt(1 - z0 * z0);
+      Deck.plot($('cvFree'), { x: [0, 15], y: [-1, 1.1], xlabel: 'ωₙt', ylabel: 'displacement y',
+        hlines: [{ y: 0, color: 'muted', dash: [2, 3] }],
+        series: [
+          { f: w => Math.exp(-z0 * w) / s, color: 'muted', width: 1.2, dash: [4, 4] },
+          { f: w => -Math.exp(-z0 * w) / s, color: 'muted', width: 1.2, dash: [4, 4] },
+          { f: w => 1 - step2(2, w), color: 'grn' },
+          { f: w => 1 - step2(1, w), color: 'blu' },
+          { f: w => 1 - step2(z0, w), color: 'acc' }] });
+    }
+    return draw;
+  });
+
+  /* ---- step family ---- */
+  Deck.onShow('step-family', () => {
+    function draw() {
+      const zs = [[0, 'muted'], [0.25, 'red'], [0.5, 'ylw'], [0.7, 'acc'], [1, 'blu'], [2, 'grn']];
+      Deck.plot($('cvFamily'), { x: [0, 12], y: [0, 2.05], xlabel: 'dimensionless time ωₙt', ylabel: 'y(t) / KA',
+        bands: [{ y0: 0.9, y1: 1.1, color: 'grn', alpha: .10 }], hlines: [{ y: 1, color: 'muted', dash: [4, 4] }],
+        series: zs.map(d => ({ f: w => d[0] === 0 ? 1 - Math.cos(w) : step2(d[0], w), color: d[1], width: d[0] === 0 ? 1.4 : 2.2, n: 600 })) });
+    }
+    return draw;
+  });
+
+  /* ---- step sim with animated mass ---- */
+  let t2 = 0, drawS2 = null;
+  Deck.onShow('step-sim', () => {
+    const get = Deck.controls('simStep2', () => { t2 = 0; draw(); });
+    $('replay2').addEventListener('click', () => { t2 = 0; });
+    function metrics(z) {
+      let tr = null, ts = 0, peak = 0;
+      for (let i = 1; i <= 6000; i++) { const wt = i * 0.01, y = step2(z, wt); if (tr === null && y >= 0.9) tr = wt; if (Math.abs(y - 1) > 0.1) ts = wt; if (y > peak) peak = y; }
+      return { tr, ts, os: Math.max(0, peak - 1) };
+    }
+    function draw() {
+      const z = get().z, end = Math.min(t2, 20);
+      const pts = []; for (let i = 0; i <= 600; i++) { const wt = 20 * i / 600; if (wt > end) break; pts.push([wt, step2(z, wt)]); }
+      const ghost = []; for (let i = 0; i <= 400; i++) { const wt = 20 * i / 400; ghost.push([wt, step2(z, wt)]); }
+      const env = [];
+      if (z < 1) { const s = Math.sqrt(1 - z * z); env.push({ f: w => 1 + Math.exp(-z * w) / s, color: 'muted', width: 1.1, dash: [3, 4] }, { f: w => 1 - Math.exp(-z * w) / s, color: 'muted', width: 1.1, dash: [3, 4] }); }
+      const p = Deck.plot($('cvStep2'), { x: [0, 20], y: [0, 2], xlabel: 'dimensionless time ωₙt', ylabel: 'y(t) / KA',
+        bands: [{ y0: 0.9, y1: 1.1, color: 'grn', alpha: .14 }], hlines: [{ y: 1, color: 'muted' }],
+        series: env.concat([{ pts: ghost, color: 'rule', width: 1.5 }, { pts, color: 'acc', width: 2.6 }]) });
+      const yNow = step2(z, end);
+      if (pts.length) { p.ctx.fillStyle = Deck.color('ink'); p.ctx.beginPath(); p.ctx.arc(p.X(end), p.Y(yNow), 4.5, 0, 7); p.ctx.fill(); }
+      const cv = $('cvMass'); const { ctx, W, H } = Deck.sizeCanvas(cv);
+      ctx.fillStyle = Deck.color('paper'); ctx.fillRect(0, 0, W, H);
+      const base = H - 20, rest = H * 0.66, amp = H * 0.24;
+      const my = rest - Math.max(-0.2, Math.min(2, end > 0 ? yNow : 0)) * amp;
+      ctx.strokeStyle = Deck.color('muted'); ctx.lineWidth = 1.2; ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(4, rest - amp); ctx.lineTo(W - 4, rest - amp); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = Deck.color('muted'); ctx.font = Deck.font(10, true); ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.fillText('final', 4, rest - amp - 3);
+      ctx.strokeStyle = Deck.color('ink'); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(6, base); ctx.lineTo(W - 6, base); ctx.stroke();
+      const cx = W * 0.5, top = my + 16, n = 9; ctx.beginPath(); ctx.moveTo(cx, base);
+      for (let i = 1; i <= n; i++) { const yy = base - (base - top) * i / (n + 1); ctx.lineTo(cx + (i % 2 ? 11 : -11), yy); }
+      ctx.lineTo(cx, top); ctx.stroke();
+      ctx.fillStyle = Deck.color('acc-soft'); ctx.strokeStyle = Deck.color('acc'); ctx.lineWidth = 2;
+      ctx.fillRect(cx - 26, my - 16, 52, 32); ctx.strokeRect(cx - 26, my - 16, 52, 32);
+      ctx.fillStyle = Deck.color('ink'); ctx.font = Deck.font(13); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('m', cx, my);
+      const m = metrics(z), s = z < 1 ? Math.sqrt(1 - z * z) : 0;
+      $('roStep2').innerHTML = 'regime <b>' + (Math.abs(z - 1) < 0.02 ? 'critical' : z < 1 ? 'underdamped' : 'overdamped') + '</b> &nbsp; overshoot <b>' + (m.os * 100).toFixed(1) + ' %</b> &nbsp; 90 % rise <b>' + (m.tr === null ? '—' : m.tr.toFixed(2)) + '/ωₙ</b> &nbsp; ±10 % settle <b>' + m.ts.toFixed(2) + '/ωₙ</b>' + (z < 1 ? ' &nbsp; ωd = <b>' + s.toFixed(3) + ' ωₙ</b>' : '');
+    }
+    t2 = 0; drawS2 = draw;
+    return () => { t2 = 0; draw(); };
+  });
+  Deck.loop('step-sim', dt => { if (t2 < 20 && drawS2) { t2 += dt * 5; drawS2(); } });
+
+  /* ---- step-test trace (worked example) ---- */
+  Deck.onShow('ex-trace', () => {
+    function draw() {
+      const E = tms => tms <= 0 ? 1 : 1 + step2(0.25, 500 * tms / 1000);
+      const p = Deck.plot($('cvTrace'), { x: [-2, 50], y: [0, 3], xlabel: 'time t (ms)', ylabel: 'output E(t) (V)',
+        xticks: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50], yticks: [0, 0.5, 1, 1.5, 2, 2.5, 3], yfmt: v => v.toFixed(1),
+        bands: [{ y0: 1.9, y1: 2.1, color: 'grn', alpha: .14 }],
+        vlines: [{ x: 3.46, color: 'blu', dash: [3, 4] }, { x: 15.27, color: 'grn', dash: [3, 4] }],
+        series: [{ f: E, color: 'acc', n: 800 }],
+        points: [{ x: 6.49, y: 2.444, color: 'ink', r: 4, label: '2.444 V, 6.49 ms' }, { x: 19.47, y: 2.088, color: 'ink', r: 4, label: '2.088 V, 19.47 ms' }, { x: 12.98, y: 1.803, color: 'ink', r: 4 }] });
+      label(p, '1.803 V, 12.98 ms', 13.6, 1.66, 'ink');
+      label(p, 't_r = 3.46', 4.2, 0.5, 'blu');
+      label(p, 't_s = 15.27 ms', 16, 0.3, 'grn');
+      label(p, 'band 1.9–2.1 V', 49, 1.75, 'grn', 'right');
+    }
+    return draw;
+  });
+
+  /* ---- Bode ---- */
+  Deck.onShow('bode', () => {
+    const get = Deck.controls('simBode', draw);
+    function draw() {
+      const { z, r } = get();
+      const peak = z < 0.7071 ? Math.sqrt(1 - 2 * z * z) : null;
+      Deck.plot($('cvBodeM'), { x: [0.05, 10], y: [0.01, 12], logx: true, logy: true, ylabel: 'M(ω)',
+        bands: [{ y0: 0.95, y1: 1.05, color: 'grn', alpha: .2 }],
+        vlines: [{ x: 1, color: 'muted', label: 'ωₙ' }, { x: 0.3, color: 'muted', dash: [2, 4], label: '0.3ωₙ' }],
+        series: [{ f: x => M2(x, 0.7), color: 'blu', width: 1.6, dash: [6, 4] }, { f: x => M2(x, z), color: 'acc' }],
+        points: [{ x: r, y: M2(r, z), color: 'ink', r: 5 }].concat(peak ? [{ x: peak, y: M2(peak, z), color: 'acc', r: 4, label: 'ω_R' }] : []) });
+      Deck.plot($('cvBodeP'), { x: [0.05, 10], y: [-180, 0], logx: true, xlabel: 'frequency ratio r = ω/ωₙ (log scale)', ylabel: 'Φ (deg)', yticks: [-180, -135, -90, -45, 0],
+        vlines: [{ x: 1, color: 'muted' }], hlines: [{ y: -90, color: 'muted', dash: [2, 4] }],
+        series: [{ f: x => P2(x, 0.7), color: 'blu', width: 1.6, dash: [6, 4] }, { f: x => P2(x, z), color: 'acc' }],
+        points: [{ x: r, y: P2(r, z), color: 'ink', r: 5 }] });
+      const M = M2(r, z);
+      $('roBode').innerHTML = 'M = <b>' + M.toFixed(3) + '</b> (error <b>' + ((M - 1) * 100).toFixed(1) + ' %</b>) &nbsp; Φ = <b>' + P2(r, z).toFixed(1) + '°</b>' + (peak ? ' &nbsp; resonance at <b>' + peak.toFixed(3) + ' ωₙ</b>, M<sub>max</sub> = <b>' + M2(peak, z).toFixed(2) + '</b>' : ' &nbsp; <b>no resonance peak</b> (ζ ≥ 0.707)');
+    }
+    return draw;
+  });
+
+  /* ---- accelerometer selection ---- */
+  Deck.onShow('ex-accel', () => {
+    function draw() {
+      const p = Deck.plot($('cvAccel'), { x: [0, 1.2], y: [0.6, 1.1], xlabel: 'r = ω/ωₙ', ylabel: 'M(ω), ζ = 0.7',
+        yticks: [0.6, 0.7, 0.8, 0.9, 1, 1.1],
+        bands: [{ y0: 0.95, y1: 1.05, color: 'grn', alpha: .18 }],
+        vlines: [{ x: 0.591, color: 'blu', dash: [4, 4] }],
+        series: [{ f: r => M2(r, 0.7), color: 'acc' }],
+        points: [{ x: 0.591, y: 0.95, color: 'ink', r: 5 }], yfmt: v => v.toFixed(2) });
+      label(p, 'r = 0.591, M = 0.95', 0.62, 0.92, 'blu');
+      label(p, 'ω = 628 rad/s here ⇒ ωₙ = 628/0.591 = 1063', 0.04, 0.66, 'muted');
+    }
+    return draw;
+  });
+
+  /* ---- flatness comparison ---- */
+  Deck.onShow('zeta07', () => {
+    function draw() {
+      Deck.plot($('cvFlat'), { x: [0, 1.5], y: [0, 1.4], xlabel: 'r = ω/ωₙ', ylabel: 'magnitude ratio M',
+        bands: [{ y0: 0.95, y1: 1.05, color: 'grn', alpha: .2 }],
+        hlines: [{ y: 0.707, color: 'muted', dash: [3, 4], label: '0.707 (−3 dB)' }],
+        series: [[0.4, 'red'], [0.6, 'ylw'], [0.7, 'acc'], [1, 'blu']].map(d => ({ f: r => M2(r, d[0]), color: d[1], width: 2.2 })) });
+    }
+    return draw;
+  });
+})();
+</script>
+</body>
+</html>
